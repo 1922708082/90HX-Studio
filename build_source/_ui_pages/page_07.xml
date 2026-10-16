@@ -1,0 +1,145 @@
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28,24,28,24">
+                    <StackPanel>
+                        <Border Background="{StaticResource BgBanner}" BorderBrush="{StaticResource BorderBanner}" BorderThickness="1" CornerRadius="12" Padding="20,14" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="图吧硬件深度调优工具集" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="14" Margin="0,0,0,4" />
+                                <TextBlock Text="集成显卡驱动服务热重启、Windows 卓越性能电源模式激活、硬件加速 GPU 计划 (HAGS) 快捷调度等硬核功能，辅助全系矿卡发挥满血性能。" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11" LineHeight="17" Margin="0,0,10,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 工具 1: 显卡驱动热重启 -->
+                            <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="0,0,8,12" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="显卡驱动服务热重启" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="重启 DWM 桌面合成器与显卡子系统，无需重启电脑" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolRestartDriver" Grid.Column="1" Content="执行重启" Style="{StaticResource StandardBtn}" Height="30" Width="82" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 2: HAGS -->
+                            <Border Grid.Row="0" Grid.Column="1" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="8,0,0,12" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="硬件加速 GPU 计划 (HAGS)" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Name="TxtToolHagsStatus" Text="状态: 检测中..." Foreground="{StaticResource SuccessGreen}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolToggleHags" Grid.Column="1" Content="切换状态" Style="{StaticResource StandardBtn}" Height="30" Width="82" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 3: 卓越性能 -->
+                            <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="0,0,8,12" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Windows 卓越性能电源模式" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="一键激活并锁定卓越性能电源方案，防止节能降速" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolEnableUltimatePower" Grid.Column="1" Content="一键激活" Style="{StaticResource PrimaryBtn}" Height="30" Width="82" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 4: 打开数据目录 -->
+                            <Border Grid.Row="1" Grid.Column="1" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="8,0,0,12" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="打开数据与备份目录" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="浏览注册表备份、日志及固件缓存" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolOpenDataDir" Grid.Column="1" Content="打开目录" Style="{StaticResource StandardBtn}" Height="30" Width="82" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 5: 设备管理器 -->
+                            <Border Grid.Row="2" Grid.Column="0" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="0,0,8,0" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Windows 设备管理器" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="直达设备管理器核查显卡设备驱动与名称" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolDevMgmt" Grid.Column="1" Content="打开" Style="{StaticResource StandardBtn}" Height="30" Width="70" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 6: dxdiag -->
+                            <Border Grid.Row="2" Grid.Column="1" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="8,0,0,0" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="DirectX 诊断工具 (dxdiag)" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="检查 D3D12 功能级别与驱动签名" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolDxDiag" Grid.Column="1" Content="运行" Style="{StaticResource StandardBtn}" Height="30" Width="70" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 7: NVIDIA 控制面板 -->
+                            <Border Grid.Row="3" Grid.Column="0" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="0,12,8,0" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="NVIDIA 原生控制面板" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="配置 3D 管理设置与色彩分辨率" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolNvCpl" Grid.Column="1" Content="启动" Style="{StaticResource StandardBtn}" Height="30" Width="70" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 工具 8: 刷新显示服务与设备管理 -->
+                            <Border Grid.Row="3" Grid.Column="1" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,16" Margin="8,12,0,0" Effect="{StaticResource ShadowCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="GPU 硬件总线诊断" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="核查 PCIe 协商速率与带宽负载" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Name="BtnToolGpuDiag" Grid.Column="1" Content="核查" Style="{StaticResource StandardBtn}" Height="30" Width="70" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            

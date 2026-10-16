@@ -1,0 +1,210 @@
+
+固件启动管理器
+---------------------
+标识符                  {fwbootmgr}
+displayorder            {bootmgr}
+timeout                 1
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae80-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae81-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae82-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae83-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae84-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae85-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae86-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae87-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae88-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae89-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae8a-b525-11f1-a154-e1c1d697bcf4}
+device                  unknown
+path                    \EFI\Boot\bootx64.efi
+description             90HX Unlock USB
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Windows 启动管理器
+--------------------
+标识符                  {44f9ae8b-b525-11f1-a154-e1c1d697bcf4}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager (Backup)
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 5
+displaybootmenu         Yes
+
+Windows 启动管理器
+--------------------
+标识符                  {bootmgr}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 5
+displaybootmenu         Yes
+
+固件应用程序(101fffff)
+-------------------------------
+标识符                  {64d5ac0d-b916-11f1-96b7-806e6f6e6963}
+device                  unknown
+description             UEFI: Teclast CoolFlash 2.00, Partition 1
+
+固件应用程序(101fffff)
+-------------------------------
+标识符                  {803bbdd7-befc-11f1-96cd-806e6f6e6963}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager
+
+固件应用程序(101fffff)
+-------------------------------
+标识符                  {ca3990ae-c0f7-11f1-96da-806e6f6e6963}
+device                  unknown
+description             UEFI: Teclast CoolFlash 2.00, Partition 1
+指定不存在的设备。

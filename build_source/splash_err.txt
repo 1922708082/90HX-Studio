@@ -1,0 +1,2 @@
+Bounds: 2.51367211341858,24.2336730957031,71.1889188289642,47.7919921875, Path length: 4637
+[OK] 纯图标动画效果图渲染成功: D:\app\build_source\render_splash_preview.png

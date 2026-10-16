@@ -1,0 +1,212 @@
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,18,26,18">
+                    <StackPanel>
+                        <!-- 1. 顶部大标题与右侧工具栏 -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="硬件信息" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,0,0,4" />
+                                <TextBlock Text="汇总本机型号、系统和关键硬件参数。" FontSize="12" Foreground="{StaticResource TextMuted}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="ⓘ 详细信息" Style="{StaticResource StandardBtn}" Height="30" Padding="12,0,12,0" Margin="0,0,8,0" />
+                                <Button Name="BtnRefreshSensorsOnce" Content="⟳ 刷新" Style="{StaticResource StandardBtn}" Height="30" Padding="12,0,12,0" Margin="0,0,8,0" />
+                                <Button Content="分享 ⌄" Style="{StaticResource StandardBtn}" Height="30" Padding="12,0,12,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 2. 中间三大核心指标横排卡片 (图吧 1:1 风格) -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 卡片 1: 型号信息 -->
+                            <Border Grid.Column="0" Style="{StaticResource HoverCardBorder}" Padding="18,14" Margin="0,0,10,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="🖳" FontSize="20" Foreground="{StaticResource AccentBlue}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                        <TextBlock Text="型号信息" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,0,0,3" />
+                                        <TextBlock Name="TxtHwMotherboard" Text="华硕(ASUS) B850M AYW GAMING" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" TextWrapping="Wrap" LineHeight="17" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- 卡片 2: 系统信息 -->
+                            <Border Grid.Column="1" Style="{StaticResource HoverCardBorder}" Padding="18,14" Margin="0,0,10,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="🪟" FontSize="20" Foreground="{StaticResource AccentBlue}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                        <TextBlock Text="系统信息" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,0,0,3" />
+                                        <TextBlock Name="TxtHwOsVer" Text="Microsoft Windows 11 专业版 64 位" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" TextWrapping="Wrap" LineHeight="17" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- 卡片 3: 运行时间 -->
+                            <Border Grid.Column="2" Style="{StaticResource HoverCardBorder}" Padding="18,14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="⏱" FontSize="20" Foreground="{StaticResource AccentBlue}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                        <TextBlock Text="运行时间" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,0,0,3" />
+                                        <TextBlock Name="TxtHwUptime" Text="0天2小时15分钟" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" TextWrapping="Wrap" LineHeight="17" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- 3. 下方「详细信息」斑马纹硬件面板 (图吧工具箱灵魂设计) -->
+                        <Border Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" CornerRadius="12" Padding="0,8,0,8" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="详细信息" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="20,8,20,10" />
+
+                                <!-- 行 1: 主板 (浅灰底斑马纹) -->
+                                <Border Background="#F9F9FB" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="主板" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Name="TxtHwMbDetail" Text="华硕(ASUS) B850M AYW GAMING WIFI · BIOS: Version 3404" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 2: 处理器 -->
+                                <Border Background="#FFFFFF" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="处理器" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Name="TxtHwCpuName" Text="AMD Ryzen 7 9700X 8-Core Processor" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 3: 内存 (浅灰底斑马纹) -->
+                                <Border Background="#F9F9FB" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="内存" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Name="TxtHwMemory" Text="15.2GB DDR5-6000 MHz (双通道/全速运行)" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 4: 显卡 (多卡全展现) -->
+                                <Border Background="#FFFFFF" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="显卡" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="NVIDIA CMP 90HX (RainCandy Technology) (9.8 GB)" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,4" />
+                                            <TextBlock Text="AMD Radeon(TM) Graphics (0.5 GB)" FontSize="12" Foreground="{StaticResource TextSub}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 5: 显示器 (浅灰底斑马纹) -->
+                                <Border Background="#F9F9FB" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="显示器" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="主屏 SKG (SN:1) [27.0&quot; 2560 x 1440 180Hz 高刷屏]" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 6: 硬盘 -->
+                                <Border Background="#FFFFFF" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="硬盘" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="致态 YMTC PC41Q-1TB-B (953.9GB) · 高速 PCIe 4.0 NVMe" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,3" />
+                                            <TextBlock Text="starsway K2000 512G (476.9GB) · SATA SSD" FontSize="12" Foreground="{StaticResource TextSub}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 7: 声卡 (浅灰底斑马纹) -->
+                                <Border Background="#F9F9FB" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="声卡" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="AMD High Definition Audio / Realtek Audio / USB Audio" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- 行 8: 网卡 -->
+                                <Border Background="#FFFFFF" Padding="20,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="网卡" FontSize="12" Foreground="{StaticResource TextSub}" FontWeight="Medium" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="Realtek PCIe 2.5GbE Controller · MediaTek Wi-Fi 6 MT7902LEN" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 隐藏保留控件 (供后台传感器与原有事件安全绑定) -->
+                        <StackPanel Visibility="Collapsed">
+                            <TextBlock Name="TxtHwCpuCores" />
+                            <TextBlock Name="TxtHwCpuClock" />
+                            <ListBox Name="LstAllGpuDevices" />
+                            <TextBlock Name="TxtHwGpuCount" />
+                            <TextBlock Name="TxtHwBiosVer" />
+                            <TextBlock Name="TxtHwUefiState" />
+                            <TextBlock Name="TxtHwSecureBoot" />
+                            <TextBlock Name="TxtHwHags" />
+                            <TextBlock Name="TxtSensTemp" />
+                            <ProgressBar Name="BarSensTemp" />
+                            <TextBlock Name="TxtSensFan" />
+                            <ProgressBar Name="BarSensFan" />
+                            <TextBlock Name="TxtSensPower" />
+                            <ProgressBar Name="BarSensPower" />
+                            <TextBlock Name="TxtSensVram" />
+                            <ProgressBar Name="BarSensVram" />
+                            <TextBlock Name="TxtSensUtil" />
+                            <ProgressBar Name="BarSensUtil" />
+                            <TextBlock Name="TxtSensClocks" />
+                            <TextBlock Name="TxtSensPstate" />
+                            <TextBlock Name="TxtSensPcieLink" />
+                            <CheckBox Name="ChkAutoRefreshSensors" IsChecked="True" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            

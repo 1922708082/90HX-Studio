@@ -1,0 +1,302 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="90HX Studio"
+        Width="360" Height="360"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        FontFamily="Microsoft YaHei, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        TextOptions.TextFormattingMode="Display"
+        UseLayoutRounding="True">
+
+    <Window.Resources>
+        <!-- 苹果原装级多层深景深微弥散阴影 -->
+        <DropShadowEffect x:Key="AppleIconShadow" Color="#000000" BlurRadius="52" ShadowDepth="18" Opacity="0.34" />
+        <DropShadowEffect x:Key="AppleInnerGaze" Color="#000000" BlurRadius="8" ShadowDepth="3" Opacity="0.45" />
+        <DropShadowEffect x:Key="AuraGlow" Color="#0071E3" BlurRadius="34" ShadowDepth="0" Opacity="0.5" />
+
+        <!-- ================================================================ -->
+        <!-- 纯粹苹果图标级启动动画编排 (v3.0 精修版)                             -->
+        <!-- 五段式物理弹簧入场 + 光环外扩弥散 + 双层流光 + 极光呼吸              -->
+        <!-- ================================================================ -->
+        <Storyboard x:Key="AppleIconStoryboard">
+
+            <!-- ============ 1. 五段式物理弹簧入场 (0.68 → 1.07 → 0.965 → 1.018 → 1.00) ============ -->
+            <!-- 比三段式更真实的阻尼振荡：过冲后回落、二次微过冲、最终精准归位 -->
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IconScale" Storyboard.TargetProperty="ScaleX">
+                <EasingDoubleKeyFrame KeyTime="0:0:0.00" Value="0.68" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.55" Value="1.07">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+                <EasingDoubleKeyFrame KeyTime="0:0:0.82" Value="0.965">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseInOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+                <EasingDoubleKeyFrame KeyTime="0:0:1.02" Value="1.018">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseInOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+                <EasingDoubleKeyFrame KeyTime="0:0:1.18" Value="1.000">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+            </DoubleAnimationUsingKeyFrames>
+
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IconScale" Storyboard.TargetProperty="ScaleY">
+                <EasingDoubleKeyFrame KeyTime="0:0:0.00" Value="0.68" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.55" Value="1.07">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+                <EasingDoubleKeyFrame KeyTime="0:0:0.82" Value="0.965">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseInOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+                <EasingDoubleKeyFrame KeyTime="0:0:1.02" Value="1.018">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseInOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+                <EasingDoubleKeyFrame KeyTime="0:0:1.18" Value="1.000">
+                    <EasingDoubleKeyFrame.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </EasingDoubleKeyFrame.EasingFunction>
+                </EasingDoubleKeyFrame>
+            </DoubleAnimationUsingKeyFrames>
+
+            <!-- ============ 2. 图标整体平滑淡入 (比旧版更柔：0.42s 淡入) ============ -->
+            <DoubleAnimation Storyboard.TargetName="IconContainer" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.42">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- ============ 3. 底部极光呼吸光晕 (入场即起，正弦呼吸，永续) ============ -->
+            <DoubleAnimation Storyboard.TargetName="IconAura" Storyboard.TargetProperty="Opacity"
+                             From="0" To="0.85" BeginTime="0:0:0.18" Duration="0:0:0.75">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="AuraScale" Storyboard.TargetProperty="ScaleX"
+                             From="0.82" To="1.06" BeginTime="0:0:0.18" Duration="0:0:2.1" RepeatBehavior="Forever" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="AuraScale" Storyboard.TargetProperty="ScaleY"
+                             From="0.82" To="1.06" BeginTime="0:0:0.18" Duration="0:0:2.1" RepeatBehavior="Forever" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- ============ 4. 落定光环外扩弥散 (图标归位瞬间一圈蓝光向外荡开) ============ -->
+            <DoubleAnimation Storyboard.TargetName="SettleRing" Storyboard.TargetProperty="Opacity"
+                             From="0.55" To="0" BeginTime="0:0:1.10" Duration="0:0:0.85">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="RingScale" Storyboard.TargetProperty="ScaleX"
+                             From="0.90" To="1.42" BeginTime="0:0:1.10" Duration="0:0:0.85">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="RingScale" Storyboard.TargetProperty="ScaleY"
+                             From="0.90" To="1.42" BeginTime="0:0:1.10" Duration="0:0:0.85">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- ============ 5. 主流光 (Apple Shine Glint: 28° 从左上方顺滑扫至右下方) ============ -->
+            <DoubleAnimation Storyboard.TargetName="ShineTranslate" Storyboard.TargetProperty="X"
+                             From="-200" To="240" BeginTime="0:0:0.42" Duration="0:0:1.05">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="ShineBar" Storyboard.TargetProperty="Opacity"
+                             From="0" To="0.62" BeginTime="0:0:0.42" Duration="0:0:0.40" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- ============ 6. 副流光 (更细更淡的第二道，错开 0.45s 形成层次) ============ -->
+            <DoubleAnimation Storyboard.TargetName="ShineTranslate2" Storyboard.TargetProperty="X"
+                             From="-200" To="240" BeginTime="0:0:0.87" Duration="0:0:0.85">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="ShineBar2" Storyboard.TargetProperty="Opacity"
+                             From="0" To="0.30" BeginTime="0:0:0.87" Duration="0:0:0.32" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- ============ 7. 入场完成后的极细腻生命呼吸 (1.0 -> 1.018，2.4s 周期) ============ -->
+            <DoubleAnimation Storyboard.TargetName="BreathScale" Storyboard.TargetProperty="ScaleX"
+                             From="1.0" To="1.018" BeginTime="0:0:1.18" Duration="0:0:1.2" RepeatBehavior="Forever" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BreathScale" Storyboard.TargetProperty="ScaleY"
+                             From="1.0" To="1.018" BeginTime="0:0:1.18" Duration="0:0:1.2" RepeatBehavior="Forever" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
+    <!-- 窗口加载时自动触发纯图标动画 -->
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource AppleIconStoryboard}" />
+        </EventTrigger>
+    </Window.Triggers>
+
+    <!-- 彻底无边框、无白底白卡片、无外框，全透视屏幕空间，中心仅呈现 100% 纯粹的 App 图标 -->
+    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+
+        <!-- ============ 底层：极光呼吸光晕 (柔和蓝光，衬托图标悬浮感) ============ -->
+        <Grid Name="IconAura" Width="196" Height="196" HorizontalAlignment="Center" VerticalAlignment="Center"
+              RenderTransformOrigin="0.5,0.5" Opacity="0">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="AuraScale" ScaleX="0.82" ScaleY="0.82" />
+            </Grid.RenderTransform>
+            <Ellipse Width="196" Height="196" Effect="{StaticResource AuraGlow}">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#3DA5FF" Offset="0" />
+                        <GradientStop Color="#0071E3" Offset="0.45" />
+                        <GradientStop Color="#000071E3" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+        </Grid>
+
+        <!-- ============ 落定光环 (图标归位瞬间向外荡开的细环) ============ -->
+        <Grid Name="SettleRing" Width="168" Height="168" HorizontalAlignment="Center" VerticalAlignment="Center"
+              RenderTransformOrigin="0.5,0.5" Opacity="0">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="RingScale" ScaleX="0.90" ScaleY="0.90" />
+            </Grid.RenderTransform>
+            <Ellipse Width="168" Height="168" Stroke="#7FC4FF" StrokeThickness="1.6" Opacity="0.9" />
+        </Grid>
+
+        <!-- ============ 图标动画主容器 (承载入场弹性缩放与常态呼吸微缩放) ============ -->
+        <Grid Name="IconContainer" Width="148" Height="148" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="IconScale" ScaleX="1" ScaleY="1" />
+                    <ScaleTransform x:Name="BreathScale" ScaleX="1" ScaleY="1" />
+                </TransformGroup>
+            </Grid.RenderTransform>
+
+            <!-- (1) 苹果级深空微弥散大投影 (悬浮立体感) -->
+            <Border Width="148" Height="148" CornerRadius="36" Background="#0A0B0D" Effect="{StaticResource AppleIconShadow}" Opacity="0.65" />
+
+            <!-- (2) 图标物理主体 (Apple Squircle 36px 黄金圆角矩形 + 135° 精致金属深曜石微渐变) -->
+            <Border Width="148" Height="148" CornerRadius="36" SnapsToDevicePixels="True">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#25272B" Offset="0" />
+                        <GradientStop Color="#1B1C1F" Offset="0.5" />
+                        <GradientStop Color="#121315" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+
+                <!-- 内部元素裁剪层 (限制在圆角范围内) -->
+                <Grid ClipToBounds="True">
+
+                    <!-- ① 苹果标准 1.2px 顶级光致变色内高光描边 (上亮下暗立体反光) -->
+                    <Border BorderThickness="1.2" CornerRadius="36">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#5AFFFFFF" Offset="0" />
+                                <GradientStop Color="#1AFFFFFF" Offset="0.3" />
+                                <GradientStop Color="#08FFFFFF" Offset="0.7" />
+                                <GradientStop Color="#00000000" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                    </Border>
+
+                    <!-- ② 内部右上角微弱深蓝漫反射光圈 (暗藏专业调优质感) -->
+                    <Ellipse Width="130" Height="130" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-35,-35,0" Opacity="0.14">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush>
+                                <GradientStop Color="#0071E3" Offset="0" />
+                                <GradientStop Color="Transparent" Offset="1" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+
+                    <!-- ③ 居中经典纯白加粗 "90" 标志 (带下沉微阴影立体浮雕) -->
+                    <TextBlock Text="90" Foreground="#FFFFFF" FontWeight="Bold" FontSize="66" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-3,0,0">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="3" Opacity="0.45" />
+                        </TextBlock.Effect>
+                    </TextBlock>
+
+                    <!-- ④ 主流光：苹果级对角线扫掠 (28° 倾斜，从左上疾速划向右下) -->
+                    <Border Name="ShineBar" Width="55" Height="220" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <RotateTransform Angle="28" />
+                                <TranslateTransform x:Name="ShineTranslate" X="-200" Y="0" />
+                            </TransformGroup>
+                        </Border.RenderTransform>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#00FFFFFF" Offset="0" />
+                                <GradientStop Color="#70FFFFFF" Offset="0.5" />
+                                <GradientStop Color="#00FFFFFF" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <!-- ⑤ 副流光：更细更淡的第二道，与主流光错开形成层次 -->
+                    <Border Name="ShineBar2" Width="26" Height="220" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <RotateTransform Angle="28" />
+                                <TranslateTransform x:Name="ShineTranslate2" X="-200" Y="0" />
+                            </TransformGroup>
+                        </Border.RenderTransform>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#00FFFFFF" Offset="0" />
+                                <GradientStop Color="#B4FFFFFF" Offset="0.5" />
+                                <GradientStop Color="#00FFFFFF" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 保持后台事件安全绑定无报错 (设为 Collapsed 不渲染) -->
+        <TextBlock Name="TxtSplashStatus" Visibility="Collapsed" />
+        <ProgressBar Name="SplashProgressBar" Visibility="Collapsed" />
+    </Grid>
+</Window>

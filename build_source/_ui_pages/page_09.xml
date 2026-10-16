@@ -1,0 +1,85 @@
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28,20,28,20">
+                    <StackPanel>
+                        <!-- 顶部暖心感谢 Banner -->
+                        <Border Background="{StaticResource BgBanner}" BorderBrush="{StaticResource BorderBanner}" BorderThickness="1" CornerRadius="12" Padding="20,16" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="💖 感谢支持 90HX Studio · 赋能每一个硬件玩家" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,6" />
+                                    <TextBlock Text="90HX Studio 是由个人独立开发者持续维护的开源极客硬件调优平台，致力于打破矿卡人为限制、释放全系 CMP 硬件的全部 3D 图形与满血计算潜能。如果本工具为你解决了黑屏卡顿、解锁了 3A 游戏满载或加速了 AI 算力，欢迎请作者喝杯咖啡或加个鸡腿，您的每一份支持都是持续迭代全系矿卡驱动与固件更新的最大动力！" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="18" Margin="0,0,16,0" />
+                                </StackPanel>
+                                <Border Grid.Column="1" Width="52" Height="52" CornerRadius="26" Background="#FFFFFF" BorderBrush="{StaticResource BorderBanner}" BorderThickness="1" VerticalAlignment="Center">
+                                    <TextBlock Text="☕" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- 中间双码赞赏卡片区 (微信支付 + 支付宝) -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 微信赞赏卡片 -->
+                            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#C7F0D8" BorderThickness="1" CornerRadius="14" Padding="20,18" Margin="0,0,8,0" Effect="{StaticResource ShadowCard}">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <!-- 微信绿色标识 -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                        <Border Width="22" Height="22" CornerRadius="11" Background="#07C160" Margin="0,0,8,0">
+                                            <TextBlock Text="✓" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="微信赞赏支持" FontSize="14" FontWeight="SemiBold" Foreground="#1D1D1F" VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- 微信二维码图片容器 (大尺寸完整显示 + 留白，秒扫) -->
+                                    <Border Width="320" Height="320" CornerRadius="14" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="10" Margin="0,0,0,14" Effect="{StaticResource ShadowCard}">
+                                        <Image Name="ImgWechatPay" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <TextBlock Text="使用微信扫一扫 · 为开发加个鸡腿" FontSize="11" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 支付宝赞赏卡片 -->
+                            <Border Grid.Column="1" Background="#FFFFFF" BorderBrush="#C6E0FA" BorderThickness="1" CornerRadius="14" Padding="20,18" Margin="8,0,0,0" Effect="{StaticResource ShadowCard}">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <!-- 支付宝蓝色标识 -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                        <Border Width="22" Height="22" CornerRadius="11" Background="#1677FF" Margin="0,0,8,0">
+                                            <TextBlock Text="支" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="支付宝赞助支持" FontSize="14" FontWeight="SemiBold" Foreground="#1D1D1F" VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- 支付宝二维码图片容器 (大尺寸完整显示 + 留白，秒扫) -->
+                                    <Border Width="320" Height="320" CornerRadius="14" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="10" Margin="0,0,0,14" Effect="{StaticResource ShadowCard}">
+                                        <Image Name="ImgAlipay" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <TextBlock Text="使用支付宝扫一扫 · 请作者喝罐红牛" FontSize="11" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- 底部极客致谢与版本保障卡片 -->
+                        <Border Background="#FFFFFF" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,14" Effect="{StaticResource ShadowCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="致谢与开发者寄语" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,4" />
+                                    <TextBlock Text="承诺永久免费无流氓插件、无暗刷后门，纯净免安装。您的赞赏将优先用于采购各架构二手测试矿卡 (40HX/50HX/170HX) 验证最新驱动适配！" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="RainCandy Technology · 极客同行" Foreground="{StaticResource AccentBlue}" FontWeight="SemiBold" FontSize="11.5" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            

@@ -1,0 +1,93 @@
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,16">
+                    <StackPanel>
+                        <!-- 原理说明卡片 -->
+                        <Border Background="{StaticResource BgBanner}" BorderBrush="{StaticResource BorderBanner}" BorderThickness="1" CornerRadius="12" Padding="18,12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="双卡调用架构说明 (MS-Hybrid 跨卡渲染呈现)" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                </StackPanel>
+                                <TextBlock Text="矿卡负责满血 3D 渲染，CPU 核显/亮机卡负责物理画面输出与显示。" Foreground="{StaticResource TextSub}" FontSize="11" Margin="0,3,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 当前双卡硬件分工状态 -->
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="当前显卡分工与拓扑状态" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,12" />
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="3D 渲染核心 (高性能卡):" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8" />
+                                    <TextBlock Name="TxtDualGpuRenderCard" Grid.Row="0" Grid.Column="1" Text="检测中..." FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" Margin="0,0,0,8" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="视频输出显卡 (接显示器):" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8" />
+                                    <TextBlock Name="TxtDualGpuDisplayCard" Grid.Row="1" Grid.Column="1" Text="检测中..." FontWeight="SemiBold" Foreground="{StaticResource TealGreen}" Margin="0,0,0,8" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="跨卡加速状态:" Foreground="{StaticResource TextMuted}" />
+                                    <TextBlock Name="TxtDualGpuHagsState" Grid.Row="2" Grid.Column="1" Text="检测中..." Foreground="{StaticResource SuccessGreen}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 游戏绑定管理 -->
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="3A 游戏独占 90HX 渲染配置列表" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                    <TextBlock Name="TxtBoundGamesSummary" Grid.Column="1" Text="已绑定 0 款游戏" Foreground="{StaticResource AccentBlue}" FontWeight="SemiBold" FontSize="11.5" />
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Name="BtnDualGpuAutoScan" Content="⚡ 一键全盘扫描并绑定常见 3A 游戏" Style="{StaticResource PrimaryBtn}" Height="32" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnDualGpuBrowseAdd" Content="手动添加游戏 exe..." Style="{StaticResource StandardBtn}" Height="32" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnDualGpuAddFromRunning" Content="从当前运行窗口选取..." Style="{StaticResource StandardBtn}" Height="32" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnDualGpuRemoveSelected" Content="移除选中" Style="{StaticResource StandardBtn}" Height="32" Width="82" Margin="0,0,8,0" />
+                                    <Button Name="BtnDualGpuClearAll" Content="全部清空" Style="{StaticResource DangerBtn}" Height="32" Width="82" />
+                                </StackPanel>
+
+                                <ListBox Name="LstBoundGames" Height="112" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMain}" FontFamily="Consolas, Cascadia Mono, Microsoft YaHei UI, Microsoft YaHei" FontSize="11.5" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 进阶双卡优化与 BIOS 避坑指导 -->
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Effect="{StaticResource ShadowCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6" VerticalAlignment="Center">
+                                        <TextBlock Text="双卡调用避坑要点" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                    </StackPanel>
+                                    <TextBlock Text="• 显示器插主板核显口；BIOS 开启核显多监视器常开&#x0a;• 游戏内设为无边框窗口化即可稳定触发高性能卡渲染" Foreground="{StaticResource TextSub}" FontSize="11" LineHeight="17" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <Button Name="BtnDualGpuSetDxGlobal" Content="锁定 90HX 为全局 DirectX 默认高性能卡" Style="{StaticResource PrimaryBtn}" Height="32" Margin="0,0,0,8" ToolTip="通过注册表设置 DirectXUserGlobalSettings HighPerfAdapter，使全局游戏无需逐一配置即默认走 90HX" />
+                                    <Button Name="BtnDualGpuSetOpenGlIcd" Content="指定系统 OpenGL 渲染驱动为 90HX" Style="{StaticResource StandardBtn}" Height="32" Margin="0,0,0,8" ToolTip="配置 MSOGL 键值将 OpenGL ICD 渲染锁定至 90HX，彻底解决特定模拟器和渲染软件误走核显" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Name="BtnDualGpuSoftRestartDwm" Content="刷新 DWM 跨卡链" Style="{StaticResource StandardBtn}" Height="30" Width="140" Margin="0,0,6,0" />
+                                        <Button Name="BtnDualGpuOpenWinGraphics" Content="打开系统图形设置" Style="{StaticResource StandardBtn}" Height="30" Width="140" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            

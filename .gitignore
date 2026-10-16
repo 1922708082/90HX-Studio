@@ -1,0 +1,37 @@
+# ===== 构建产物与包体（不入库，见 Releases）=====
+*.exe
+*.exe.bak*
+*.exe.old-*
+*.dll
+*.pkg
+*.zip
+
+# ===== 资源包与外部工具（体积大 / 第三方，不随仓库分发）=====
+mining_unlock_toolkit/
+dlss_runtime/
+
+# ===== 第三方源码与工具（非本项目产物）=====
+aardio/
+aardio_project/
+wpfui_source/
+wpfui_bin/
+wpfui_official_bin/
+minehub/
+
+# ===== 本地环境与个人文件 =====
+.workbuddy/
+*.bat
+*.bak
+*.bak_*
+*.before_modern.bak
+aardio_live_window.png
+render_wpfui_demo.png
+
+# ===== 构建中间产物 / 渲染测试图 =====
+build_source/*.png
+build_source/splash_frame_*.png
+build_source/egg_*.png
+build_source/v5_*.png
+build_source/smoke_*.png
+build_source/screen_tuba.png
+build_source/ui_review/

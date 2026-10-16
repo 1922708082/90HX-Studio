@@ -1,0 +1,22 @@
+
+                <Grid Margin="28,24,28,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="底层操作审计与执行详情" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" FontSize="14" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Name="BtnClearLogs" Content="清空日志" Style="{StaticResource StandardBtn}" Height="30" Padding="14,0,14,0" Margin="0,0,8,0" />
+                            <Button Name="BtnCopyLogs" Content="复制日志" Style="{StaticResource StandardBtn}" Height="30" Padding="14,0,14,0" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Grid.Row="1" Background="#1E1E1E" BorderBrush="#3A3A3C" BorderThickness="1" CornerRadius="11" Padding="14">
+                        <TextBox Name="TxtLogBox" Style="{StaticResource TerminalLogBoxStyle}" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" IsReadOnly="True" />
+                    </Border>
+                </Grid>
+            

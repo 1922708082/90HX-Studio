@@ -1,0 +1,9 @@
+Rendered: D:\app\build_source\render_tab0_sensors.png
+Rendered: D:\app\build_source\render_tab1_gpu_rename.png
+Rendered: D:\app\build_source\render_tab2_overlay.png
+Rendered: D:\app\build_source\render_tab3_pcie.png
+Rendered: D:\app\build_source\render_tab4_dualgpu.png
+Rendered: D:\app\build_source\render_tab5_dlss.png
+Rendered: D:\app\build_source\render_tab6_tools.png
+Rendered: D:\app\build_source\render_tab7_logs.png
+Rendered: D:\app\build_source\render_tab8_sponsor.png

@@ -1,0 +1,128 @@
+============================================================
+  Boot state check (READ-ONLY - changes nothing)
+  Run: right-click - Run as administrator
+============================================================
+
+============ 0. FULL firmware namespace dump ============
+
+固件启动管理器
+---------------------
+标识符                  {fwbootmgr}
+displayorder            {bootmgr}
+timeout                 1
+
+Windows 启动管理器
+--------------------
+标识符                  {bootmgr}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 5
+displaybootmenu         Yes
+
+固件应用程序(101fffff)
+-------------------------------
+标识符                  {64d5ac0d-b916-11f1-96b7-806e6f6e6963}
+device                  unknown
+description             UEFI: Teclast CoolFlash 2.00, Partition 1
+
+固件应用程序(101fffff)
+-------------------------------
+标识符                  {803bbdd7-befc-11f1-96cd-806e6f6e6963}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager
+
+固件应用程序(101fffff)
+-------------------------------
+标识符                  {ca3990ae-c0f7-11f1-96da-806e6f6e6963}
+device                  unknown
+description             UEFI: Teclast CoolFlash 2.00, Partition 1
+
+============ 1. firmware boot manager {fwbootmgr} ============
+
+固件启动管理器
+---------------------
+标识符                  {fwbootmgr}
+displayorder            {bootmgr}
+timeout                 1
+
+============ 2. Windows Boot Manager {bootmgr} ============
+
+Windows 启动管理器
+--------------------
+标识符                  {bootmgr}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager
+locale                  zh-CN
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {44f9ae70-b525-11f1-a154-e1c1d697bcf4}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 5
+displaybootmenu         Yes
+
+============ 3. all firmware entries except fwbootmgr/bootmgr ============
+
+============ 4. NVPermissive files on ESP ============
+       ESP volume: \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\
+       MISSING \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\EFI\NVPermissive\NVPermissiveEFI.efi
+       MISSING \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\EFI\NVPermissive\shellx64.efi
+       MISSING \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\EFI\NVPermissive\startup.nsh
+       (check FOUND/MISSING lines above)
+============ 5. mounted volumes ============
+创建、删除或列出卷装入点。
+
+MOUNTVOL [drive:]path VolumeName
+MOUNTVOL [drive:]path /D
+MOUNTVOL [drive:]path /L
+MOUNTVOL [drive:]path /P
+MOUNTVOL /R
+MOUNTVOL /N
+MOUNTVOL /E
+MOUNTVOL drive: /S
+
+    path        指定装入点将驻留的现有 NTFS 目录。
+    VolumeName  指定装入点的目标的卷名称。
+    /D          从指定的目录中删除卷装入点。
+    /L          列出指定目录的已装入的卷名称。
+    /P          从指定目录删除卷装入点，卸下此卷并使此卷无法装入。你可以创建
+                一个卷来再次使此卷可以装入。
+    /R          删除不在系统中的、卷的装入点目录和注册表设置。
+    /N          禁用新卷的自动装入。
+    /E          再次启用新卷的自动装入。
+    /S          将 EFI 系统分区装载到提供的驱动器。
+
+当前装入点的 VolumeName 可能值为:
+
+    \\?\Volume{c36c11dd-2aa6-45aa-b981-564275c2a28c}\
+        D:\
+
+    \\?\Volume{3f69739a-4fa6-4d8b-afdd-bf87090d1ace}\
+        C:\
+
+    \\?\Volume{93f28f2c-eca2-4a26-88c6-f44e11251d69}\
+        *** 无装入点 ***
+
+    \\?\Volume{61bd5335-368d-4592-b949-dc7ec5d2badb}\
+        F:\
+
+    \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\
+        *** 无装入点 ***
+
+
+============ 6. bootmgr menu settings ============
+timeout                 5
+displaybootmenu         Yes
+
+============================================================
+  Check done. Result also saved to check-result.txt
+============================================================

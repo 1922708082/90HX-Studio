@@ -1,0 +1,59 @@
+﻿=== pack start 21:26:59 ===
+Microsoft (R) Visual C# Compiler version 14.8.10001.0
+
+for C# 5
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+
+
+This compiler is provided as part of the Microsoft (R) .NET Framework, but only supports language versions up to C# 5, which is no longer the latest version. For compilers that support newer versions of the C# programming language, see http://go.microsoft.com/fwlink/?LinkID=533240
+
+[OK] compiled, running packager ...
+[OK]   usb90/shellx64.efi  (1139160 bytes)
+[OK]   usb90/bootmgfw.efi  (3087400 bytes)
+[OK]   usb90/NVPermissiveEFI.efi  (1470952 bytes)
+[OK]   usb90/startup.nsh  (936 bytes)
+[OK]   mode1/NVPermissiveCompat.efi  (986172 bytes)
+[OK]   NVPermissiveCompat.efi  (986172 bytes)
+[OK]   mode2/Shell.efi  (1137728 bytes)
+[OK]   mode2/NVPermissiveEFI.efi  (986172 bytes)
+[OK]   mode2/startup.nsh  (954 bytes)
+[OK]   mode3/BOOTX64.EFI  (902080 bytes)
+[OK]   mode3/NVPermissiveCompat.efi  (986172 bytes)
+[OK]   mode3/startup.nsh  (938 bytes)
+[OK]   esp/NVPermissiveCompat.efi  (986172 bytes)
+[OK]   esp/shellx64.efi  (1139160 bytes)
+[OK]   esp/startup.nsh  (936 bytes)
+[OK]   dlss/version.dll  (30021920 bytes)
+[OK]   version.dll  (30021920 bytes)
+[OK]   dlss/dlssg_sm86.ini  (3833 bytes)
+[OK]   dlssg_sm86.ini  (3833 bytes)
+[OK]   re_framework/dinput8.dll  (23081472 bytes)
+[OK]   dinput8.dll  (23081472 bytes)
+[OK]   40hx/files/40HXUNLK.EFI  (585184 bytes)
+[OK]   40hx/files/WinRing0x64.sys  (14544 bytes)
+[OK]   40hx/40HXUNLK.EFI  (585184 bytes)
+[OK]   40hx/WinRing0x64.sys  (14544 bytes)
+[OK]   40hx/manual_install.bat  (5317 bytes)
+[OK]   40hx/manual_uninstall.bat  (4227 bytes)
+[OK]   40hx/40HXInstaller.exe  (4601344 bytes)
+[OK]   40hx/40HXCheck.exe  (3849216 bytes)
+[OK]   40hx/40HXUninstaller.exe  (3862528 bytes)
+[OK]   40hx/README.md  (8989 bytes)
+[OK]   30hx/Setup_CMP30HX_WindowsAIO.bat  (48009 bytes)
+[OK]   30hx/Setup_ReBar_CMP30HX.bat  (25883 bytes)
+[OK]   30hx/README_ZH.md  (18622 bytes)
+[OK]   90hx_compute/BOOTX64.EFI  (427127 bytes)
+[OK]   90hx_full/BOOTX64.EFI  (432399 bytes)
+[OK]   50hx/50HXInstaller.exe  (8021504 bytes)
+[OK]   50hx/50HXCheck.exe  (2745344 bytes)
+[OK]   50hx/50HXUninstaller.exe  (2610176 bytes)
+[OK]   50hx/50HXUNLK.EFI  (1585721 bytes)
+[OK]   50hx/WinRing0x64.sys  (14544 bytes)
+==================================================
+[OK] 明文资源包生成成功（无任何加密）: D:\app\assets.zip
+     大小: 64755824 bytes (61.76 MB)
+     打包: 41 个条目 | 缺失: 0 个
+     任何人可用 7-Zip 直接解包审阅。
+==================================================
+pack exit=0

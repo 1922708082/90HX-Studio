@@ -1,0 +1,46 @@
+============================================================
+  Junk firmware boot entry cleanup
+  (September 90HX experiment residue: Backup / Unlock USB)
+  Run: right-click - Run as administrator
+============================================================
+
+[1/3] Saving current firmware entries to: D:\app\build_source\90hx_boot_entry_kit\firmware_entries_before_cleanup.txt
+
+[2/3] Scanning full firmware namespace and deleting junk entries...
+  junk found: {44f9ae80-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae81-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae82-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae83-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae84-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae85-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae86-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae87-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae88-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae89-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+  junk found: {44f9ae8a-b525-11f1-a154-e1c1d697bcf4}   [90HX Unlock USB]
+  junk found: {44f9ae8b-b525-11f1-a154-e1c1d697bcf4}   [Windows Boot Manager (Backup)]
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+指定不存在的设备。
+操作成功完成。
+操作成功完成。
+  deleted: 12 entries
+
+[3/3] Firmware boot order after cleanup:
+
+固件启动管理器
+---------------------
+标识符                  {fwbootmgr}
+displayorder            {bootmgr}
+timeout                 1
+
+============================================================
+  Cleanup done. Before-dump saved as firmware_entries_before_cleanup.txt
+============================================================

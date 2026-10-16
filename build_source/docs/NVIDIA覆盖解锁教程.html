@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NVIDIA App 游戏内覆盖解锁教程 · 90HX Studio</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --card:#ffffff; --line:#e3e8ef; --txt:#1f2937;
+    --sub:#5b6675; --muted:#8b95a5; --blue:#2563eb; --blue-bg:#eff6ff;
+    --green:#15803d; --green-bg:#ecfdf3; --amber:#b45309; --amber-bg:#fffbeb;
+    --red:#dc2626; --red-bg:#fef2f2; --code-bg:#1e293b; --code-txt:#e2e8f0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.75;
+    font-size:15px; padding:32px 16px 80px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  header{
+    background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);
+    color:#fff; border-radius:16px; padding:32px 34px; margin-bottom:24px;
+    box-shadow:0 8px 24px rgba(37,99,235,.22);
+  }
+  header h1{font-size:26px;font-weight:700;letter-spacing:.3px;margin-bottom:10px}
+  header p{font-size:14px;opacity:.92}
+  header .meta{margin-top:14px;font-size:12.5px;opacity:.8;border-top:1px solid rgba(255,255,255,.25);padding-top:12px}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:24px 26px; margin-bottom:18px; box-shadow:0 1px 3px rgba(16,24,40,.04);
+  }
+  h2{
+    font-size:18px; font-weight:700; margin-bottom:16px;
+    display:flex; align-items:center; gap:10px;
+  }
+  h2 .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:8px; background:var(--blue-bg);
+    color:var(--blue); font-size:13px; font-weight:700; flex-shrink:0;
+  }
+  h3{font-size:15px;font-weight:600;margin:18px 0 8px;color:var(--txt)}
+  p{margin-bottom:10px;color:var(--sub)}
+  ul,ol{margin:8px 0 12px 22px;color:var(--sub)}
+  li{margin-bottom:6px}
+  code{
+    background:#f1f5f9; color:#0f172a; padding:2px 6px; border-radius:5px;
+    font-family:"Cascadia Code",Consolas,Monaco,monospace; font-size:13px;
+  }
+  pre{
+    background:var(--code-bg); color:var(--code-txt); padding:14px 16px;
+    border-radius:10px; overflow-x:auto; margin:10px 0 14px;
+    font-family:"Cascadia Code",Consolas,Monaco,monospace; font-size:13px; line-height:1.65;
+  }
+  pre code{background:none;color:inherit;padding:0;font-size:13px}
+  .tip,.warn,.danger,.ok{
+    border-radius:10px; padding:13px 16px; margin:12px 0; font-size:13.5px;
+    border-left:4px solid;
+  }
+  .tip{background:var(--blue-bg);border-color:var(--blue);color:#1e40af}
+  .ok{background:var(--green-bg);border-color:var(--green);color:#14532d}
+  .warn{background:var(--amber-bg);border-color:#f59e0b;color:#78350f}
+  .danger{background:var(--red-bg);border-color:var(--red);color:#7f1d1d}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left}
+  th{background:#f8fafc;font-weight:600;color:var(--txt);font-size:13px}
+  td{color:var(--sub)}
+  .kbd{
+    display:inline-block;background:#fff;border:1px solid #cbd5e1;border-bottom-width:2px;
+    border-radius:6px;padding:1px 7px;font-size:12.5px;font-family:inherit;
+    color:var(--txt);font-weight:600;
+  }
+  footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:32px;line-height:2}
+  .path{font-size:12.5px;color:var(--muted);word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>NVIDIA App 游戏内覆盖解锁教程</h1>
+  <p>让矿卡 / 非白名单显卡也能用 Alt+R 性能浮窗与 Alt+Z 录屏控制台</p>
+  <div class="meta">
+    适用：NVIDIA App（新版 App，非旧版 GeForce Experience）&nbsp;·&nbsp;
+    原理：前端 JS 门控解锁&nbsp;·&nbsp;
+    整理：90HX Studio&nbsp;·&nbsp;2026-10
+  </div>
+</header>
+
+<div class="card">
+  <h2><span class="num">1</span>这个功能是干嘛的</h2>
+  <p>NVIDIA App 会给显卡做「硬件白名单」检查。像 <b>CMP 矿卡、部分专业卡、老架构显卡</b> 不在白名单里，
+  游戏内覆盖（In-Game Overlay）就被锁死，表现为：</p>
+  <ul>
+    <li>游戏里按 <span class="kbd">Alt</span>+<span class="kbd">Z</span> 没反应，呼不出录屏控制台</li>
+    <li>按 <span class="kbd">Alt</span>+<span class="kbd">R</span> 看不到性能监控浮窗</li>
+    <li>NVIDIA App 里「游戏内覆盖」开关点了自动弹回去</li>
+  </ul>
+  <p>这个解锁就是<b>把门控关掉</b>，让覆盖功能正常可用。</p>
+</div>
+
+<div class="card">
+  <h2><span class="num">2</span>原理（为什么能解）</h2>
+  <p>NVIDIA App 是基于 CEF（Chromium 内核）的桌面程序，功能开关的判断逻辑<b>写在前端 JS 里</b>，
+  而且没有加密混淆到不可读的程度。真正卡住你的是两处判断：</p>
+
+  <h3>① ShadowPlay 支持标记</h3>
+  <p>压缩后的代码大致长这样（变量名每次更新都会变）：</p>
+  <pre><code>const Se = "true" === fe.overallState &amp;&amp; U?.ShadowPlaySupported</code></pre>
+  <p>意思是「云端说是 true <b>并且</b> 硬件白名单也支持」才给开。我们直接把它改成恒真：</p>
+  <pre><code>const Se = !0</code></pre>
+
+  <h3>② 云端硬件白名单查询</h3>
+  <p>功能列表回填时，会拿本机架构去比对白名单：</p>
+  <pre><code>overallState: this.cachedArchitecture === L._R ? "true" : ce.body.criteria.overallState</code></pre>
+  <p>架构不在白名单就落到后半段（云端返回值 = false）。直接写死成 true：</p>
+  <pre><code>overallState: "true"</code></pre>
+
+  <div class="tip">
+    <b>关键点：不能写死字符串去匹配。</b>NVIDIA 每次更新都会重新压缩混淆，变量名
+    （<code>Se</code> / <code>fe</code> / <code>U</code> / <code>L._R</code>）必然变。
+    要用<b>正则匹配语法结构</b>，只认那些稳定的部分，才能跨版本复用。
+  </div>
+</div>
+
+<div class="card">
+  <h2><span class="num">3</span>准备工作</h2>
+  <ul>
+    <li>已安装新版 <b>NVIDIA App</b>（能正常打开）</li>
+    <li>能拿到<b>管理员权限</b>（改的是 Program Files 下的文件）</li>
+    <li>一个文本编辑器（VSCode / Notepad++ / Sublime，<b>别用记事本</b>，大文件会卡）</li>
+    <li>知道去哪找文件（见下）</li>
+  </ul>
+  <h3>文件位置</h3>
+  <p class="path">C:\Program Files\NVIDIA Corporation\NVIDIA App\www\main.&lt;一串哈希&gt;.js</p>
+  <p>这个 <code>main.*.js</code> 有 5MB 左右，<b>不要</b>整个打开用记事本编辑。</p>
+</div>
+
+<div class="card">
+  <h2><span class="num">4</span>手动操作步骤</h2>
+
+  <div class="danger">
+    <b>先备份！</b>动手前把 <code>main.*.js</code> 复制一份改名 <code>main.*.js.bak</code>，
+    这是唯一的退路。
+  </div>
+
+  <h3>Step 1 · 关闭 NVIDIA App</h3>
+  <p>任务管理器里结束这几个进程，确保文件不被占用：</p>
+  <pre><code>NVIDIA App
+NVIDIA Overlay
+nvsphelper64</code></pre>
+
+  <h3>Step 2 · 备份原文件</h3>
+  <pre><code>copy "main.xxxxxxxx.js" "main.xxxxxxxx.js.bak"</code></pre>
+
+  <h3>Step 3 · 定位两处代码</h3>
+  <p>用编辑器打开 <code>main.*.js</code>，依次搜索这两个关键字：</p>
+  <table>
+    <tr><th>搜索关键字</th><th>找到后长什么样</th></tr>
+    <tr>
+      <td><code>ShadowPlaySupported</code></td>
+      <td><code>const XX="true"===YY.overallState&amp;&amp;ZZ?.ShadowPlaySupported</code></td>
+    </tr>
+    <tr>
+      <td><code>cachedArchitecture</code></td>
+      <td><code>overallState:this.cachedArchitecture===XX?"true":YY.body.criteria.overallState</code></td>
+    </tr>
+  </table>
+
+  <h3>Step 4 · 替换</h3>
+  <p><b>第一处</b> → 把整个 <code>const XX="true"===...ShadowPlaySupported</code> 换成：</p>
+  <pre><code>const XX=!0</code></pre>
+  <p class="path">（<code>XX</code> 保留原来那个变量名，别改）</p>
+
+  <p><b>第二处</b> → 把整个 <code>overallState:this.cachedArchitecture===...criteria.overallState</code> 换成：</p>
+  <pre><code>overallState:"true"</code></pre>
+
+  <h3>Step 5 · 保存 + 清缓存</h3>
+  <p>保存文件，然后删掉 CEF 缓存目录（不删可能还是旧界面）：</p>
+  <p class="path">%LOCALAPPDATA%\NVIDIA Corporation\NVIDIA App\CefCache</p>
+
+  <h3>Step 6 · 重启 NVIDIA App</h3>
+  <p>重新打开 App，进「设置 → 功能 → 游戏内覆盖」，开关应该能保持在开启状态了。</p>
+
+  <div class="ok">
+    <b>验证方法：</b>进任意游戏（或全屏窗口），按 <span class="kbd">Alt</span>+<span class="kbd">Z</span>
+    能呼出控制台、按 <span class="kbd">Alt</span>+<span class="kbd">R</span> 能看到帧率浮窗 = 成功。
+  </div>
+</div>
+
+<div class="card">
+  <h2><span class="num">5</span>懒得手动？用现成工具</h2>
+  <p>如果是 CMP 矿卡用户，直接用 <b>90HX Studio</b>（本教程配套工具）：</p>
+  <ol>
+    <li>打开软件 → 左侧「游戏内覆盖」</li>
+    <li>点「一键解锁游戏覆盖 (ShadowPlay)」</li>
+    <li>等它自动备份、打补丁、清缓存、重启 App</li>
+  </ol>
+  <p>工具内部用的是<b>正则匹配</b>而不是写死字符串，所以 NVIDIA App 更新后一般还能命中；
+  真遇到改得面目全非的版本，日志里会告诉你哪条规则没命中，方便反馈补规则。</p>
+</div>
+
+<div class="card">
+  <h2><span class="num">6</span>常见问题</h2>
+
+  <h3>Q：NVIDIA App 更新后失效了？</h3>
+  <p>正常。更新会覆盖 <code>main.*.js</code>，补丁自然没了，<b>重新执行一次</b>即可。
+  这也是为什么用正则比写死字符串强——新版大概率还能直接命中。</p>
+
+  <h3>Q：改完 App 打不开了 / 白屏？</h3>
+  <p>说明改坏了。把 <code>.bak</code> 备份还原回去：</p>
+  <pre><code>copy "main.xxxxxxxx.js.bak" "main.xxxxxxxx.js"</code></pre>
+  <p>然后清一次 CEF 缓存重启。所以<b>备份绝对不能省</b>。</p>
+
+  <h3>Q：提示没有权限 / 保存不了？</h3>
+  <p>Program Files 目录要管理员权限。用管理员身份打开编辑器，
+  或者先把文件复制到桌面改完再拷回去。</p>
+
+  <h3>Q：解锁后录屏没声音 / 卡顿？</h3>
+  <p>跟这个补丁无关，是显卡编码器或驱动的问题。
+  矿卡本身编解码单元可能受限（部分魔改驱动明确不支持 NVDEC/NVENC）。</p>
+
+  <h3>Q：会被封号吗？动的是本地文件吗？</h3>
+  <p>只改本机的 App 前端文件，不联网、不改驱动、不注入游戏进程。
+  但<b>任何第三方修改都请自行评估风险</b>，本教程仅供学习交流。</p>
+</div>
+
+<div class="card">
+  <h2><span class="num">7</span>一键还原</h2>
+  <p>不想用了？把备份文件覆盖回去，清缓存，重启 App，就回到官方原版：</p>
+  <pre><code>copy "main.xxxxxxxx.js.bak" "main.xxxxxxxx.js"</code></pre>
+  <p>然后删除 <code>CefCache</code> 目录，重启 NVIDIA App。</p>
+</div>
+
+<footer>
+  本教程基于实测整理，仅用于学习与技术交流<br>
+  修改前请务必备份，因未备份导致的问题无法恢复<br>
+  <b>90HX Studio</b> · CMP 矿卡调优套件
+</footer>
+
+</div>
+</body>
+</html>

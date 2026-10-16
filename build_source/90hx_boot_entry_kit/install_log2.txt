@@ -1,0 +1,25 @@
+[2026-10-16 01:36:29] v2 install start (admin ok)
+[2026-10-16 01:36:31] bcd backup ok
+[2026-10-16 01:36:32] esp volume: \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\
+[2026-10-16 01:36:32] device string: partition=\Device\HarddiskVolume2
+[2026-10-16 01:36:32] deployed to \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\EFI\NVPermissive
+[2026-10-16 01:36:32] create failed: 指定的应用程序类型参数无效。
+运行 "bcdedit /?" 获得命令行帮助。
+
+[2026-10-16 01:36:55] v2 install start (admin ok)
+[2026-10-16 01:36:58] bcd backup ok
+[2026-10-16 01:36:59] esp volume: \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\
+[2026-10-16 01:36:59] device string: partition=\Device\HarddiskVolume2
+[2026-10-16 01:36:59] deployed to \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\EFI\NVPermissive
+[2026-10-16 01:36:59] create failed: 指定的应用程序类型参数无效。
+运行 "bcdedit /?" 获得命令行帮助。
+
+[2026-10-16 01:45:42] v2 install start (admin ok)
+[2026-10-16 01:45:43] bcd backup ok
+[2026-10-16 01:45:44] esp volume: \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\
+[2026-10-16 01:45:44] device string: partition=\Device\HarddiskVolume2
+[2026-10-16 01:45:44] deployed to \\?\Volume{6ed73be3-b819-40bc-a758-5b2d873de006}\EFI\NVPermissive
+[2026-10-16 01:45:44] entry created: {44f9ae8c-b525-11f1-a154-e1c1d697bcf4}
+[2026-10-16 01:45:44] old entries removed: 0
+[2026-10-16 01:45:47] bootmenu disabled
+[2026-10-16 01:45:47] v2 install finished

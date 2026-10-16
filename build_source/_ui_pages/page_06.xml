@@ -1,0 +1,116 @@
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,20">
+                    <StackPanel>
+                        <Border Background="{StaticResource BgBanner}" BorderBrush="{StaticResource BorderBanner}" BorderThickness="1" CornerRadius="13" Padding="18,12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="DLSS 3 帧生成 (Frame Generation) 加速说明" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                </StackPanel>
+                                <TextBlock Text="基于 DLSSG 运行库注入，强制激活 2X~6X 动态插帧，倍增游戏流畅度。" Foreground="{StaticResource TextSub}" FontSize="11" Margin="0,3,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="目标游戏主程序目录" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,10" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="92" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Name="TxtDlssGameDir" Grid.Column="0" Height="32" Margin="0,0,8,0" />
+                                    <Button Name="BtnBrowseGameDir" Grid.Column="1" Content="浏览..." Style="{StaticResource StandardBtn}" Height="32" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="补丁检测: " Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                    <TextBlock Name="TxtDlssStatusInDir" Text="请选择游戏可执行文件 (exe) 所在目录" Foreground="{StaticResource TextSub}" FontSize="11" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="注入参数与操作" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,14" />
+
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="340" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="优化内核等级:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" Margin="0,0,0,10" />
+                                    <ComboBox Name="CmbOptimizedLevel" Grid.Row="0" Grid.Column="1" SelectedIndex="0" Margin="0,0,0,10">
+                                        <ComboBoxItem Content="1: 全部加速，画面与官方逐位一致 (推荐)" />
+                                        <ComboBoxItem Content="2: 开启图像内核加速 (PSNR 50dB+)" />
+                                        <ComboBoxItem Content="3: 全部有损加速，极致帧率" />
+                                        <ComboBoxItem Content="0: 原厂内核，无加速" />
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="最大生成帧率:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" />
+                                    <ComboBox Name="CmbMaxFramesLevel" Grid.Row="1" Grid.Column="1" SelectedIndex="0">
+                                        <ComboBoxItem Content="4X: 生成 3 帧 (默认推荐)" />
+                                        <ComboBoxItem Content="2X: 生成 1 帧 (标准双倍插帧)" />
+                                        <ComboBoxItem Content="3X: 生成 2 帧" />
+                                        <ComboBoxItem Content="6X: 生成 5 帧 (需游戏引擎支持)" />
+                                    </ComboBox>
+                                </Grid>
+
+                                <!-- RE 框架专用选项 -->
+                                <CheckBox Name="ChkInjectReFramework" Style="{StaticResource ModernSwitchCheckBox}" Content="同时注入 RE 框架代理 (dinput8.dll，卡普空怪猎荒野/生化危机/龙之信条等 RE 引擎专属)" Margin="0,0,0,16" IsChecked="False" VerticalAlignment="Center" />
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Name="BtnInjectDlss" Content="一键注入 DLSS-G 补丁" Style="{StaticResource PrimaryBtn}" Height="36" Width="190" Margin="0,0,12,0" />
+                                    <Button Name="BtnRemoveDlss" Content="从游戏目录清理移除" Style="{StaticResource StandardBtn}" Height="36" Width="190" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 运行库自动更新与多镜像源管理 -->
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="DLSSG 运行库云端自动更新" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                        <TextBlock Text="对接官方开源项目 (sdli1995/dlssg_for_sm86)，支持实时在线版本比对与一键更新" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="当前本地版本: " Foreground="{StaticResource TextSub}" VerticalAlignment="Center" />
+                                        <TextBlock Name="TxtDlssLocalVersion" Text="检测中..." FontWeight="Bold" Foreground="{StaticResource AccentBlue}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Button Name="BtnOpenDlssRepo" Content="开源主页" Style="{StaticResource StandardBtn}" Height="28" Padding="10,0,10,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Text="更新镜像线路:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" Margin="0,0,10,0" />
+                                    <ComboBox Name="CmbDlssMirrorSource" Grid.Column="1" Height="32" SelectedIndex="0" Margin="0,0,10,0">
+                                        <ComboBoxItem Content="Ghproxy 高速镜像 (推荐国内网络)" />
+                                        <ComboBoxItem Content="jsDelivr 全球 CDN 源 (极速同步，低延迟)" />
+                                        <ComboBoxItem Content="FastGit / GitMirror 镜像加速源" />
+                                        <ComboBoxItem Content="GitHub 官方直连源 (海外或直连网络)" />
+                                    </ComboBox>
+                                    <Button Name="BtnCheckDlssUpdate" Grid.Column="2" Content="检查更新" Style="{StaticResource StandardBtn}" Height="30" Width="86" Margin="0,0,8,0" />
+                                    <Button Name="BtnDownloadDlssUpdate" Grid.Column="3" Content="一键拉取并同步" Style="{StaticResource PrimaryBtn}" Height="30" Width="116" />
+                                </Grid>
+
+                                <ProgressBar Name="ProgDlssDownload" Height="4" Margin="0,0,0,6" Visibility="Collapsed" />
+                                <TextBlock Name="TxtDlssUpdateStatus" Text="状态: 就绪，可选择镜像线路检查最新运行库版本" Foreground="{StaticResource TextSub}" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            

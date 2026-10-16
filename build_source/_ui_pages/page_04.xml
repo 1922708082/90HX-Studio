@@ -1,0 +1,202 @@
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,18,26,18">
+                    <StackPanel>
+                        <!-- 1. 顶部 Header 标题区 (90HX 专属定制，带未检测提示) -->
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="全系矿卡硬件解锁矩阵" FontSize="21" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
+                                    <Border Background="#E8F2FF" CornerRadius="10" Padding="8,3,8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="30/40/50/90HX 通用 · 双模式互斥" FontSize="11" Foreground="{StaticResource AccentBlue}" FontWeight="SemiBold" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="支持全系矿卡与多卡混合调度：左侧图形+算力双轨满血，右侧固件级算力突破。" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,3,0,0" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Name="BtnRescanMiningGpus" Content="⟳ 刷新状态" Style="{StaticResource StandardBtn}" Height="32" Padding="16,0,16,0" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <!-- 未检测到 90HX 时的温和提示 Banner -->
+                        <Border Name="BannerNo90hxWarning" Background="#FFF8EB" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="11" Padding="16,12" Margin="0,0,0,12" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="⚠️" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="当前系统未检测到 NVIDIA CMP 矿卡 (30/40/50/90HX) 硬件" FontWeight="SemiBold" Foreground="#92400E" FontSize="12.5" />
+                                    <TextBlock Text="若已插入显卡，请检查 PCIe 供电线及主板 BIOS Above 4G 是否已开启；安装驱动后点击右上角【刷新状态】。" Foreground="#B45309" FontSize="10.5" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 2. 90HX 硬件状态看板 -->
+                        <Border Name="Card90hxStatusInfo" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="矿卡当前链路与核心运行状态" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                    </StackPanel>
+                                    <TextBlock Name="TxtMiningGpuSummary" Text="检测中..." Foreground="{StaticResource AccentBlue}" HorizontalAlignment="Right" FontSize="11" FontWeight="SemiBold" />
+                                </Grid>
+
+                                <!-- 90HX 状态展示 -->
+                                <Border Background="{StaticResource BgSubtle}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="9" Padding="14,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="PCIe 总线速率:" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                            <TextBlock Text="PCIe Gen2 x16 (5.0 GT/s)" FontWeight="SemiBold" Foreground="{StaticResource SuccessGreen}" FontSize="12.5" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Tensor Core / 算力状态:" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                            <TextBlock Text="P0 满载 (解除 Compute Throttle)" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12.5" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="WDDM 3D 渲染支持:" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                            <TextBlock Text="MsHybrid 跨卡加速已激活" FontWeight="SemiBold" Foreground="{StaticResource PurpleViolet}" FontSize="12.5" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3. 双轨核心解锁大卡片 (左: 图形与算力双轨解锁，右: 固件级算力满血解锁) -->
+                        <Grid Name="Card90hxUnlockOptions" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左卡片: 图形与算力解锁 (原本的完整解锁) -->
+                            <Border Name="CardUnlockGraphics" Grid.Column="0" Background="{StaticResource BgCard}" BorderBrush="#C6E0FA" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="0,0,6,0" Effect="{StaticResource ShadowCard}" Cursor="Hand">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="🎮 图形与算力双轨解锁 (双轨满血)" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                        </StackPanel>
+                                        <RadioButton Name="RadioMode1" GroupName="UnlockChoice" IsChecked="True" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <TextBlock Text="• PCIe Gen2 x16 + 深度伪装 GeForce 游戏显卡架构&#x0a;• 激活 WDDM 3A 光栅渲染，兼顾 P0 满载算力调度" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="18" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 右卡片: 固件级算力满血解锁 (WildFlash1st 核心，llama 提速 16 倍) -->
+                            <Border Name="CardUnlockCompute" Grid.Column="1" Background="{StaticResource BgCard}" BorderBrush="#E9D5FF" BorderThickness="1" CornerRadius="13" Padding="18,14" Margin="6,0,0,0" Effect="{StaticResource ShadowCard}" Cursor="Hand">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="⚡ 固件级算力满血解锁 (WildFlash1st)" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                        </StackPanel>
+                                        <RadioButton Name="RadioMode2" GroupName="UnlockChoice" IsChecked="False" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <TextBlock Text="• 突破 SEC2/PLM 固件锁，llama 推理实测提速约 16 倍&#x0a;• 核心锁定 P0 满载频率，解除计算节流，支持全通道部署" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="18" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- 3.5 安装与引导通道 (四选一，按主板与显卡架构适配) -->
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="16,12" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                                    <TextBlock Text="安装与引导通道 (四选一，按主板与显卡架构适配)" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13" />
+                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 通道 A: 现代 UEFI 直启 -->
+                                    <Border Grid.Column="0" Background="{StaticResource BgSubtle}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,5,0">
+                                        <RadioButton Name="RadioChannelA" GroupName="ChannelChoice" IsChecked="True">
+                                            <StackPanel Margin="3,0,0,0">
+                                                <TextBlock Text="通道 A · 现代 UEFI 直启" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextMain}" />
+                                                <TextBlock Text="免 Shell 秒进系统 (推荐)" FontSize="10" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </RadioButton>
+                                    </Border>
+
+                                    <!-- 通道 B: 老主板兼容 Shell -->
+                                    <Border Grid.Column="1" Background="{StaticResource BgSubtle}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="3,0,3,0">
+                                        <RadioButton Name="RadioChannelB" GroupName="ChannelChoice">
+                                            <StackPanel Margin="3,0,0,0">
+                                                <TextBlock Text="通道 B · 老主板 Shell" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextMain}" />
+                                                <TextBlock Text="华南/精粤/老主板防黑屏" FontSize="10" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </RadioButton>
+                                    </Border>
+
+                                    <!-- 通道 C: 老卡驱动内核 Hook -->
+                                    <Border Grid.Column="2" Background="{StaticResource BgSubtle}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="3,0,3,0">
+                                        <RadioButton Name="RadioChannelC" GroupName="ChannelChoice">
+                                            <StackPanel Margin="3,0,0,0">
+                                                <TextBlock Text="通道 C · 老卡驱动 Hook" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextMain}" />
+                                                <TextBlock Text="测试签名免驱动校验" FontSize="10" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </RadioButton>
+                                    </Border>
+
+                                    <!-- 通道 D: 免安装 U 盘直启 -->
+                                    <Border Grid.Column="3" Background="{StaticResource BgSubtle}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="5,0,0,0">
+                                        <RadioButton Name="RadioChannelD" GroupName="ChannelChoice">
+                                            <StackPanel Margin="3,0,0,0">
+                                                <TextBlock Text="通道 D · U 盘直启" FontWeight="SemiBold" FontSize="11.5" Foreground="{StaticResource TextMain}" />
+                                                <TextBlock Text="免写本机，开机临时选U盘" FontSize="10" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </RadioButton>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 通道 D 专用：U 盘盘符选择器 (仅选 U 盘直启时显示) -->
+                                <StackPanel Name="PanelUsbPicker" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed">
+                                    <TextBlock Text="选择可移动 U 盘:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontSize="11.5" Margin="0,0,10,0" />
+                                    <ComboBox Name="CmbUsbDrives" Width="300" Height="30" SelectedIndex="0" Margin="0,0,8,0" />
+                                    <Button Name="BtnRefreshUsbDrives" Content="刷新U盘" Style="{StaticResource StandardBtn}" Height="30" Width="82" Padding="0" />
+                                    <Button Name="BtnUsbSetFirst" Content="⚡ 让 U 盘优先启动" Style="{StaticResource PrimaryBtn}" Height="30" Padding="14,0,14,0" Margin="8,0,0,0" ToolTip="自动为该 U 盘创建 UEFI 固件启动项并置顶，同时关闭 Windows 快速启动" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 4. 隐藏保留多卡与通道控件 (保持 App.cs 100% 稳定运行，不破坏底层) -->
+                        <StackPanel Visibility="Collapsed">
+                            <ListBox Name="LstMiningGpus" />
+                            <RadioButton Name="RadioMode3" />
+                            <TextBlock Name="TxtPcieCurrentMode" />
+                            <TextBlock Name="TxtPcieBcdHealth" />
+                            <TextBlock Name="TxtSecureBootState" />
+                            <Button Name="BtnRun40hxInstaller" />
+                            <Button Name="BtnRun40hxCheck" />
+                            <Button Name="BtnRun30hxSetup" />
+                            <Button Name="BtnRun30hxReBar" />
+                            <Button Name="BtnOpenToolkitFolder" />
+                            <Button Name="BtnDeploy90hxCompute" />
+                            <Button Name="BtnDeploy90hxFull" />
+                        </StackPanel>
+
+                        <!-- 5. 核心操作控制台 (清晰简洁，直接解锁！) -->
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="13" Padding="20,16" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Name="BtnApplyHybridUnlock" Content="⚡ 执行解锁 (按上方选中的模式)" Style="{StaticResource PrimaryBtn}" Height="36" Padding="24,0,24,0" Margin="0,0,12,0" />
+                                    <Button Name="BtnRollbackPcieOfficial" Content="一键还原官方出厂" Style="{StaticResource StandardBtn}" Height="36" Width="150" Margin="0,0,12,0" />
+                                    <Button Name="BtnFixBcdConflicts" Content="BCD 引导自检与修复" Style="{StaticResource StandardBtn}" Height="36" Width="160" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="提示：选择上方解锁模式与引导通道后，点击【执行解锁】即可一键生效。" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            
