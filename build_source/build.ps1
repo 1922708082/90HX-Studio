@@ -28,6 +28,7 @@ $argsList = @(
     "/r:System.Windows.Forms.dll",
     "/r:System.Drawing.dll",
     "/r:System.IO.Compression.dll",
+    "/r:System.Management.dll",
     ("/r:" + $gacPath + "\WindowsBase\v4.0_4.0.0.0__31bf3856ad364e35\WindowsBase.dll"),
     ("/r:" + $gac64Path + "\PresentationCore\v4.0_4.0.0.0__31bf3856ad364e35\PresentationCore.dll"),
     ("/r:" + $gacPath + "\PresentationFramework\v4.0_4.0.0.0__31bf3856ad364e35\PresentationFramework.dll"),

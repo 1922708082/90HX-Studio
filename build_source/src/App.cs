@@ -72,6 +72,10 @@ namespace CMP90HXToolbox
         private TextBlock _txtHwHags;
         private TextBlock _txtHwMemory;
         private TextBlock _txtHwOsVer;
+        private TextBlock _txtHwMonitor;
+        private TextBlock _txtHwDisk;
+        private TextBlock _txtHwAudio;
+        private TextBlock _txtHwNetwork;
 
         private ComboBox _cmbSpoofTargetCard;
         private Button _btnSpoofAllGpus;
@@ -169,6 +173,13 @@ namespace CMP90HXToolbox
         private TextBlock _txtDlssStatusInDir;
         private ComboBox _cmbOptimizedLevel;
         private ComboBox _cmbMaxFramesLevel;
+        private ComboBox _cmbProxyDll;
+        private TextBlock _txtProxyHint;
+        private ComboBox _cmbFgEngine;
+        private ComboBox _cmbFgPreset;
+        private ComboBox _cmbSrMode;
+        private Border _borderPreflight;
+        private StackPanel _pnlPreflight;
         private CheckBox _chkInjectReFramework;
         private Button _btnInjectDlss;
         private Button _btnRemoveDlss;
@@ -179,6 +190,23 @@ namespace CMP90HXToolbox
         private ProgressBar _progDlssDownload;
         private TextBlock _txtDlssUpdateStatus;
         private Button _btnOpenDlssRepo;
+        private TextBlock _txtReFwVersion;
+        private Button _btnCheckReFw;
+        private Button _btnPullReFw;
+        private ProgressBar _progReFw;
+        private TextBlock _txtReFwStatus;
+
+        private TextBlock _txtSidebarVersion;
+        private TextBlock _txtAppVerCurrent;
+        private TextBlock _txtAppVerLatest;
+        private Border _bdAppStatus;
+        private TextBlock _txtAppStatusBadge;
+        private Button _btnCheckAppUpdate;
+        private Button _btnApplyAppUpdate;
+        private ProgressBar _progAppUpdate;
+        private TextBlock _txtAppUpdateStatus;
+        private NativeCore.AppUpdateInfo _pendingUpdate;
+        private bool _autoUpdateCheckStarted;
 
         private Button _btnToolRestartDriver;
         private Button _btnToolToggleHags;
@@ -498,6 +526,7 @@ namespace CMP90HXToolbox
                 (RadioButton)_window.FindName("NavItemPower"),
                 (RadioButton)_window.FindName("NavItemLogs"),
                 (RadioButton)_window.FindName("NavItemSponsor"),
+                (RadioButton)_window.FindName("NavItemUpdate"),
             };
             _pageHosts = new Grid[] {
                 (Grid)_window.FindName("PageHardware"),
@@ -509,6 +538,7 @@ namespace CMP90HXToolbox
                 (Grid)_window.FindName("PagePower"),
                 (Grid)_window.FindName("PageLogs"),
                 (Grid)_window.FindName("PageSponsor"),
+                (Grid)_window.FindName("PageUpdate"),
             };
             _txtBarCpu = (TextBlock)_window.FindName("TxtBarCpu");
             _txtBarGpu = (TextBlock)_window.FindName("TxtBarGpu");
@@ -544,6 +574,10 @@ namespace CMP90HXToolbox
             _txtHwHags = (TextBlock)_window.FindName("TxtHwHags");
             _txtHwMemory = (TextBlock)_window.FindName("TxtHwMemory");
             _txtHwOsVer = (TextBlock)_window.FindName("TxtHwOsVer");
+            _txtHwMonitor = (TextBlock)_window.FindName("TxtHwMonitor");
+            _txtHwDisk = (TextBlock)_window.FindName("TxtHwDisk");
+            _txtHwAudio = (TextBlock)_window.FindName("TxtHwAudio");
+            _txtHwNetwork = (TextBlock)_window.FindName("TxtHwNetwork");
 
             _cmbSpoofTargetCard = (ComboBox)_window.FindName("CmbSpoofTargetCard");
             _btnSpoofAllGpus = (Button)_window.FindName("BtnSpoofAllGpus");
@@ -641,6 +675,14 @@ namespace CMP90HXToolbox
             _txtDlssStatusInDir = (TextBlock)_window.FindName("TxtDlssStatusInDir");
             _cmbOptimizedLevel = (ComboBox)_window.FindName("CmbOptimizedLevel");
             _cmbMaxFramesLevel = (ComboBox)_window.FindName("CmbMaxFramesLevel");
+            _cmbProxyDll = (ComboBox)_window.FindName("CmbProxyDll");
+            _txtProxyHint = (TextBlock)_window.FindName("TxtProxyHint");
+            _cmbFgEngine = (ComboBox)_window.FindName("CmbFgEngine");
+            _cmbFgPreset = (ComboBox)_window.FindName("CmbFgPreset");
+            _cmbSrMode = (ComboBox)_window.FindName("CmbSrMode");
+            _borderPreflight = (Border)_window.FindName("BorderPreflight");
+            _pnlPreflight = (StackPanel)_window.FindName("PnlPreflight");
+            LoadProxyCandidates();
             _chkInjectReFramework = (CheckBox)_window.FindName("ChkInjectReFramework");
             _btnInjectDlss = (Button)_window.FindName("BtnInjectDlss");
             _btnRemoveDlss = (Button)_window.FindName("BtnRemoveDlss");
@@ -665,6 +707,26 @@ namespace CMP90HXToolbox
             _progDlssDownload = (ProgressBar)_window.FindName("ProgDlssDownload");
             _txtDlssUpdateStatus = (TextBlock)_window.FindName("TxtDlssUpdateStatus");
             _btnOpenDlssRepo = (Button)_window.FindName("BtnOpenDlssRepo");
+            _txtReFwVersion = (TextBlock)_window.FindName("TxtReFwVersion");
+            _btnCheckReFw = (Button)_window.FindName("BtnCheckReFw");
+            _btnPullReFw = (Button)_window.FindName("BtnPullReFw");
+            _progReFw = (ProgressBar)_window.FindName("ProgReFw");
+            _txtReFwStatus = (TextBlock)_window.FindName("TxtReFwStatus");
+            if (_txtReFwVersion != null) _txtReFwVersion.Text = ShortVersion(NativeCore.GetLocalReFrameworkVersion());
+
+            _txtSidebarVersion = (TextBlock)_window.FindName("TxtSidebarVersion");
+            _txtAppVerCurrent = (TextBlock)_window.FindName("TxtAppVerCurrent");
+            _txtAppVerLatest = (TextBlock)_window.FindName("TxtAppVerLatest");
+            _bdAppStatus = (Border)_window.FindName("BdAppStatus");
+            _txtAppStatusBadge = (TextBlock)_window.FindName("TxtAppStatusBadge");
+            _btnCheckAppUpdate = (Button)_window.FindName("BtnCheckAppUpdate");
+            _btnApplyAppUpdate = (Button)_window.FindName("BtnApplyAppUpdate");
+            _progAppUpdate = (ProgressBar)_window.FindName("ProgAppUpdate");
+            _txtAppUpdateStatus = (TextBlock)_window.FindName("TxtAppUpdateStatus");
+
+            string curVer = NativeCore.GetCurrentAppVersion();
+            if (_txtAppVerCurrent != null) _txtAppVerCurrent.Text = "v" + curVer;
+            if (_txtSidebarVersion != null) _txtSidebarVersion.Text = "v" + curVer;
 
             _btnToolRestartDriver = (Button)_window.FindName("BtnToolRestartDriver");
             _btnToolToggleHags = (Button)_window.FindName("BtnToolToggleHags");
@@ -1415,6 +1477,8 @@ namespace CMP90HXToolbox
                     {
                         _txtDlssGameDir.Text = fbd.SelectedPath;
                         CheckDlssInDir(fbd.SelectedPath);
+                        bool reChk = _chkInjectReFramework != null && _chkInjectReFramework.IsChecked == true;
+                        RenderPreflight(NativeCore.PreflightDlssDeploy(fbd.SelectedPath, GetSelectedProxyName(), reChk));
                     }
                 }
             };
@@ -1428,31 +1492,40 @@ namespace CMP90HXToolbox
                     return;
                 }
 
-                bool hasVersionDll = File.Exists(Path.Combine(dir, "version.dll"));
-                bool hasIni = File.Exists(Path.Combine(dir, "dlssg_sm86.ini"));
-                if (hasVersionDll && hasIni)
+                bool injectRe = _chkInjectReFramework != null && _chkInjectReFramework.IsChecked == true;
+                string proxy = GetSelectedProxyName();
+                string opt = TakePrefix(GetComboText(_cmbOptimizedLevel), "1");
+                string maxF = GetSelectedMaxFrames();
+                string engine = TakePrefix(GetComboText(_cmbFgEngine), "DLSS");
+                string preset = TakePrefix(GetComboText(_cmbFgPreset), "Auto");
+                string srMode = TakePrefix(GetComboText(_cmbSrMode), "Off");
+
+                // 体检先行：源运行库结构、内核组件、第三方残留、代理冲突都在落盘前确认
+                NativeCore.DlssPreflightResult pf = NativeCore.PreflightDlssDeploy(dir, proxy, injectRe);
+                RenderPreflight(pf);
+
+                if (pf == null || !pf.Passed)
                 {
-                    var confirm = ModernMessageBox.Show("【防重复注入检测】\n检测到该游戏目录下已经存在 DLSS-G 补丁核心文件 (version.dll + dlssg_sm86.ini)！\n\n是否确认使用当前参数重新覆盖替换？", "补丁已存在", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    string blockText = BuildPreflightText(pf, true);
+                    ModernMessageBox.Show("部署体检未通过，已中止注入：\n\n" + blockText, "体检未通过", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                bool hasIni = File.Exists(Path.Combine(dir, "dlssg_sm86.ini"));
+                bool hasProxy = File.Exists(Path.Combine(dir, proxy));
+                bool hasMarker = File.Exists(Path.Combine(dir, ".dlssg_proxy"));
+                if ((hasProxy && hasIni) || hasMarker)
+                {
+                    var confirm = ModernMessageBox.Show("【防重复注入检测】\n检测到该游戏目录下已经存在 DLSS-G 补丁（代理: " + proxy + "）！\n\n是否确认使用当前参数重新覆盖替换？", "补丁已存在", MessageBoxButton.YesNo, MessageBoxImage.Question);
                     if (confirm != MessageBoxResult.Yes) return;
                 }
 
-                string opt = "1";
-                if (_cmbOptimizedLevel.SelectedIndex >= 0)
-                {
-                    string t = ((ComboBoxItem)_cmbOptimizedLevel.SelectedItem).Content.ToString();
-                    opt = t.Substring(0, 1);
-                }
-                string maxF = "4";
-                if (_cmbMaxFramesLevel.SelectedIndex >= 0)
-                {
-                    string t = ((ComboBoxItem)_cmbMaxFramesLevel.SelectedItem).Content.ToString();
-                    maxF = t.Substring(0, 1);
-                }
-                bool injectRe = _chkInjectReFramework != null && _chkInjectReFramework.IsChecked == true;
-
-                bool ok = NativeCore.InjectDlssG(dir, opt, maxF, injectRe, LogCallback);
+                bool ok = NativeCore.InjectDlssG(dir, opt, maxF, injectRe, proxy, engine, preset, srMode, LogCallback);
                 CheckDlssInDir(dir);
-                if (ok) ModernMessageBox.Show("DLSS 3 补丁注入成功！启动游戏并在画质设置中开启【帧生成】即可。" + (injectRe ? "\n(已附带注入 RE 框架代理 dinput8.dll)" : ""), "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (ok)
+                {
+                    ModernMessageBox.Show("DLSS 3 补丁注入成功！\n\n代理: " + proxy + "\n倍率上限: " + maxF + "\n引擎/预设: " + engine + " / " + preset + "\n\n启动游戏并在画质设置中开启【帧生成】即可。" + (injectRe ? "\n(已附带注入 RE 框架代理 dinput8.dll)" : ""), "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             };
 
             _btnRemoveDlss.Click += (s, e) =>
@@ -1544,8 +1617,17 @@ namespace CMP90HXToolbox
                         if (res.GameDirUpdated) tip += "，并已直接同步替换游戏目录中的补丁！";
                         _txtDlssUpdateStatus.Text = tip;
                         _txtDlssUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+
+                        // 新版运行库可能带回 alternatives\ 代理，刷新下拉框并重跑体检
+                        LoadProxyCandidates();
+                        if (!string.IsNullOrEmpty(gameDir))
+                        {
+                            CheckDlssInDir(gameDir);
+                            bool reChk2 = _chkInjectReFramework != null && _chkInjectReFramework.IsChecked == true;
+                            RenderPreflight(NativeCore.PreflightDlssDeploy(gameDir, GetSelectedProxyName(), reChk2));
+                        }
+
                         ModernMessageBox.Show(tip, "更新成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                        if (!string.IsNullOrEmpty(gameDir)) CheckDlssInDir(gameDir);
                     }
                     else
                     {
@@ -1562,6 +1644,112 @@ namespace CMP90HXToolbox
                     try { Process.Start("https://github.com/sdli1995/dlssg_for_sm86"); } catch { }
                 };
             }
+
+            if (_btnCheckReFw != null)
+            {
+                _btnCheckReFw.Click += async (s, e) =>
+                {
+                    _btnCheckReFw.IsEnabled = false;
+                    if (_txtReFwStatus != null)
+                    {
+                        _txtReFwStatus.Text = "正在查询 REFramework 最新版本...";
+                        _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
+                    }
+
+                    NativeCore.ReFwCheckResult res = await NativeCore.CheckReFrameworkUpdateAsync(LogCallback);
+                    _btnCheckReFw.IsEnabled = true;
+
+                    // 本地记录的是 commit 哈希，远端是完整 tag；确认一致时展示可读版本名，避免一串哈希看不懂
+                    if (_txtReFwVersion != null)
+                    {
+                        _txtReFwVersion.Text = (res.Success && !res.HasUpdate)
+                            ? ShortVersion(res.RemoteVersion)
+                            : ShortVersion(res.LocalVersion);
+                    }
+
+                    if (res.Success)
+                    {
+                        if (_txtReFwStatus != null)
+                        {
+                            if (res.HasUpdate)
+                            {
+                                _txtReFwStatus.Text = "发现新版: " + res.RemoteVersion + "（当前: " + ShortVersion(res.LocalVersion) + "），点击【一键更新】升级";
+                                _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(217, 119, 6));
+                            }
+                            else
+                            {
+                                _txtReFwStatus.Text = "已是最新版本: " + ShortVersion(res.LocalVersion);
+                                _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                            }
+                        }
+                    }
+                    else if (_txtReFwStatus != null)
+                    {
+                        _txtReFwStatus.Text = "检测失败: " + res.ErrorMessage;
+                        _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                    }
+                };
+            }
+
+            if (_btnPullReFw != null)
+            {
+                _btnPullReFw.Click += async (s, e) =>
+                {
+                    _btnPullReFw.IsEnabled = false;
+                    if (_progReFw != null) { _progReFw.Visibility = Visibility.Visible; _progReFw.Value = 0; }
+                    if (_txtReFwStatus != null)
+                    {
+                        _txtReFwStatus.Text = "正在下载 REFramework...";
+                        _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
+                    }
+
+                    string tag = null;
+                    NativeCore.ReFwCheckResult chk = await NativeCore.CheckReFrameworkUpdateAsync(LogCallback);
+                    if (chk.Success) tag = chk.Tag;
+
+                    NativeCore.ReFwPullResult res = await NativeCore.PullReFrameworkAsync(tag, delegate(int p)
+                    {
+                        Dispatcher.Invoke(new Action(() => { if (_progReFw != null) _progReFw.Value = p; }));
+                    }, LogCallback);
+
+                    _btnPullReFw.IsEnabled = true;
+                    if (_progReFw != null) _progReFw.Visibility = Visibility.Collapsed;
+
+                    if (res.Success)
+                    {
+                        if (_txtReFwVersion != null) _txtReFwVersion.Text = ShortVersion(res.NewVersion);
+                        if (_txtReFwStatus != null)
+                        {
+                            _txtReFwStatus.Text = "已更新到 " + res.NewVersion;
+                            _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                        }
+                        ModernMessageBox.Show("REFramework 已更新到 " + res.NewVersion + "\n\n下次勾选「同时注入 RE 框架代理」时会使用新版。", "更新成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else if (_txtReFwStatus != null)
+                    {
+                        _txtReFwStatus.Text = "更新失败: " + res.Message;
+                        _txtReFwStatus.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                    }
+                };
+            }
+
+            if (_btnCheckAppUpdate != null)
+            {
+                _btnCheckAppUpdate.Click += async (s, e) =>
+                {
+                    await RunAppUpdateCheck(true);
+                };
+            }
+
+            if (_btnApplyAppUpdate != null)
+            {
+                _btnApplyAppUpdate.Click += async (s, e) =>
+                {
+                    await RunApplyAppUpdate();
+                };
+            }
+
+            StartAutoUpdateCheck();
 
             _btnToolRestartDriver.Click += async (s, e) =>
             {
@@ -1877,6 +2065,10 @@ namespace CMP90HXToolbox
                 if (_txtHwHags != null) _txtHwHags.Text = "HAGS 加速: " + hw.HagsStatus;
                 if (_txtHwMemory != null) _txtHwMemory.Text = hw.TotalMemory;
                 if (_txtHwOsVer != null) _txtHwOsVer.Text = hw.OsVersion;
+                if (_txtHwMonitor != null) _txtHwMonitor.Text = hw.DisplayDevices;
+                if (_txtHwDisk != null) _txtHwDisk.Text = hw.DiskDevices;
+                if (_txtHwAudio != null) _txtHwAudio.Text = hw.AudioDevices;
+                if (_txtHwNetwork != null) _txtHwNetwork.Text = hw.NetworkDevices;
 
                 if (_cmbSpoofTargetCard != null)
                 {
@@ -2030,31 +2222,359 @@ namespace CMP90HXToolbox
             }
         }
 
-        private void CheckDlssInDir(string dir)
+        private async Task<NativeCore.AppUpdateInfo> RunAppUpdateCheck(bool interactive)
         {
-            if (Directory.Exists(dir))
+            if (_btnCheckAppUpdate != null) _btnCheckAppUpdate.IsEnabled = false;
+            if (interactive && _txtAppUpdateStatus != null)
             {
-                bool dll = File.Exists(Path.Combine(dir, "version.dll"));
-                bool ini = File.Exists(Path.Combine(dir, "dlssg_sm86.ini"));
-                bool re = File.Exists(Path.Combine(dir, "dinput8.dll"));
-                bool sub = Directory.Exists(Path.Combine(dir, "dlssg_sm86"));
-                if (dll && ini)
+                _txtAppUpdateStatus.Text = "正在检查更新...";
+                _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
+            }
+
+            NativeCore.AppUpdateInfo info = await NativeCore.CheckAppUpdateAsync(LogCallback);
+
+            if (_btnCheckAppUpdate != null) _btnCheckAppUpdate.IsEnabled = true;
+
+            if (info != null && info.Success)
+            {
+                if (_txtAppVerLatest != null) _txtAppVerLatest.Text = "最新版本: v" + info.LatestVersion;
+
+                if (_bdAppStatus != null && _txtAppStatusBadge != null)
                 {
-                    string status = "已检测到 DLSS-G 补丁 (version.dll + dlssg_sm86.ini 正常运行中)";
-                    if (re) status += " [含 RE 框架支持]";
-                    if (sub) status += " [0.4.0 内核完整]";
-                    else status += " [警告：缺少 dlssg_sm86 内核目录，0.4.0 下无法生效]";
-                    _txtDlssStatusInDir.Text = status;
-                    _txtDlssStatusInDir.Foreground = sub
-                        ? new SolidColorBrush(Color.FromRgb(22, 163, 74))
-                        : new SolidColorBrush(Color.FromRgb(217, 119, 6));
-                    if (re && _chkInjectReFramework != null) _chkInjectReFramework.IsChecked = true;
+                    if (info.HasUpdate)
+                    {
+                        _bdAppStatus.Background = new SolidColorBrush(Color.FromRgb(254, 243, 199));
+                        _txtAppStatusBadge.Text = "有新版本";
+                        _txtAppStatusBadge.Foreground = new SolidColorBrush(Color.FromRgb(180, 83, 9));
+                    }
+                    else
+                    {
+                        _bdAppStatus.Background = new SolidColorBrush(Color.FromRgb(220, 252, 231));
+                        _txtAppStatusBadge.Text = "已是最新";
+                        _txtAppStatusBadge.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                    }
+                }
+
+                // 已经是最新版时不该出现"立即更新"，否则逻辑上说不通
+                if (_btnApplyAppUpdate != null)
+                    _btnApplyAppUpdate.Visibility = info.HasUpdate ? Visibility.Visible : Visibility.Collapsed;
+
+                if (info.HasUpdate)
+                {
+                    _pendingUpdate = info;
+                    if (_txtAppUpdateStatus != null)
+                    {
+                        _txtAppUpdateStatus.Text = "发现新版本 v" + info.LatestVersion + "，点击【立即更新并重启】升级";
+                        _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(217, 119, 6));
+                    }
                 }
                 else
                 {
-                    _txtDlssStatusInDir.Text = "该目录尚未注入 DLSS-G 补丁";
-                    _txtDlssStatusInDir.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139));
+                    _pendingUpdate = null;
+                    if (_txtAppUpdateStatus != null)
+                    {
+                        _txtAppUpdateStatus.Text = "已是最新版本 v" + info.CurrentVersion;
+                        _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                    }
                 }
+            }
+            else if (interactive)
+            {
+                if (_txtAppUpdateStatus != null)
+                {
+                    _txtAppUpdateStatus.Text = "检查失败: " + (info == null ? "未知错误" : info.ErrorMessage);
+                    _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                }
+                if (_bdAppStatus != null && _txtAppStatusBadge != null)
+                {
+                    _bdAppStatus.Background = new SolidColorBrush(Color.FromRgb(254, 226, 226));
+                    _txtAppStatusBadge.Text = "检查失败";
+                    _txtAppStatusBadge.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                }
+            }
+
+            return info;
+        }
+
+        private async Task RunApplyAppUpdate()
+        {
+            NativeCore.AppUpdateInfo info = _pendingUpdate;
+            if (info == null || !info.HasUpdate)
+            {
+                info = await RunAppUpdateCheck(true);
+                if (info == null || !info.HasUpdate)
+                {
+                    ModernMessageBox.Show("当前已是最新版本，无需更新。", "无需更新", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+            }
+
+            if (_btnApplyAppUpdate != null) _btnApplyAppUpdate.IsEnabled = false;
+            if (_progAppUpdate != null) { _progAppUpdate.Visibility = Visibility.Visible; _progAppUpdate.Value = 0; }
+            if (_txtAppUpdateStatus != null)
+            {
+                _txtAppUpdateStatus.Text = "正在下载 v" + info.LatestVersion + "...";
+                _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
+            }
+
+            NativeCore.AppUpdateResult res = await NativeCore.DownloadAppUpdateAsync(info.DownloadUrl, delegate(int p)
+            {
+                Dispatcher.Invoke(new Action(() => { if (_progAppUpdate != null) _progAppUpdate.Value = p; }));
+            }, LogCallback);
+
+            if (res == null || !res.Success)
+            {
+                if (_btnApplyAppUpdate != null) _btnApplyAppUpdate.IsEnabled = true;
+                if (_progAppUpdate != null) _progAppUpdate.Visibility = Visibility.Collapsed;
+
+                string msg = res == null ? "未知错误" : res.Message;
+                if (_txtAppUpdateStatus != null)
+                {
+                    _txtAppUpdateStatus.Text = "下载失败: " + msg;
+                    _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                }
+                ModernMessageBox.Show("更新包下载失败：\n" + msg, "更新失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (_txtAppUpdateStatus != null)
+            {
+                _txtAppUpdateStatus.Text = "下载完成，等待确认替换";
+                _txtAppUpdateStatus.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+            }
+
+            string sizeText = (res.SizeBytes / 1048576.0).ToString("0.0");
+            var confirm = ModernMessageBox.Show(
+                "更新包已下载完成（" + sizeText + " MB）\n\n" +
+                "确认后程序会关闭，自动替换为 v" + info.LatestVersion + " 并重新打开。\n" +
+                "替换前旧版会备份为 .old-update，替换失败可回滚。",
+                "准备更新", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (confirm != MessageBoxResult.Yes)
+            {
+                if (_btnApplyAppUpdate != null) _btnApplyAppUpdate.IsEnabled = true;
+                return;
+            }
+
+            bool started = NativeCore.ApplyAppUpdate(res.FilePath, LogCallback);
+            if (started)
+            {
+                Shutdown();
+            }
+            else
+            {
+                if (_btnApplyAppUpdate != null) _btnApplyAppUpdate.IsEnabled = true;
+                ModernMessageBox.Show("无法启动替换脚本。\n可手动把程序目录下的 .update.exe 改名为原文件名后运行。", "更新未启动", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>启动后延迟几秒检测一次；失败静默，避免没网时每次开都弹错误。</summary>
+        private void StartAutoUpdateCheck()
+        {
+            if (_autoUpdateCheckStarted) return;
+            _autoUpdateCheckStarted = true;
+
+            DispatcherTimer timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(4);
+            timer.Tick += async (s, e) =>
+            {
+                timer.Stop();
+                try
+                {
+                    NativeCore.AppUpdateInfo info = await RunAppUpdateCheck(false);
+                    if (info != null && info.Success && info.HasUpdate)
+                    {
+                        var r = ModernMessageBox.Show(
+                            "发现新版本 v" + info.LatestVersion + "\n\n" +
+                            "当前版本: v" + info.CurrentVersion + "\n\n" +
+                            "是否现在下载并更新？更新时程序会自动关闭，完成后自动重新打开。",
+                            "发现更新", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                        if (r == MessageBoxResult.Yes)
+                        {
+                            await RunApplyAppUpdate();
+                        }
+                    }
+                }
+                catch { }
+            };
+            timer.Start();
+        }
+
+        private void LoadProxyCandidates()
+        {
+            if (_cmbProxyDll == null) return;
+            _cmbProxyDll.Items.Clear();
+            List<string> names = NativeCore.GetAvailableProxyNames();
+            for (int i = 0; i < names.Count; i++) _cmbProxyDll.Items.Add(names[i]);
+            if (_cmbProxyDll.Items.Count > 0) _cmbProxyDll.SelectedIndex = 0;
+
+            if (_txtProxyHint != null)
+            {
+                _txtProxyHint.Text = names.Count > 1
+                    ? "共 " + names.Count + " 个可用代理"
+                    : "仅 version.dll 可用，换别的需先补 alternatives";
+            }
+        }
+
+        private string GetComboText(ComboBox cmb)
+        {
+            if (cmb == null || cmb.SelectedItem == null) return "";
+            ComboBoxItem item = cmb.SelectedItem as ComboBoxItem;
+            if (item != null) return item.Content == null ? "" : item.Content.ToString();
+            return cmb.SelectedItem.ToString();
+        }
+
+        private string TakePrefix(string text, string fallback)
+        {
+            if (string.IsNullOrEmpty(text)) return fallback;
+            int i = text.IndexOf(':');
+            if (i <= 0) return fallback;
+            string p = text.Substring(0, i).Trim();
+            return p.Length == 0 ? fallback : p;
+        }
+
+        /// <summary>版本号过长时截断展示：内置 revision 是 40 位 commit，直接显示会撑破右侧布局。</summary>
+        private string ShortVersion(string v)
+        {
+            if (string.IsNullOrEmpty(v)) return "未知";
+            if (v.Length == 40) return "rev-" + v.Substring(0, 8);
+            if (v.Length <= 22) return v;
+            return v.Substring(0, 20) + "...";
+        }
+
+        private string GetSelectedProxyName()
+        {
+            string t = GetComboText(_cmbProxyDll);
+            if (!NativeCore.IsKnownProxyName(t)) return "version.dll";
+            return t;
+        }
+
+        /// <summary>
+        /// 上游语义：MaxGeneratedFrames = 倍率 - 1，合法区间 1-5。
+        /// 之前直接取选项首字符，导致 4X 写入 4、6X 写入 6 均越界，倍率选择实际失效。
+        /// </summary>
+        private string GetSelectedMaxFrames()
+        {
+            string t = GetComboText(_cmbMaxFramesLevel);
+            if (string.IsNullOrEmpty(t)) return "3";
+            if (t.StartsWith("2X")) return "1";
+            if (t.StartsWith("3X")) return "2";
+            if (t.StartsWith("4X")) return "3";
+            if (t.StartsWith("5X")) return "4";
+            if (t.StartsWith("6X")) return "5";
+            return "3";
+        }
+
+        private void RenderPreflight(NativeCore.DlssPreflightResult pf)
+        {
+            if (_borderPreflight == null || _pnlPreflight == null) return;
+            _pnlPreflight.Children.Clear();
+
+            if (pf == null || pf.Items == null || pf.Items.Count == 0)
+            {
+                _borderPreflight.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            for (int i = 0; i < pf.Items.Count; i++)
+            {
+                NativeCore.DlssCheckItem it = pf.Items[i];
+
+                StackPanel row = new StackPanel();
+                row.Orientation = Orientation.Horizontal;
+                row.Margin = new Thickness(0, 2, 0, 2);
+
+                TextBlock dot = new TextBlock();
+                dot.Text = "●";
+                dot.FontSize = 9;
+                dot.VerticalAlignment = VerticalAlignment.Center;
+                dot.Margin = new Thickness(0, 0, 6, 0);
+                if (it.Ok) dot.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                else if (it.Blocking) dot.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                else dot.Foreground = new SolidColorBrush(Color.FromRgb(217, 119, 6));
+
+                TextBlock name = new TextBlock();
+                name.Text = it.Name + ": ";
+                name.FontSize = 11;
+                name.Foreground = new SolidColorBrush(Color.FromRgb(55, 65, 81));
+
+                TextBlock detail = new TextBlock();
+                detail.Text = it.Detail;
+                detail.FontSize = 11;
+                detail.TextWrapping = TextWrapping.Wrap;
+                detail.Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128));
+
+                row.Children.Add(dot);
+                row.Children.Add(name);
+                row.Children.Add(detail);
+                _pnlPreflight.Children.Add(row);
+            }
+
+            _borderPreflight.Visibility = Visibility.Visible;
+        }
+
+        private string BuildPreflightText(NativeCore.DlssPreflightResult pf, bool onlyBlocking)
+        {
+            if (pf == null || pf.Items == null) return "体检数据不可用";
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < pf.Items.Count; i++)
+            {
+                NativeCore.DlssCheckItem it = pf.Items[i];
+                if (onlyBlocking && (it.Ok || !it.Blocking)) continue;
+                if (it.Ok) sb.AppendLine("[通过] " + it.Name + ": " + it.Detail);
+                else if (it.Blocking) sb.AppendLine("[阻断] " + it.Name + ": " + it.Detail);
+                else sb.AppendLine("[注意] " + it.Name + ": " + it.Detail);
+            }
+            return sb.ToString();
+        }
+
+        private void CheckDlssInDir(string dir)
+        {
+            if (!Directory.Exists(dir)) return;
+
+            bool ini = File.Exists(Path.Combine(dir, "dlssg_sm86.ini"));
+            string marker = Path.Combine(dir, ".dlssg_proxy");
+            string usedProxy = null;
+            if (File.Exists(marker))
+            {
+                try { usedProxy = File.ReadAllText(marker).Trim(); }
+                catch { usedProxy = null; }
+            }
+            if (!NativeCore.IsKnownProxyName(usedProxy)) usedProxy = "version.dll";
+
+            string proxyPath = Path.Combine(dir, usedProxy);
+            bool proxyOk = File.Exists(proxyPath);
+            bool re = File.Exists(Path.Combine(dir, "dinput8.dll"));
+            bool sub = Directory.Exists(Path.Combine(dir, "dlssg_sm86"));
+
+            bool legacy = false;
+            if (proxyOk)
+            {
+                try { legacy = new FileInfo(proxyPath).Length >= 10L * 1024L * 1024L; }
+                catch { legacy = false; }
+            }
+
+            if (proxyOk && ini)
+            {
+                string status = "已检测到 DLSS-G 补丁 (代理 " + usedProxy + " + dlssg_sm86.ini 运行中)";
+                if (re && !string.Equals(usedProxy, "dinput8.dll", StringComparison.OrdinalIgnoreCase)) status += " [含 RE 框架支持]";
+                if (legacy) status += " [单体版，运行库已内嵌]";
+                else if (sub) status += " [0.4.0 内核完整]";
+                else status += " [警告：缺少 dlssg_sm86 内核目录，0.4.0 下无法生效]";
+
+                _txtDlssStatusInDir.Text = status;
+                _txtDlssStatusInDir.Foreground = (legacy || sub)
+                    ? new SolidColorBrush(Color.FromRgb(22, 163, 74))
+                    : new SolidColorBrush(Color.FromRgb(217, 119, 6));
+
+                if (re && _chkInjectReFramework != null && !string.Equals(usedProxy, "dinput8.dll", StringComparison.OrdinalIgnoreCase))
+                    _chkInjectReFramework.IsChecked = true;
+            }
+            else
+            {
+                _txtDlssStatusInDir.Text = "该目录尚未注入 DLSS-G 补丁";
+                _txtDlssStatusInDir.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139));
             }
         }
 

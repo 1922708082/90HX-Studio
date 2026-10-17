@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Management;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
@@ -123,9 +124,129 @@ namespace CMP90HXToolbox
             return status;
         }
 
+        /// <summary>
+        /// 显示器 / 硬盘 / 声卡 / 网卡真实探测。
+        /// 这几个字段原先只是构造函数里写死的示例值（固定显示"致态 1TB""180Hz 高刷屏"），与实机无关。
+        /// </summary>
+        private static void DetectPeripherals(MachineHardwareProfile hw)
+        {
+            try
+            {
+                int sw = 0;
+                int sh = 0;
+                try
+                {
+                    System.Windows.Forms.Screen scr = System.Windows.Forms.Screen.PrimaryScreen;
+                    if (scr != null)
+                    {
+                        sw = scr.Bounds.Width;
+                        sh = scr.Bounds.Height;
+                    }
+                }
+                catch { }
+
+                int hz = 0;
+                try
+                {
+                    using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT CurrentRefreshRate FROM Win32_VideoController"))
+                    {
+                        foreach (ManagementObject mo in searcher.Get())
+                        {
+                            object o = mo["CurrentRefreshRate"];
+                            if (o != null)
+                            {
+                                int v = 0;
+                                if (int.TryParse(o.ToString(), out v) && v > hz) hz = v;
+                            }
+                            mo.Dispose();
+                        }
+                    }
+                }
+                catch { }
+
+                if (sw > 0 && sh > 0)
+                    hw.DisplayDevices = string.Format("主屏 {0} x {1}{2}", sw, sh, hz > 0 ? " · " + hz + " Hz" : "");
+            }
+            catch { }
+
+            try
+            {
+                List<string> disks = new List<string>();
+                using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT Model, Size, InterfaceType, PNPDeviceID FROM Win32_DiskDrive"))
+                {
+                    foreach (ManagementObject mo in searcher.Get())
+                    {
+                        string model = Convert.ToString(mo["Model"] ?? "").Trim();
+                        long size = 0;
+                        long.TryParse(Convert.ToString(mo["Size"] ?? "0"), out size);
+                        string iface = Convert.ToString(mo["InterfaceType"] ?? "").Trim();
+                        string pnp = Convert.ToString(mo["PNPDeviceID"] ?? "");
+
+                        if (size > 0 && !string.IsNullOrEmpty(model))
+                        {
+                            // WMI 返回的 Model 常带连续空格，压缩成单空格
+                            model = System.Text.RegularExpressions.Regex.Replace(model, @"\s{2,}", " ");
+
+                            string bus = iface;
+                            if (pnp.IndexOf("NVME", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                model.IndexOf("NVMe", StringComparison.OrdinalIgnoreCase) >= 0)
+                                bus = "NVMe";
+                            else if (iface.IndexOf("SCSI", StringComparison.OrdinalIgnoreCase) >= 0)
+                                bus = "SATA";
+
+                            string cap = size >= 1000000000000L
+                                ? (size / 1000000000000.0).ToString("0.0") + "TB"
+                                : (size / 1000000000.0).ToString("0") + "GB";
+
+                            disks.Add(model + " (" + cap + ")" + (string.IsNullOrEmpty(bus) ? "" : " · " + bus));
+                        }
+                        mo.Dispose();
+                    }
+                }
+                if (disks.Count > 0) hw.DiskDevices = string.Join("\n", disks.ToArray());
+            }
+            catch { }
+
+            try
+            {
+                List<string> names = new List<string>();
+                using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_SoundDevice"))
+                {
+                    foreach (ManagementObject mo in searcher.Get())
+                    {
+                        string n = Convert.ToString(mo["Name"] ?? "").Trim();
+                        if (!string.IsNullOrEmpty(n) && !names.Contains(n)) names.Add(n);
+                        mo.Dispose();
+                    }
+                }
+                if (names.Count > 0) hw.AudioDevices = string.Join(" / ", names.ToArray());
+            }
+            catch { }
+
+            try
+            {
+                List<string> names = new List<string>();
+                using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_NetworkAdapter WHERE PhysicalAdapter = TRUE"))
+                {
+                    foreach (ManagementObject mo in searcher.Get())
+                    {
+                        string n = Convert.ToString(mo["Name"] ?? "").Trim();
+                        if (!string.IsNullOrEmpty(n) && !names.Contains(n)) names.Add(n);
+                        mo.Dispose();
+                    }
+                }
+                if (names.Count > 0) hw.NetworkDevices = string.Join(" / ", names.ToArray());
+            }
+            catch { }
+        }
+
         public static void DetectFullHardware(SystemStatus status)
         {
+            if (status == null) return;
+            if (status.Hardware == null) status.Hardware = new MachineHardwareProfile();
+
             var hw = status.Hardware;
+            DetectPeripherals(hw);
 
             try
             {
@@ -207,6 +328,21 @@ namespace CMP90HXToolbox
                         string prod = Convert.ToString(k.GetValue("ProductName") ?? "");
                         string build = Convert.ToString(k.GetValue("CurrentBuild") ?? "");
                         string displayVer = Convert.ToString(k.GetValue("DisplayVersion") ?? "");
+
+                        int buildNum = 0;
+                        int.TryParse(build, out buildNum);
+
+                        // Win11 的 ProductName 注册表值至今仍写着 "Windows 10"，必须按 Build 号纠正，否则一律显示 Win10
+                        if (buildNum >= 22000)
+                        {
+                            if (string.IsNullOrEmpty(prod)) prod = "Windows 11";
+                            else prod = prod.Replace("Windows 10", "Windows 11");
+                        }
+                        else if (string.IsNullOrEmpty(prod))
+                        {
+                            prod = "Windows 10";
+                        }
+
                         hw.OsVersion = string.Format("{0} {1} (Build {2})", prod, displayVer, build).Trim();
                     }
                 }

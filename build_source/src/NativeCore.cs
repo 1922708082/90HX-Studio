@@ -143,6 +143,85 @@ namespace CMP90HXToolbox
             }
         }
 
+        /// <summary>打开内置资源包流（嵌入资源优先，其次磁盘同目录）。调用方负责释放。</summary>
+        private static Stream OpenAssetsStream()
+        {
+            Stream inStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("assets.zip");
+            if (inStream != null) return inStream;
+
+            string asmLoc = typeof(NativeCore).Assembly.Location;
+            string asmDir = string.IsNullOrEmpty(asmLoc) ? "" : Path.GetDirectoryName(asmLoc);
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+            string[] candidates = new string[] {
+                Path.Combine(asmDir ?? "", "assets.zip"),
+                Path.Combine(baseDir ?? "", "assets.zip"),
+                @"D:\app\assets.zip"
+            };
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(candidates[i]) && File.Exists(candidates[i]))
+                    return File.OpenRead(candidates[i]);
+            }
+            return null;
+        }
+
+        /// <summary>列出资源包内指定前缀下的全部条目路径。</summary>
+        public static List<string> GetPackagedResourceNames(string prefix)
+        {
+            List<string> names = new List<string>();
+            Stream s = OpenAssetsStream();
+            if (s == null) return names;
+
+            using (s)
+            using (var archive = new ZipArchive(s, ZipArchiveMode.Read))
+            {
+                for (int i = 0; i < archive.Entries.Count; i++)
+                {
+                    string full = archive.Entries[i].FullName;
+                    if (full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) names.Add(full);
+                }
+            }
+            return names;
+        }
+
+        /// <summary>把资源包内某个目录树整体释放到目标目录，返回成功写出的文件数。</summary>
+        public static int ExtractPackagedTree(string pkgPrefix, string destRoot)
+        {
+            int written = 0;
+            Stream s = OpenAssetsStream();
+            if (s == null) return 0;
+
+            string prefix = pkgPrefix.TrimEnd('/') + "/";
+            using (s)
+            using (var archive = new ZipArchive(s, ZipArchiveMode.Read))
+            {
+                for (int i = 0; i < archive.Entries.Count; i++)
+                {
+                    ZipArchiveEntry e = archive.Entries[i];
+                    if (!e.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (string.IsNullOrEmpty(e.Name)) continue; // 目录占位条目
+
+                    string rel = e.FullName.Substring(prefix.Length).Replace('/', '\\');
+                    string dst = Path.Combine(destRoot, rel);
+                    try
+                    {
+                        string dir = Path.GetDirectoryName(dst);
+                        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                        using (Stream es = e.Open())
+                        using (FileStream fs = File.Create(dst))
+                        {
+                            es.CopyTo(fs);
+                        }
+                        written++;
+                    }
+                    catch { }
+                }
+            }
+            return written;
+        }
+
         public static bool IsAdmin()
         {
             try
@@ -2889,6 +2968,459 @@ namespace CMP90HXToolbox
             new KeyValuePair<string, string>("xefg",    "xefg_kernels.dll"),
         };
 
+        /// <summary>
+        /// 旧版 dlssg_for_sm86 把运行库、后端与内核全部编进代理 DLL，体积 20MB 以上；
+        /// 0.4.0 起代理层只剩转发逻辑，体积不足 1MB。用体积区分两代结构。
+        /// </summary>
+        private const long DlssLegacyBundleThreshold = 10L * 1024 * 1024;
+
+        /// <summary>
+        /// 代理 DLL 候选名。顺序沿用上游 dlssg_sm86.ini 的官方建议：先 version，
+        /// 加载不到再依次试 winmm / dbghelp / dinput8，dxgi 与 d3d12 属于渲染路径代理，最后手段且不可同时使用。
+        /// </summary>
+        public static readonly string[] ProxyCandidates = new string[]
+        {
+            "version.dll",
+            "winmm.dll",
+            "dbghelp.dll",
+            "dinput8.dll",
+            "dxgi.dll",
+            "d3d12.dll"
+        };
+
+        /// <summary>记录本次注入实际使用的代理名，移除时据此精确还原。</summary>
+        private const string DlssProxyMarkerFile = ".dlssg_proxy";
+
+        public class DlssRuntimeInfo
+        {
+            public string SourceDir { get; set; }
+            public bool Found { get; set; }
+            public long DllBytes { get; set; }
+            public bool IsLegacyBundle { get; set; }
+            public bool HasIni { get; set; }
+            public bool HasSubDir { get; set; }
+            public int SubDirFileCount { get; set; }
+            public bool Usable { get; set; }
+            public string Reason { get; set; }
+
+            public DlssRuntimeInfo()
+            {
+                SourceDir = "";
+                Reason = "";
+                Found = false;
+                Usable = false;
+            }
+        }
+
+        public class DlssCheckItem
+        {
+            public string Name { get; set; }
+            public bool Ok { get; set; }
+            public bool Blocking { get; set; }
+            public string Detail { get; set; }
+
+            public DlssCheckItem(string name, bool ok, bool blocking, string detail)
+            {
+                Name = name;
+                Ok = ok;
+                Blocking = blocking;
+                Detail = detail;
+            }
+        }
+
+        public class DlssPreflightResult
+        {
+            public bool Passed { get; set; }
+            public List<DlssCheckItem> Items { get; set; }
+            public DlssRuntimeInfo Runtime { get; set; }
+
+            public DlssPreflightResult()
+            {
+                Passed = true;
+                Items = new List<DlssCheckItem>();
+            }
+
+            public int BlockingCount()
+            {
+                int n = 0;
+                for (int i = 0; i < Items.Count; i++)
+                {
+                    if (!Items[i].Ok && Items[i].Blocking) n++;
+                }
+                return n;
+            }
+        }
+
+        public static bool IsKnownProxyName(string proxyName)
+        {
+            if (string.IsNullOrEmpty(proxyName)) return false;
+            if (proxyName.IndexOf('\\') >= 0 || proxyName.IndexOf('/') >= 0 || proxyName.IndexOf("..") >= 0) return false;
+            for (int i = 0; i < ProxyCandidates.Length; i++)
+            {
+                if (string.Equals(ProxyCandidates[i], proxyName, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>列出可用的代理文件名：磁盘运行库优先，其次识别内置资源包里的 alternatives\。</summary>
+        public static List<string> GetAvailableProxyNames()
+        {
+            List<string> list = new List<string>();
+            string dir = GetDlssRuntimeDirectory();
+
+            List<string> packed = null;
+            try { packed = GetPackagedResourceNames("dlss/alternatives/"); }
+            catch { packed = null; }
+
+            for (int i = 0; i < ProxyCandidates.Length; i++)
+            {
+                string name = ProxyCandidates[i];
+                bool has = File.Exists(Path.Combine(dir, name))
+                        || File.Exists(Path.Combine(dir, "alternatives", name));
+
+                if (!has && packed != null)
+                {
+                    for (int k = 0; k < packed.Count; k++)
+                    {
+                        if (packed[k].EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)) { has = true; break; }
+                    }
+                }
+                if (has) list.Add(name);
+            }
+
+            if (list.Count == 0) list.Add("version.dll");
+            return list;
+        }
+
+        public static List<string> GetDlssRuntimeCandidates()
+        {
+            List<string> list = new List<string>();
+            string primary = GetDlssRuntimeDirectory();
+            if (!list.Contains(primary)) list.Add(primary);
+
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string[] extra = new string[]
+            {
+                Path.Combine(baseDir, "dlss_runtime"),
+                Path.Combine(Directory.GetCurrentDirectory(), "dlss_runtime"),
+                @"D:\app\dlss_runtime",
+                @"D:\app\Portable_Release\dlss_runtime"
+            };
+            for (int i = 0; i < extra.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(extra[i]) && !list.Contains(extra[i])) list.Add(extra[i]);
+            }
+            return list;
+        }
+
+        /// <summary>检查单个运行库目录的结构完整性。</summary>
+        public static DlssRuntimeInfo InspectDlssRuntimeAt(string dir)
+        {
+            DlssRuntimeInfo info = new DlssRuntimeInfo();
+            info.SourceDir = dir == null ? "" : dir;
+
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            {
+                info.Reason = "目录不存在";
+                return info;
+            }
+
+            string dllPath = Path.Combine(dir, "version.dll");
+            if (!File.Exists(dllPath))
+            {
+                info.Reason = "缺少 version.dll";
+                return info;
+            }
+
+            info.Found = true;
+            try { info.DllBytes = new FileInfo(dllPath).Length; }
+            catch { info.DllBytes = 0; }
+
+            info.HasIni = File.Exists(Path.Combine(dir, "dlssg_sm86.ini"));
+            info.IsLegacyBundle = info.DllBytes >= DlssLegacyBundleThreshold;
+
+            string sub = Path.Combine(dir, "dlssg_sm86");
+            info.HasSubDir = Directory.Exists(sub);
+            int cnt = 0;
+            if (info.HasSubDir)
+            {
+                for (int i = 0; i < DlssSubDirFiles.Length; i++)
+                {
+                    string f = Path.Combine(sub, DlssSubDirFiles[i].Key, DlssSubDirFiles[i].Value);
+                    if (File.Exists(f)) cnt++;
+                }
+            }
+            info.SubDirFileCount = cnt;
+
+            if (info.IsLegacyBundle)
+            {
+                info.Usable = info.HasIni;
+                info.Reason = info.Usable ? "旧版单体包，运行库已内嵌" : "旧版单体包但缺少 dlssg_sm86.ini";
+            }
+            else if (!info.HasSubDir)
+            {
+                info.Usable = false;
+                info.Reason = "0.4.0 代理层缺少 dlssg_sm86 子目录，注入后不会生效";
+            }
+            else if (cnt < DlssSubDirFiles.Length)
+            {
+                info.Usable = false;
+                info.Reason = string.Format("dlssg_sm86 组件不全 ({0}/{1})", cnt, DlssSubDirFiles.Length);
+            }
+            else if (!info.HasIni)
+            {
+                info.Usable = false;
+                info.Reason = "缺少 dlssg_sm86.ini";
+            }
+            else
+            {
+                info.Usable = true;
+                info.Reason = "0.4.0 完整结构";
+            }
+            return info;
+        }
+
+        /// <summary>
+        /// 在全部候选目录中挑选最可用的运行库。
+        /// 规则：结构完整优先，0.4.0 完整结构优先于旧版单体包，避免优先取到残缺的 0.4.0 代理层。
+        /// </summary>
+        public static DlssRuntimeInfo ResolveBestDlssRuntime()
+        {
+            List<string> dirs = GetDlssRuntimeCandidates();
+            DlssRuntimeInfo best = null;
+            DlssRuntimeInfo firstFound = null;
+
+            for (int i = 0; i < dirs.Count; i++)
+            {
+                DlssRuntimeInfo info = InspectDlssRuntimeAt(dirs[i]);
+                if (info.Found && firstFound == null) firstFound = info;
+                if (!info.Usable) continue;
+                if (best == null) { best = info; continue; }
+                if (best.IsLegacyBundle && !info.IsLegacyBundle) best = info;
+            }
+
+            if (best != null) return best;
+            if (firstFound != null) return firstFound;
+            return InspectDlssRuntimeAt(dirs.Count > 0 ? dirs[0] : "");
+        }
+
+        /// <summary>
+        /// 最小可用配置骨架。源 ini 一旦遭遇 GBK/UTF-8 错误转码，中文注释会变成乱码，
+        /// 换行还可能被吃掉，导致 MaxGeneratedFrames / Optimized / Preset 等键整行并入注释而失效。
+        /// 此时改用这份纯 ASCII 骨架重建，保证关键键一定处于行首生效状态。
+        /// </summary>
+        private const string DlssIniSkeleton =
+            "[General]\nEnabled=1\n\n" +
+            "[FrameGeneration]\nEngine=DLSS\nOptimized=1\nMaxGeneratedFrames=3\n\n" +
+            "[DLSSG]\nOptimized=1\nPreset=Auto\n\n" +
+            "[Compatibility]\nPreset=Auto\n\n" +
+            "[XeSSFG]\nFlowResolution=Middle\nUseHudless=1\n\n" +
+            "[Runtime]\nMode=Bundled\n\n" +
+            "[SuperResolution]\nMode=Off\n\n" +
+            "[Logging]\nLevel=1\nDirectory=dlssg_sm86\\logs\n";
+
+        /// <summary>严格 UTF-8 优先解码；失败才回退系统编码。避免上游 UTF-8 文本被 ANSI 解码后二次损坏。</summary>
+        private static string DecodeTextSmart(byte[] data)
+        {
+            if (data == null || data.Length == 0) return "";
+            if (data.Length >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF)
+            {
+                try { return new UTF8Encoding(false, true).GetString(data, 3, data.Length - 3); }
+                catch { }
+            }
+            try { return new UTF8Encoding(false, true).GetString(data); }
+            catch { }
+            return Encoding.Default.GetString(data);
+        }
+
+        /// <summary>判断 ini 是否结构可用：段存在、关键键在行首、且不含错误转码留下的替换符与私用区字符。</summary>
+        public static bool IsDlssIniHealthy(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return false;
+
+            bool hasSection = text.IndexOf("[FrameGeneration]", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool hasMaxFrames = Regex.IsMatch(text, @"(?m)^\s*MaxGeneratedFrames\s*=", RegexOptions.IgnoreCase);
+            bool hasOptimized = Regex.IsMatch(text, @"(?m)^\s*Optimized\s*=", RegexOptions.IgnoreCase);
+            // Optimized 必须单独校验：错误转码会让它整行并入注释，而 MaxGeneratedFrames 可能仍然正常，
+            // 只看后者会把"优化档位已失效"的配置误判为健康。
+            if (!hasSection || !hasMaxFrames || !hasOptimized) return false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '\uFFFD') return false;
+                if (c >= '\uE000' && c <= '\uF8FF') return false;
+            }
+            return true;
+        }
+
+        /// <summary>按段写入 ini 键值；段或键不存在时自动补齐。</summary>
+        public static string SetIniValue(string text, string section, string key, string value)
+        {
+            if (text == null) text = "";
+            string[] lines = text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            List<string> list = new List<string>(lines);
+
+            string header = "[" + section + "]";
+            int secStart = -1;
+            int secEnd = list.Count;
+            for (int i = 0; i < list.Count; i++)
+            {
+                string t = list[i].Trim();
+                if (t.StartsWith("[") && t.EndsWith("]"))
+                {
+                    if (secStart >= 0) { secEnd = i; break; }
+                    if (string.Equals(t, header, StringComparison.OrdinalIgnoreCase)) secStart = i;
+                }
+            }
+
+            string kvPattern = @"^\s*" + Regex.Escape(key) + @"\s*=";
+            if (secStart >= 0)
+            {
+                bool replaced = false;
+                for (int i = secStart + 1; i < secEnd && i < list.Count; i++)
+                {
+                    if (Regex.IsMatch(list[i], kvPattern, RegexOptions.IgnoreCase))
+                    {
+                        list[i] = key + "=" + value;
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) list.Insert(secStart + 1, key + "=" + value);
+            }
+            else
+            {
+                if (list.Count > 0 && list[list.Count - 1].Trim().Length != 0) list.Add("");
+                list.Add(header);
+                list.Add(key + "=" + value);
+            }
+            return string.Join("\n", list.ToArray());
+        }
+
+        /// <summary>部署前体检：先确认源运行库可用、目标目录无冲突组件，再决定是否放行注入。</summary>
+        public static DlssPreflightResult PreflightDlssDeploy(string gameDir, string proxyName, bool injectReFramework)
+        {
+            DlssPreflightResult result = new DlssPreflightResult();
+            string proxy = IsKnownProxyName(proxyName) ? proxyName : "version.dll";
+
+            if (string.IsNullOrEmpty(gameDir) || !Directory.Exists(gameDir))
+            {
+                result.Items.Add(new DlssCheckItem("目标目录", false, true, "游戏目录不存在或未选择"));
+                result.Passed = false;
+                return result;
+            }
+
+            DlssRuntimeInfo rt = ResolveBestDlssRuntime();
+            result.Runtime = rt;
+            result.Items.Add(new DlssCheckItem(
+                "源运行库",
+                rt.Usable,
+                true,
+                rt.Usable
+                    ? string.Format("{0} · {1} · {2}", rt.IsLegacyBundle ? "单体版" : "0.4.0", rt.Reason, FormatSize(rt.DllBytes))
+                    : string.Format("{0}（{1}），请先执行「一键拉取并同步」", rt.Reason, rt.SourceDir)));
+
+            if (rt.Usable && !rt.IsLegacyBundle)
+            {
+                result.Items.Add(new DlssCheckItem(
+                    "内核组件",
+                    rt.SubDirFileCount >= DlssSubDirFiles.Length,
+                    true,
+                    string.Format("dlssg_sm86 子目录 {0}/{1} 个组件", rt.SubDirFileCount, DlssSubDirFiles.Length)));
+            }
+            else
+            {
+                result.Items.Add(new DlssCheckItem("内核组件", rt.Usable, false, "单体版无需子目录，运行库已内嵌在代理 DLL"));
+            }
+
+            bool iniOk = false;
+            string iniDetail = "未读到 ini";
+            if (rt.Found)
+            {
+                string iniPath = Path.Combine(rt.SourceDir, "dlssg_sm86.ini");
+                if (File.Exists(iniPath))
+                {
+                    try
+                    {
+                        string txt = File.ReadAllText(iniPath, Encoding.UTF8);
+                        iniOk = IsDlssIniHealthy(txt);
+                        iniDetail = iniOk
+                            ? "配置结构完整"
+                            : "ini 结构异常（关键键被并入注释或编码损坏），注入时将用内置骨架重建";
+                    }
+                    catch (Exception ex) { iniDetail = "ini 读取失败: " + ex.Message; }
+                }
+            }
+            result.Items.Add(new DlssCheckItem("配置文件", iniOk, false, iniDetail));
+
+            string targetProxy = Path.Combine(gameDir, proxy);
+            bool proxyConflict = File.Exists(targetProxy);
+            bool hasMarker = File.Exists(Path.Combine(gameDir, DlssProxyMarkerFile));
+            result.Items.Add(new DlssCheckItem(
+                "代理文件占用",
+                !proxyConflict || hasMarker,
+                false,
+                proxyConflict
+                    ? (hasMarker ? proxy + " 已存在，属本工具此前注入，将被覆盖" : proxy + " 已存在且非本工具注入，覆盖前请确认来源")
+                    : "目标目录干净，可直接落盘 " + proxy));
+
+            bool hasOptiScaler = File.Exists(Path.Combine(gameDir, "OptiScaler.ini"));
+            bool hasOurIni = File.Exists(Path.Combine(gameDir, "dlssg_sm86.ini"));
+            bool hasForeigndlssg = File.Exists(Path.Combine(gameDir, "nvngx_dlssg.dll"));
+            List<string> leftovers = new List<string>();
+            if (hasOptiScaler) leftovers.Add("OptiScaler.ini");
+            if (hasForeigndlssg) leftovers.Add("nvngx_dlssg.dll");
+            string slPath = Path.Combine(gameDir, "sl.interposer.dll");
+            string slVer = "";
+            if (File.Exists(slPath))
+            {
+                try { slVer = System.Diagnostics.FileVersionInfo.GetVersionInfo(slPath).FileVersion; }
+                catch { slVer = ""; }
+                leftovers.Add("sl.interposer.dll" + (string.IsNullOrEmpty(slVer) ? "" : " v" + slVer));
+            }
+            result.Items.Add(new DlssCheckItem(
+                "第三方组件",
+                leftovers.Count == 0,
+                false,
+                leftovers.Count == 0 ? "未发现其他插帧/超分工具残留" : "发现 " + string.Join("、", leftovers.ToArray()) + "，可能与注入冲突"));
+
+            List<string> legacyHits = new List<string>();
+            for (int i = 0; i < ProxyCandidates.Length; i++)
+            {
+                string p = Path.Combine(gameDir, ProxyCandidates[i]);
+                if (!File.Exists(p)) continue;
+                try
+                {
+                    long len = new FileInfo(p).Length;
+                    if (len >= DlssLegacyBundleThreshold) legacyHits.Add(ProxyCandidates[i] + "(" + FormatSize(len) + ")");
+                }
+                catch { }
+            }
+            result.Items.Add(new DlssCheckItem(
+                "旧版残留",
+                legacyHits.Count == 0,
+                false,
+                legacyHits.Count == 0 ? "未发现旧版单体 DLL 残留" : "发现旧版单体 DLL: " + string.Join("、", legacyHits.ToArray()) + "，建议先清理再注入"));
+
+            bool reConflict = injectReFramework && string.Equals(proxy, "dinput8.dll", StringComparison.OrdinalIgnoreCase);
+            result.Items.Add(new DlssCheckItem(
+                "RE 框架冲突",
+                !reConflict,
+                true,
+                reConflict ? "代理名已选 dinput8.dll，与 RE 框架代理同名，二者只能保留一个" : "无冲突"));
+
+            result.Passed = result.BlockingCount() == 0;
+            return result;
+        }
+
+        private static string FormatSize(long bytes)
+        {
+            if (bytes >= 1024L * 1024L) return string.Format("{0:0.0} MB", bytes / 1048576.0);
+            if (bytes >= 1024L) return string.Format("{0:0} KB", bytes / 1024.0);
+            return bytes + " B";
+        }
+
         public static List<DlssMirror> GetDlssMirrors()
         {
             return new List<DlssMirror>
@@ -3107,7 +3639,10 @@ namespace CMP90HXToolbox
                         {
                             wc.Headers.Add("User-Agent", "Mozilla/5.0 CMP90HX_Suite/2.5");
                             progress(20);
-                            iniContent = wc.DownloadString(mirror.IniUrl);
+                            // 必须按字节取回再显式 UTF-8 解码：DownloadString 走系统 ANSI(GBK)，
+                            // 会把上游 UTF-8 的中文注释解成乱码，并吞掉换行，令关键键整行并入注释而失效。
+                            byte[] iniBytes = wc.DownloadData(mirror.IniUrl);
+                            iniContent = DecodeTextSmart(iniBytes);
                         }
 
                         using (var wc = new WebClient())
@@ -3122,7 +3657,8 @@ namespace CMP90HXToolbox
                             using (var wc = new WebClient())
                             {
                                 wc.Headers.Add("User-Agent", "Mozilla/5.0 CMP90HX_Suite/2.5");
-                                string rm = wc.DownloadString(mirror.ReadmeUrl);
+                                byte[] rmBytes = wc.DownloadData(mirror.ReadmeUrl);
+                                string rm = DecodeTextSmart(rmBytes);
                                 var match = Regex.Match(rm, @"(?:DLSSG for SM86.*?-\s*([0-9]+\.[0-9]+\.[0-9]+)\s*版本|###\s*([0-9]+\.[0-9]+\.[0-9]+))");
                                 if (match.Success)
                                 {
@@ -3266,115 +3802,218 @@ namespace CMP90HXToolbox
             });
         }
 
-        public static bool InjectDlssG(string gameDir, string optVal, string maxFramesVal, bool injectReFramework, Action<string, bool> log)
+        public static bool InjectDlssG(string gameDir, string optVal, string maxFramesVal, bool injectReFramework, string proxyName, string engineVal, string presetVal, string srModeVal, Action<string, bool> log)
         {
             try
             {
                 if (!Directory.Exists(gameDir)) throw new DirectoryNotFoundException("游戏目录不存在: " + gameDir);
 
-                byte[] dllData = null;
-                // 【修复】优先读取更新真正写入的目录 (ProgramData)，
-                // 原来只找 EXE 目录 / D:\app 等旧路径，导致更新后注入的仍是旧版运行库。
-                string cachedDll = null;
-                string primaryDll = Path.Combine(GetDlssRuntimeDirectory(), "version.dll");
-                if (File.Exists(primaryDll)) cachedDll = primaryDll;
-                if (string.IsNullOrEmpty(cachedDll))
+                string proxy = proxyName;
+                if (!IsKnownProxyName(proxy))
                 {
-                    string[] dllCandidates = new string[]
-                    {
-                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dlss_runtime", "version.dll"),
-                        Path.Combine(Directory.GetCurrentDirectory(), "dlss_runtime", "version.dll"),
-                        @"D:\app\dlss_runtime\version.dll",
-                        @"D:\app\Portable_Release\dlss_runtime\version.dll"
-                    };
-                    foreach (var c in dllCandidates)
-                    {
-                        if (File.Exists(c)) { cachedDll = c; break; }
-                    }
+                    if (!string.IsNullOrEmpty(proxyName))
+                        log("代理名 [" + proxyName + "] 不在白名单内，已回退为 version.dll。", true);
+                    proxy = "version.dll";
                 }
 
-                if (!string.IsNullOrEmpty(cachedDll))
+                // 先定位结构完整的运行库：残缺的 0.4.0 代理层会被跳过，
+                // 避免优先取到 853KB 代理层却缺 dlssg_sm86 子目录，导致注入后静默失效。
+                DlssRuntimeInfo rt = ResolveBestDlssRuntime();
+                byte[] dllData = null;
+                string iniText = null;
+                bool fromPackage = false;
+                string proxyOrigin = "";
+
+                if (rt.Found && rt.Usable)
                 {
-                    log("正在从本地最新 DLSS 运行库加载 version.dll (" + cachedDll + ")...", false);
-                    dllData = File.ReadAllBytes(cachedDll);
+                    log("运行库来源: " + rt.SourceDir + " · " + rt.Reason, false);
+                    iniText = File.ReadAllText(Path.Combine(rt.SourceDir, "dlssg_sm86.ini"), Encoding.UTF8);
+
+                    string altPath = Path.Combine(rt.SourceDir, "alternatives", proxy);
+                    if (File.Exists(altPath))
+                    {
+                        dllData = File.ReadAllBytes(altPath);
+                        proxyOrigin = "磁盘 alternatives";
+                    }
+                    else
+                    {
+                        dllData = File.ReadAllBytes(Path.Combine(rt.SourceDir, "version.dll"));
+                        proxyOrigin = "磁盘根目录";
+                        if (!string.Equals(proxy, "version.dll", StringComparison.OrdinalIgnoreCase))
+                            log("本地运行库缺少 alternatives\\" + proxy + "，回退使用 version.dll。", true);
+                    }
                 }
                 else
                 {
-                    log("正在从内置资源包提取 version.dll...", false);
-                    dllData = GetPackagedResource("dlss/version.dll");
+                    log("本地运行库不可用（" + rt.Reason + "），回退到内置资源包。", true);
+
+                    try
+                    {
+                        dllData = GetPackagedResource("dlss/alternatives/" + proxy);
+                        proxyOrigin = "内置 alternatives";
+                    }
+                    catch
+                    {
+                        dllData = GetPackagedResource("dlss/version.dll");
+                        proxyOrigin = "内置根目录";
+                        if (!string.Equals(proxy, "version.dll", StringComparison.OrdinalIgnoreCase))
+                            log("内置包缺少 alternatives\\" + proxy + "，回退使用 version.dll。", true);
+                    }
+
+                    byte[] iniData = GetPackagedResource("dlss/dlssg_sm86.ini");
+                    if (iniData != null) iniText = Encoding.UTF8.GetString(iniData);
+                    fromPackage = true;
                 }
-                File.WriteAllBytes(Path.Combine(gameDir, "version.dll"), dllData);
+
+                if (dllData == null || dllData.Length == 0)
+                    throw new InvalidOperationException("运行库为空，无法注入");
+
+                bool legacyBundle = dllData.Length >= DlssLegacyBundleThreshold;
+                log("运行库形态: " + (legacyBundle ? "旧版单体包（运行库内嵌）" : "0.4.0 代理层 + 内核子目录") + " · " + FormatSize(dllData.Length), false);
+
+                // 0.4.0 结构必须先确认内核组件齐全，否则宁可中止也不写出一份跑不起来的补丁。
+                if (!legacyBundle && !fromPackage)
+                {
+                    string srcSub = Path.Combine(rt.SourceDir, "dlssg_sm86");
+                    int have = 0;
+                    for (int i = 0; i < DlssSubDirFiles.Length; i++)
+                    {
+                        if (File.Exists(Path.Combine(srcSub, DlssSubDirFiles[i].Key, DlssSubDirFiles[i].Value))) have++;
+                    }
+                    if (have < DlssSubDirFiles.Length)
+                    {
+                        log("注入中止：0.4.0 运行库缺少内核组件 (" + have + "/" + DlssSubDirFiles.Length + ")，注入后不会生效。请先执行【一键拉取并同步】。", true);
+                        return false;
+                    }
+                }
+                else if (!legacyBundle && fromPackage)
+                {
+                    List<string> packedSub = GetPackagedResourceNames("dlss/dlssg_sm86/");
+                    if (packedSub == null || packedSub.Count == 0)
+                    {
+                        log("注入中止：内置资源包缺少 dlssg_sm86 内核目录，0.4.0 代理层无法单独工作。", true);
+                        return false;
+                    }
+                }
+
+                string targetProxyPath = Path.Combine(gameDir, proxy);
+                File.WriteAllBytes(targetProxyPath, dllData);
+                log("已写入代理 " + proxy + " (" + FormatSize(dllData.Length) + " · 来源: " + proxyOrigin + ")", false);
 
                 log("正在应用配置并生成 dlssg_sm86.ini...", false);
-                string iniText = null;
-                string cachedIni = null;
-                string primaryIni = Path.Combine(GetDlssRuntimeDirectory(), "dlssg_sm86.ini");
-                if (File.Exists(primaryIni)) cachedIni = primaryIni;
-                if (string.IsNullOrEmpty(cachedIni))
+                if (iniText == null) iniText = "";
+
+                if (!IsDlssIniHealthy(iniText))
                 {
-                    string[] iniCandidates = new string[]
-                    {
-                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dlss_runtime", "dlssg_sm86.ini"),
-                        Path.Combine(Directory.GetCurrentDirectory(), "dlss_runtime", "dlssg_sm86.ini"),
-                        @"D:\app\dlss_runtime\dlssg_sm86.ini",
-                        @"D:\app\Portable_Release\dlss_runtime\dlssg_sm86.ini"
-                    };
-                    foreach (var c in iniCandidates)
-                    {
-                        if (File.Exists(c)) { cachedIni = c; break; }
-                    }
+                    log("源 ini 结构异常（关键键被并入注释或编码损坏），改用内置干净骨架重建配置。", true);
+                    iniText = DlssIniSkeleton;
                 }
 
-                if (!string.IsNullOrEmpty(cachedIni))
+                // 两代运行库的段落布局不同：0.4.0 用 [DLSSG] Optimized / Preset，
+                // 旧版单体包用 [FrameGeneration] Optimized + [Compatibility] Preset。
+                // 两个位置同时写入，运行库会忽略不认识的键，不存在副作用。
+                iniText = SetIniValue(iniText, "FrameGeneration", "Optimized", optVal);
+                iniText = SetIniValue(iniText, "DLSSG", "Optimized", optVal);
+                iniText = SetIniValue(iniText, "FrameGeneration", "MaxGeneratedFrames", maxFramesVal);
+                if (!string.IsNullOrEmpty(presetVal))
                 {
-                    iniText = File.ReadAllText(cachedIni, Encoding.UTF8);
+                    iniText = SetIniValue(iniText, "Compatibility", "Preset", presetVal);
+                    iniText = SetIniValue(iniText, "DLSSG", "Preset", presetVal);
                 }
-                else
-                {
-                    byte[] iniData = GetPackagedResource("dlss/dlssg_sm86.ini");
-                    iniText = Encoding.UTF8.GetString(iniData);
-                }
-
-                iniText = Regex.Replace(iniText, @"(?m)^Optimized\s*=\s*\d+", "Optimized=" + optVal);
-                iniText = Regex.Replace(iniText, @"(?m)^MaxGeneratedFrames\s*=\s*\d+", "MaxGeneratedFrames=" + maxFramesVal);
+                if (!string.IsNullOrEmpty(engineVal)) iniText = SetIniValue(iniText, "FrameGeneration", "Engine", engineVal);
+                if (!string.IsNullOrEmpty(srModeVal)) iniText = SetIniValue(iniText, "SuperResolution", "Mode", srModeVal);
 
                 File.WriteAllText(Path.Combine(gameDir, "dlssg_sm86.ini"), iniText, Encoding.UTF8);
 
                 // 0.4.0 结构：同步部署 dlssg_sm86\ 子目录（运行库/后端/内核包），否则 DLL 加载后无内核可用
-                string srcSubRoot = Path.Combine(GetDlssRuntimeDirectory(), "dlssg_sm86");
                 int subCopied = 0;
-                if (Directory.Exists(srcSubRoot))
+                if (!legacyBundle)
                 {
-                    foreach (var sub in DlssSubDirFiles)
+                    if (fromPackage)
                     {
-                        try
-                        {
-                            string src = Path.Combine(srcSubRoot, sub.Key, sub.Value);
-                            if (!File.Exists(src)) continue;
-                            string dstDir = Path.Combine(gameDir, "dlssg_sm86", sub.Key);
-                            if (!Directory.Exists(dstDir)) Directory.CreateDirectory(dstDir);
-                            File.Copy(src, Path.Combine(dstDir, sub.Value), true);
-                            subCopied++;
-                        }
-                        catch { }
+                        subCopied = ExtractPackagedTree("dlss/dlssg_sm86", Path.Combine(gameDir, "dlssg_sm86"));
+                        if (subCopied > 0) log("已从内置包部署 dlssg_sm86 内核组件 " + subCopied + " 个到游戏目录。", false);
+                        else log("提示：内置包内未提取到 dlssg_sm86 内核组件。", true);
                     }
-                    if (subCopied > 0) log("已同步部署 dlssg_sm86 运行库组件 " + subCopied + " 个到游戏目录。", false);
-                    else log("提示：未找到 dlssg_sm86 内核组件，0.4.0 运行库可能无法生效，请先执行【一键拉取并替换】更新。", true);
-                }
-                else
-                {
-                    log("提示：本地运行库缺少 dlssg_sm86 内核目录，请先执行【一键拉取并替换】更新到最新版。", true);
+                    else
+                    {
+                        string srcSubRoot = Path.Combine(rt.SourceDir, "dlssg_sm86");
+                        if (Directory.Exists(srcSubRoot))
+                        {
+                            for (int i = 0; i < DlssSubDirFiles.Length; i++)
+                            {
+                                try
+                                {
+                                    string src = Path.Combine(srcSubRoot, DlssSubDirFiles[i].Key, DlssSubDirFiles[i].Value);
+                                    if (!File.Exists(src)) continue;
+                                    string dstDir = Path.Combine(gameDir, "dlssg_sm86", DlssSubDirFiles[i].Key);
+                                    if (!Directory.Exists(dstDir)) Directory.CreateDirectory(dstDir);
+                                    File.Copy(src, Path.Combine(dstDir, DlssSubDirFiles[i].Value), true);
+                                    subCopied++;
+                                }
+                                catch { }
+                            }
+                            if (subCopied > 0) log("已同步部署 dlssg_sm86 运行库组件 " + subCopied + " 个到游戏目录。", false);
+                            else log("提示：未找到 dlssg_sm86 内核组件，0.4.0 运行库可能无法生效。", true);
+                        }
+                    }
                 }
 
                 if (injectReFramework)
                 {
-                    log("正在提取 RE 框架代理 (dinput8.dll)...", false);
-                    byte[] reData = GetPackagedResource("re_framework/dinput8.dll");
-                    File.WriteAllBytes(Path.Combine(gameDir, "dinput8.dll"), reData);
-                    log("已成功注入 RE 框架代理 (dinput8.dll)，卡普空 RE 引擎游戏专属兼容已就绪。", false);
+                    if (string.Equals(proxy, "dinput8.dll", StringComparison.OrdinalIgnoreCase))
+                    {
+                        log("代理名已选 dinput8.dll，跳过 RE 框架代理注入以避免同名冲突。", true);
+                    }
+                    else
+                    {
+                        log("正在提取 RE 框架代理 (dinput8.dll)...", false);
+                        byte[] reData = null;
+                        string localRe = Path.Combine(GetReFrameworkDirectory(), "dinput8.dll");
+                        if (File.Exists(localRe))
+                        {
+                            try
+                            {
+                                reData = File.ReadAllBytes(localRe);
+                                log("使用本地已更新的 REFramework（" + GetLocalReFrameworkVersion() + "）", false);
+                            }
+                            catch { reData = null; }
+                        }
+                        if (reData == null || reData.Length == 0)
+                            reData = GetPackagedResource("re_framework/dinput8.dll");
+
+                        if (reData != null && reData.Length > 0)
+                        {
+                            File.WriteAllBytes(Path.Combine(gameDir, "dinput8.dll"), reData);
+                            log("已成功注入 RE 框架代理 (dinput8.dll)，卡普空 RE 引擎游戏专属兼容已就绪。", false);
+                        }
+                        else log("内置资源中未找到 RE 框架代理，已跳过。", true);
+                    }
                 }
 
-                log("DLSS-G 补丁已成功注入游戏目录 (档位: " + optVal + ", 最大生成: " + maxFramesVal + (injectReFramework ? ", 含 RE 框架" : "") + ")", false);
+                try { File.WriteAllText(Path.Combine(gameDir, DlssProxyMarkerFile), proxy); }
+                catch { }
+
+                // 内置包注入成功后补齐本地缓存：既省掉每次从资源包解压 37MB，也让后续更新检测有基线版本。
+                if (fromPackage)
+                {
+                    try
+                    {
+                        string cacheDir = GetDlssRuntimeDirectory();
+                        File.WriteAllBytes(Path.Combine(cacheDir, "version.dll"), GetPackagedResource("dlss/version.dll"));
+                        byte[] cleanIni = GetPackagedResource("dlss/dlssg_sm86.ini");
+                        if (cleanIni != null) File.WriteAllBytes(Path.Combine(cacheDir, "dlssg_sm86.ini"), cleanIni);
+                        int cacheSub = ExtractPackagedTree("dlss/dlssg_sm86", Path.Combine(cacheDir, "dlssg_sm86"));
+                        int cacheAlt = ExtractPackagedTree("dlss/alternatives", Path.Combine(cacheDir, "alternatives"));
+                        log("已补齐本地运行库缓存（内核 " + cacheSub + " 个 / 代理 " + cacheAlt + " 个）。", false);
+                    }
+                    catch (Exception cex)
+                    {
+                        log("本地运行库缓存未能补齐（无写入权限时属正常，不影响本次注入）: " + cex.Message, false);
+                    }
+                }
+
+                log("DLSS-G 补丁已成功注入游戏目录 (代理: " + proxy + ", 内核档位: " + optVal + ", 倍率档: " + maxFramesVal + (injectReFramework ? ", 含 RE 框架" : "") + ")", false);
                 return true;
             }
             catch (Exception ex)
@@ -3384,25 +4023,69 @@ namespace CMP90HXToolbox
             }
         }
 
+        public static bool InjectDlssG(string gameDir, string optVal, string maxFramesVal, bool injectReFramework, Action<string, bool> log)
+        {
+            return InjectDlssG(gameDir, optVal, maxFramesVal, injectReFramework, "version.dll", "DLSS", "Auto", "Off", log);
+        }
+
         public static bool InjectDlssG(string gameDir, string optVal, string maxFramesVal, Action<string, bool> log)
         {
-            return InjectDlssG(gameDir, optVal, maxFramesVal, false, log);
+            return InjectDlssG(gameDir, optVal, maxFramesVal, false, "version.dll", "DLSS", "Auto", "Off", log);
         }
 
         public static bool RemoveDlssG(string gameDir, Action<string, bool> log)
         {
             try
             {
-                string dll = Path.Combine(gameDir, "version.dll");
                 string ini = Path.Combine(gameDir, "dlssg_sm86.ini");
-                string re = Path.Combine(gameDir, "dinput8.dll");
-                if (File.Exists(dll)) File.Delete(dll);
-                if (File.Exists(ini)) File.Delete(ini);
-                if (File.Exists(re))
+                string marker = Path.Combine(gameDir, DlssProxyMarkerFile);
+
+                // 优先按注入时记录的代理名精确还原，兼容历史上固定写 version.dll 的旧补丁。
+                string usedProxy = null;
+                if (File.Exists(marker))
                 {
-                    File.Delete(re);
-                    log("已同步移除 RE 框架代理 (dinput8.dll)。", false);
+                    try { usedProxy = File.ReadAllText(marker).Trim(); }
+                    catch { usedProxy = null; }
                 }
+
+                int removedProxy = 0;
+                if (IsKnownProxyName(usedProxy))
+                {
+                    string p = Path.Combine(gameDir, usedProxy);
+                    if (File.Exists(p))
+                    {
+                        File.Delete(p);
+                        removedProxy++;
+                        log("已移除代理 " + usedProxy + "（按注入记录还原）。", false);
+                    }
+                }
+
+                for (int i = 0; i < ProxyCandidates.Length; i++)
+                {
+                    string p = Path.Combine(gameDir, ProxyCandidates[i]);
+                    if (usedProxy != null && string.Equals(ProxyCandidates[i], usedProxy, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!File.Exists(p)) continue;
+                    try
+                    {
+                        // 没有记录时保守处理：只清理与 dlssg 同批落盘的单体大 DLL，避免误删其他模组的同名代理。
+                        long len = new FileInfo(p).Length;
+                        bool ours = (usedProxy == null) && (ProxyCandidates[i] == "version.dll" || len >= DlssLegacyBundleThreshold);
+                        if (ours)
+                        {
+                            File.Delete(p);
+                            removedProxy++;
+                            log("已移除残留代理 " + ProxyCandidates[i] + "。", false);
+                        }
+                    }
+                    catch { }
+                }
+
+                if (File.Exists(ini))
+                {
+                    File.Delete(ini);
+                    log("已移除 dlssg_sm86.ini。", false);
+                }
+
                 string subDir = Path.Combine(gameDir, "dlssg_sm86");
                 if (Directory.Exists(subDir))
                 {
@@ -3410,7 +4093,24 @@ namespace CMP90HXToolbox
                     catch { }
                 }
 
-                log("已从游戏目录清理移除 DLSS-G 补丁及相关组件。", false);
+                string re = Path.Combine(gameDir, "dinput8.dll");
+                if (File.Exists(re) && (usedProxy == null || !string.Equals(usedProxy, "dinput8.dll", StringComparison.OrdinalIgnoreCase)))
+                {
+                    try
+                    {
+                        File.Delete(re);
+                        log("已同步移除 RE 框架代理 (dinput8.dll)。", false);
+                    }
+                    catch { }
+                }
+
+                if (File.Exists(marker))
+                {
+                    try { File.Delete(marker); }
+                    catch { }
+                }
+
+                log("已从游戏目录清理移除 DLSS-G 补丁及相关组件（代理文件 " + removedProxy + " 个）。", false);
                 return true;
             }
             catch (Exception ex)
@@ -3419,6 +4119,562 @@ namespace CMP90HXToolbox
                 return false;
             }
         }
+
+        #region REFramework 更新
+
+        public static string GetReFrameworkDirectory()
+        {
+            string dir = Path.Combine(GetDataDirectory(), "re_framework");
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            return dir;
+        }
+
+        public const string ReFrameworkLatestUrl = "https://github.com/praydog/REFramework-nightly/releases/latest";
+
+        public class ReFwCheckResult
+        {
+            public bool Success { get; set; }
+            public string LocalVersion { get; set; }
+            public string RemoteVersion { get; set; }
+            public bool HasUpdate { get; set; }
+            public string Tag { get; set; }
+            public string ErrorMessage { get; set; }
+
+            public ReFwCheckResult()
+            {
+                Success = false;
+                LocalVersion = "";
+                RemoteVersion = "";
+                Tag = "";
+                ErrorMessage = "";
+            }
+        }
+
+        public class ReFwPullResult
+        {
+            public bool Success { get; set; }
+            public string NewVersion { get; set; }
+            public long DllBytes { get; set; }
+            public string Message { get; set; }
+
+            public ReFwPullResult()
+            {
+                Success = false;
+                NewVersion = "";
+                Message = "";
+            }
+        }
+
+        public static string GetLocalReFrameworkVersion()
+        {
+            try
+            {
+                string p = Path.Combine(GetReFrameworkDirectory(), "version.txt");
+                if (File.Exists(p))
+                {
+                    string v = File.ReadAllText(p).Trim();
+                    if (v.Length > 0) return v;
+                }
+            }
+            catch { }
+
+            try
+            {
+                byte[] b = GetPackagedResource("re_framework/reframework_revision.txt");
+                if (b != null && b.Length > 0) return Encoding.UTF8.GetString(b).Trim();
+            }
+            catch { }
+
+            return "未知";
+        }
+
+        /// <summary>解析任意仓库 releases/latest 的 302 跳转取 tag，不消耗 GitHub API 配额。</summary>
+        public static string ResolveLatestReleaseTag(string owner, string repo)
+        {
+            try
+            {
+                // .NET Framework 默认可能仍用 TLS 1.0，GitHub 要求 1.2+，不显式设置会直接连不上。
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | (SecurityProtocolType)192;
+
+                string url = "https://github.com/" + owner + "/" + repo + "/releases/latest";
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                req.AllowAutoRedirect = false;
+                req.UserAgent = "Mozilla/5.0 CMP90HX_Suite/2.5";
+                req.Timeout = 15000;
+                req.ReadWriteTimeout = 15000;
+                using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                {
+                    return ExtractTagFromLocation(resp.Headers["Location"]);
+                }
+            }
+            catch (WebException wex)
+            {
+                HttpWebResponse r = wex.Response as HttpWebResponse;
+                if (r != null) return ExtractTagFromLocation(r.Headers["Location"]);
+                return null;
+            }
+            catch { return null; }
+        }
+
+        public static string ResolveReFrameworkLatestTag()
+        {
+            return ResolveLatestReleaseTag("praydog", "REFramework-nightly");
+        }
+
+        private static string ExtractTagFromLocation(string loc)
+        {
+            if (string.IsNullOrEmpty(loc)) return null;
+            int i = loc.IndexOf("/tag/", StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return null;
+            string tag = loc.Substring(i + 5).Trim();
+            int q = tag.IndexOf('?');
+            if (q >= 0) tag = tag.Substring(0, q);
+            return tag.Trim().TrimEnd('/');
+        }
+
+        public static Task<ReFwCheckResult> CheckReFrameworkUpdateAsync(Action<string, bool> log)
+        {
+            return Task.Factory.StartNew<ReFwCheckResult>(delegate
+            {
+                ReFwCheckResult r = new ReFwCheckResult();
+                try
+                {
+                    log("正在查询 REFramework 最新版本...", false);
+                    string tag = ResolveReFrameworkLatestTag();
+                    if (string.IsNullOrEmpty(tag))
+                    {
+                        r.ErrorMessage = "无法解析最新版本号，请检查网络";
+                        return r;
+                    }
+                    r.Tag = tag;
+                    r.RemoteVersion = tag;
+                    r.LocalVersion = GetLocalReFrameworkVersion();
+
+                    // 内置包只带 revision（40 位 commit），远端是完整 tag；用包含关系判断，避免每次都误报更新。
+                    bool same = string.Equals(r.LocalVersion, tag, StringComparison.OrdinalIgnoreCase);
+                    if (!same && !string.IsNullOrEmpty(r.LocalVersion) && r.LocalVersion.Length >= 7)
+                        same = tag.IndexOf(r.LocalVersion, StringComparison.OrdinalIgnoreCase) >= 0;
+                    r.HasUpdate = !same;
+                    r.Success = true;
+                    log("REFramework 最新: " + tag + "（本地: " + r.LocalVersion + "）", false);
+                }
+                catch (Exception ex)
+                {
+                    r.ErrorMessage = ex.Message;
+                }
+                return r;
+            });
+        }
+
+        private static byte[] DownloadBytes(string url, int timeoutMs)
+        {
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+            req.UserAgent = "Mozilla/5.0 CMP90HX_Suite/2.5";
+            req.Timeout = timeoutMs;
+            req.ReadWriteTimeout = timeoutMs;
+            req.AllowAutoRedirect = true;
+            using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+            using (Stream s = resp.GetResponseStream())
+            using (MemoryStream ms = new MemoryStream())
+            {
+                s.CopyTo(ms);
+                return ms.ToArray();
+            }
+        }
+
+        public static Task<ReFwPullResult> PullReFrameworkAsync(string tag, Action<int> progress, Action<string, bool> log)
+        {
+            return Task.Factory.StartNew<ReFwPullResult>(delegate
+            {
+                ReFwPullResult r = new ReFwPullResult();
+                try
+                {
+                    if (string.IsNullOrEmpty(tag)) tag = ResolveReFrameworkLatestTag();
+                    if (string.IsNullOrEmpty(tag)) { r.Message = "版本号未知，无法下载"; return r; }
+
+                    string relPath = "/praydog/REFramework-nightly/releases/download/" + tag + "/REFramework.zip";
+                    string[] urls = new string[]
+                    {
+                        "https://github.com" + relPath,
+                        "https://ghfast.top/https://github.com" + relPath
+                    };
+
+                    ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | (SecurityProtocolType)192;
+
+                    byte[] zip = null;
+                    for (int i = 0; i < urls.Length && zip == null; i++)
+                    {
+                        try
+                        {
+                            log("正在下载 REFramework（" + (i == 0 ? "GitHub 直连" : "ghfast 镜像") + "）...", false);
+                            progress(20);
+                            zip = DownloadBytes(urls[i], 180000);
+                        }
+                        catch (Exception dex)
+                        {
+                            log("线路失败: " + dex.Message, true);
+                        }
+                    }
+                    if (zip == null || zip.Length == 0) { r.Message = "所有线路均下载失败"; return r; }
+
+                    progress(70);
+                    byte[] dll = null;
+                    string rev = "";
+                    using (MemoryStream ms = new MemoryStream(zip))
+                    using (ZipArchive ar = new ZipArchive(ms, ZipArchiveMode.Read))
+                    {
+                        for (int i = 0; i < ar.Entries.Count; i++)
+                        {
+                            ZipArchiveEntry e = ar.Entries[i];
+                            if (string.Equals(e.Name, "dinput8.dll", StringComparison.OrdinalIgnoreCase))
+                            {
+                                using (Stream es = e.Open())
+                                using (MemoryStream om = new MemoryStream())
+                                {
+                                    es.CopyTo(om);
+                                    dll = om.ToArray();
+                                }
+                            }
+                            else if (string.Equals(e.Name, "reframework_revision.txt", StringComparison.OrdinalIgnoreCase))
+                            {
+                                using (Stream es = e.Open())
+                                using (StreamReader sr = new StreamReader(es, Encoding.UTF8))
+                                {
+                                    rev = sr.ReadToEnd().Trim();
+                                }
+                            }
+                        }
+                    }
+
+                    if (dll == null || dll.Length == 0) { r.Message = "压缩包内未找到 dinput8.dll"; return r; }
+
+                    string dir = GetReFrameworkDirectory();
+                    File.WriteAllBytes(Path.Combine(dir, "dinput8.dll"), dll);
+                    File.WriteAllText(Path.Combine(dir, "version.txt"), tag);
+                    if (!string.IsNullOrEmpty(rev)) File.WriteAllText(Path.Combine(dir, "reframework_revision.txt"), rev);
+
+                    progress(100);
+                    r.Success = true;
+                    r.NewVersion = tag;
+                    r.DllBytes = dll.Length;
+                    log("REFramework 已更新到 " + tag + "（" + FormatSize(dll.Length) + "）", false);
+                }
+                catch (Exception ex)
+                {
+                    r.Message = ex.Message;
+                }
+                return r;
+            });
+        }
+
+        #endregion
+
+        #region 软件自更新
+
+        private const string AppRepoOwner = "1922708082";
+        private const string AppRepoName = "90HX-Studio";
+
+        public class AppUpdateInfo
+        {
+            public bool Success { get; set; }
+            public string CurrentVersion { get; set; }
+            public string LatestVersion { get; set; }
+            public string Tag { get; set; }
+            public string AssetName { get; set; }
+            public string DownloadUrl { get; set; }
+            public bool HasUpdate { get; set; }
+            public string ErrorMessage { get; set; }
+
+            public AppUpdateInfo()
+            {
+                Success = false;
+                CurrentVersion = "";
+                LatestVersion = "";
+                Tag = "";
+                AssetName = "";
+                DownloadUrl = "";
+                ErrorMessage = "";
+            }
+        }
+
+        public class AppUpdateResult
+        {
+            public bool Success { get; set; }
+            public string FilePath { get; set; }
+            public long SizeBytes { get; set; }
+            public string Message { get; set; }
+
+            public AppUpdateResult()
+            {
+                Success = false;
+                FilePath = "";
+                Message = "";
+            }
+        }
+
+        public static string GetCurrentExePath()
+        {
+            try
+            {
+                string p = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                if (!string.IsNullOrEmpty(p) && File.Exists(p)) return p;
+            }
+            catch { }
+            try
+            {
+                Process cur = Process.GetCurrentProcess();
+                if (cur != null && cur.MainModule != null) return cur.MainModule.FileName;
+            }
+            catch { }
+            return null;
+        }
+
+        public static string GetCurrentAppVersion()
+        {
+            try
+            {
+                string exe = GetCurrentExePath();
+                if (!string.IsNullOrEmpty(exe))
+                {
+                    FileVersionInfo vi = FileVersionInfo.GetVersionInfo(exe);
+                    string v = vi.FileVersion;
+                    if (string.IsNullOrEmpty(v)) v = vi.ProductVersion;
+                    if (!string.IsNullOrEmpty(v)) return v.Trim();
+                }
+            }
+            catch { }
+            return "0.0.0.0";
+        }
+
+        /// <summary>语义版本比较：a>b 返回 1，a&lt;b 返回 -1，相等返回 0。忽略前缀 v 与预发布后缀。</summary>
+        public static int CompareVersion(string a, string b)
+        {
+            int[] pa = ParseVersionParts(a);
+            int[] pb = ParseVersionParts(b);
+            int n = Math.Max(pa.Length, pb.Length);
+            for (int i = 0; i < n; i++)
+            {
+                int x = i < pa.Length ? pa[i] : 0;
+                int y = i < pb.Length ? pb[i] : 0;
+                if (x > y) return 1;
+                if (x < y) return -1;
+            }
+            return 0;
+        }
+
+        private static int[] ParseVersionParts(string v)
+        {
+            List<int> list = new List<int>();
+            if (string.IsNullOrEmpty(v)) return list.ToArray();
+
+            v = v.Trim();
+            if (v.StartsWith("v") || v.StartsWith("V")) v = v.Substring(1);
+            int dash = v.IndexOf('-');
+            if (dash > 0) v = v.Substring(0, dash);
+            int plus = v.IndexOf('+');
+            if (plus > 0) v = v.Substring(0, plus);
+
+            string[] seg = v.Split('.');
+            for (int i = 0; i < seg.Length; i++)
+            {
+                int n = 0;
+                int.TryParse(seg[i].Trim(), out n);
+                list.Add(n);
+            }
+            return list.ToArray();
+        }
+
+        /// <summary>从发布页 HTML 里取第一个 exe 资产地址，不依赖固定命名规则，也不需要 API token。</summary>
+        private static string ResolveReleaseAssetUrl(string tag)
+        {
+            string relPath = "/" + AppRepoOwner + "/" + AppRepoName + "/releases/expanded_assets/" + tag;
+            string[] hosts = new string[]
+            {
+                "https://github.com" + relPath,
+                "https://ghfast.top/https://github.com" + relPath
+            };
+
+            for (int h = 0; h < hosts.Length; h++)
+            {
+                try
+                {
+                    byte[] raw = DownloadBytes(hosts[h], 20000);
+                    if (raw == null || raw.Length == 0) continue;
+                    string html = DecodeTextSmart(raw);
+
+                    Match m = Regex.Match(html, "href=\"([^\"]*?/releases/download/[^\"]*?\\.exe)\"", RegexOptions.IgnoreCase);
+                    if (m.Success)
+                    {
+                        string href = m.Groups[1].Value;
+                        if (href.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return href;
+                        if (href.StartsWith("/")) return "https://github.com" + href;
+                        return "https://github.com/" + href;
+                    }
+                }
+                catch { }
+            }
+            return null;
+        }
+
+        public static Task<AppUpdateInfo> CheckAppUpdateAsync(Action<string, bool> log)
+        {
+            return Task.Factory.StartNew<AppUpdateInfo>(delegate
+            {
+                AppUpdateInfo info = new AppUpdateInfo();
+                info.CurrentVersion = GetCurrentAppVersion();
+
+                try
+                {
+                    log("正在检查软件更新...", false);
+                    string tag = ResolveLatestReleaseTag(AppRepoOwner, AppRepoName);
+                    if (string.IsNullOrEmpty(tag))
+                    {
+                        info.ErrorMessage = "无法解析最新版本号，请检查网络";
+                        return info;
+                    }
+
+                    info.Tag = tag;
+                    info.LatestVersion = tag.TrimStart('v', 'V');
+                    info.HasUpdate = CompareVersion(info.LatestVersion, info.CurrentVersion) > 0;
+
+                    if (info.HasUpdate)
+                    {
+                        string assetUrl = ResolveReleaseAssetUrl(tag);
+                        if (string.IsNullOrEmpty(assetUrl))
+                        {
+                            info.ErrorMessage = "发布页未找到可下载的 exe";
+                            info.HasUpdate = false;
+                            return info;
+                        }
+                        info.DownloadUrl = assetUrl;
+                        try { info.AssetName = Uri.UnescapeDataString(Path.GetFileName(new Uri(assetUrl).AbsolutePath)); }
+                        catch { info.AssetName = ""; }
+                    }
+
+                    info.Success = true;
+                    log("软件版本检查完成：当前 v" + info.CurrentVersion + "，最新 " + tag, false);
+                }
+                catch (Exception ex)
+                {
+                    info.ErrorMessage = ex.Message;
+                }
+                return info;
+            });
+        }
+
+        public static Task<AppUpdateResult> DownloadAppUpdateAsync(string url, Action<int> progress, Action<string, bool> log)
+        {
+            return Task.Factory.StartNew<AppUpdateResult>(delegate
+            {
+                AppUpdateResult r = new AppUpdateResult();
+                try
+                {
+                    if (string.IsNullOrEmpty(url)) { r.Message = "下载地址为空"; return r; }
+
+                    string exePath = GetCurrentExePath();
+                    if (string.IsNullOrEmpty(exePath)) { r.Message = "无法定位当前程序路径"; return r; }
+
+                    string dir = Path.GetDirectoryName(exePath);
+                    string target = Path.Combine(dir, Path.GetFileNameWithoutExtension(exePath) + ".update.exe");
+
+                    string[] urls = new string[] { url, "https://ghfast.top/" + url };
+                    byte[] data = null;
+                    for (int i = 0; i < urls.Length && data == null; i++)
+                    {
+                        try
+                        {
+                            log("正在下载更新包（" + (i == 0 ? "GitHub 直连" : "ghfast 镜像") + "）...", false);
+                            progress(10);
+                            data = DownloadBytes(urls[i], 300000);
+                        }
+                        catch (Exception dex)
+                        {
+                            log("线路失败: " + dex.Message, true);
+                        }
+                    }
+
+                    if (data == null || data.Length < 1024 * 1024) { r.Message = "下载失败或文件不完整"; return r; }
+                    if (data[0] != 0x4D || data[1] != 0x5A) { r.Message = "下载内容不是有效的 exe（缺少 MZ 头）"; return r; }
+
+                    progress(90);
+                    File.WriteAllBytes(target, data);
+                    progress(100);
+
+                    r.Success = true;
+                    r.FilePath = target;
+                    r.SizeBytes = data.Length;
+                    log("更新包已就绪：" + FormatSize(data.Length), false);
+                }
+                catch (Exception ex)
+                {
+                    r.Message = ex.Message;
+                }
+                return r;
+            });
+        }
+
+        /// <summary>
+        /// 生成替换脚本并启动。Windows 不允许覆写运行中的 exe，所以只能：
+        /// 等本进程退出 → 旧文件改名备份 → 新文件就位 → 重启 → 失败则回滚。
+        /// </summary>
+        public static bool ApplyAppUpdate(string newExePath, Action<string, bool> log)
+        {
+            try
+            {
+                string exePath = GetCurrentExePath();
+                if (string.IsNullOrEmpty(exePath)) { log("无法定位当前程序路径", true); return false; }
+                if (!File.Exists(newExePath)) { log("更新文件不存在：" + newExePath, true); return false; }
+
+                int pid = Process.GetCurrentProcess().Id;
+                string scriptPath = Path.Combine(Path.GetTempPath(), "90hx_upd_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".ps1");
+
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("$ErrorActionPreference = 'SilentlyContinue'");
+                sb.AppendLine("Start-Sleep -Seconds 2");
+                sb.AppendLine("$targetPid = " + pid);
+                sb.AppendLine("Wait-Process -Id $targetPid -ErrorAction SilentlyContinue");
+                sb.AppendLine("Start-Sleep -Milliseconds 800");
+                sb.AppendLine("$exe = '" + exePath.Replace("'", "''") + "'");
+                sb.AppendLine("$new = '" + newExePath.Replace("'", "''") + "'");
+                sb.AppendLine("$bak = $exe + '.old-update'");
+                sb.AppendLine("if (Test-Path $bak) { Remove-Item $bak -Force }");
+                sb.AppendLine("# 等旧文件句柄释放，最多重试 10 秒");
+                sb.AppendLine("for ($i = 0; $i -lt 20; $i++) {");
+                sb.AppendLine("    if (-not (Test-Path $exe)) { break }");
+                sb.AppendLine("    try { Move-Item $exe $bak -Force -ErrorAction Stop; break } catch { Start-Sleep -Milliseconds 500 }");
+                sb.AppendLine("}");
+                sb.AppendLine("$moved = $false");
+                sb.AppendLine("for ($i = 0; $i -lt 20; $i++) {");
+                sb.AppendLine("    try { Move-Item $new $exe -Force -ErrorAction Stop; $moved = $true; break } catch { Start-Sleep -Milliseconds 500 }");
+                sb.AppendLine("}");
+                sb.AppendLine("if ($moved -and (Test-Path $exe)) {");
+                sb.AppendLine("    Start-Process $exe");
+                sb.AppendLine("    Start-Sleep -Seconds 2");
+                sb.AppendLine("    Remove-Item $bak -Force");
+                sb.AppendLine("} else {");
+                sb.AppendLine("    if ((Test-Path $bak) -and -not (Test-Path $exe)) { Move-Item $bak $exe -Force }");
+                sb.AppendLine("    Start-Process $exe");
+                sb.AppendLine("}");
+
+                File.WriteAllText(scriptPath, sb.ToString(), new UTF8Encoding(true));
+
+                ProcessStartInfo psi = new ProcessStartInfo("powershell.exe",
+                    "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + scriptPath + "\"");
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                Process.Start(psi);
+
+                log("替换脚本已启动，程序将自动关闭并在完成后重新打开", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                log("启动更新失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        #endregion
 
         #endregion
 
