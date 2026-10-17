@@ -140,7 +140,7 @@ namespace CMP90HXToolbox
         private RadioButton _radioChannelB;
         private RadioButton _radioChannelC;
         private RadioButton _radioChannelD;
-        private StackPanel _panelUsbPicker;
+        private FrameworkElement _panelUsbPicker;
         private Button _btnApplyComputeOnly;
         private Button _btnRun40hxInstaller;
         private Button _btnRun40hxCheck;
@@ -249,6 +249,38 @@ namespace CMP90HXToolbox
         private const int SW_RESTORE = 9;
         private const int SW_SHOW = 5;
 
+        /// <summary>
+        /// 清掉历史版本更新留在程序目录的备份文件。
+        /// 自更新已改为把备份放系统临时目录，这里只处理旧版残留，避免桌面上越更越多文件。
+        /// </summary>
+        private static void CleanupUpdateLeftovers()
+        {
+            try
+            {
+                string exePath = NativeCore.GetCurrentExePath();
+                if (string.IsNullOrEmpty(exePath)) return;
+
+                string dir = Path.GetDirectoryName(exePath);
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
+
+                string baseName = Path.GetFileNameWithoutExtension(exePath);
+                string[] patterns = new string[]
+                {
+                    baseName + ".exe.old-update",
+                    baseName + ".old-update"
+                };
+                for (int i = 0; i < patterns.Length; i++)
+                {
+                    string f = Path.Combine(dir, patterns[i]);
+                    if (File.Exists(f))
+                    {
+                        try { File.Delete(f); } catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+
         private static void ActivateExistingInstance()
         {
             try
@@ -323,6 +355,7 @@ namespace CMP90HXToolbox
 
                 try
                 {
+                    CleanupUpdateLeftovers();
                     var app = new App();
                     app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -645,7 +678,7 @@ namespace CMP90HXToolbox
             _radioChannelB = (RadioButton)_window.FindName("RadioChannelB");
             _radioChannelC = (RadioButton)_window.FindName("RadioChannelC");
             _radioChannelD = (RadioButton)_window.FindName("RadioChannelD");
-            _panelUsbPicker = (StackPanel)_window.FindName("PanelUsbPicker");
+            _panelUsbPicker = (FrameworkElement)_window.FindName("PanelUsbPicker");
             _btnApplyComputeOnly = (Button)_window.FindName("BtnApplyComputeOnly");
             _btnRun40hxInstaller = (Button)_window.FindName("BtnRun40hxInstaller");
             _btnRun40hxCheck = (Button)_window.FindName("BtnRun40hxCheck");

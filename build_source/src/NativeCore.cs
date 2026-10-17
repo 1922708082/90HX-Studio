@@ -4636,7 +4636,8 @@ namespace CMP90HXToolbox
                 sb.AppendLine("Start-Sleep -Milliseconds 800");
                 sb.AppendLine("$exe = '" + exePath.Replace("'", "''") + "'");
                 sb.AppendLine("$new = '" + newExePath.Replace("'", "''") + "'");
-                sb.AppendLine("$bak = $exe + '.old-update'");
+                // 备份放到系统临时目录，程序目录只留一个 exe，避免每次更新后多出 .old-update 文件
+                sb.AppendLine("$bak = Join-Path $env:TEMP '90HX_Studio.old.exe'");
                 sb.AppendLine("if (Test-Path $bak) { Remove-Item $bak -Force }");
                 sb.AppendLine("# 等旧文件句柄释放，最多重试 10 秒");
                 sb.AppendLine("for ($i = 0; $i -lt 20; $i++) {");

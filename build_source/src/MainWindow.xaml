@@ -854,7 +854,7 @@
 
                     <StackPanel Grid.Row="2">
                         <Rectangle Height="1" Fill="{StaticResource BorderLight}" />
-                        <TextBlock Name="TxtSidebarVersion" Text="v4.4.1" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
+                        <TextBlock Name="TxtSidebarVersion" Text="v4.4.2" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -1244,7 +1244,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="280" />
                     </Grid.ColumnDefinitions>
-                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="24,16,16,24">
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,16,24">
                     <StackPanel>
 
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
@@ -1418,7 +1418,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="280" />
                     </Grid.ColumnDefinitions>
-                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="24,16,16,24">
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,16,24">
                     <StackPanel>
 
                         <Border Name="BannerNo90hxWarning" Background="#FFF8EB" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,0,12" Visibility="Collapsed">
@@ -2161,7 +2161,7 @@
 
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="当前版本" Foreground="{StaticResource TextSub}" FontSize="11.5" />
-                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.4.1" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
+                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.4.2" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <Border Name="BdAppStatus" Grid.Column="1" Background="#F1F5F9" CornerRadius="14" Padding="12,6" VerticalAlignment="Center">
