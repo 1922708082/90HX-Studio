@@ -1721,10 +1721,10 @@ namespace CMP90HXToolbox
                     }
                     else if (installChannel == 0 || installChannel == 1)
                     {
-                        string esp = FindEspPartition();
+                        string esp = MountEsp(log);
                         if (string.IsNullOrEmpty(esp))
                         {
-                            log("未找到 ESP 引导分区，无法本机部署。", true);
+                            log("未找到 ESP 引导分区，无法本机部署（上方日志包含探测详情，请反馈给开发者）。", true);
                             return false;
                         }
                         string dest = Path.Combine(esp, @"EFI\NVPermissive");
@@ -1733,6 +1733,7 @@ namespace CMP90HXToolbox
                         File.WriteAllBytes(Path.Combine(dest, "shellx64.efi"), shell);
                         File.WriteAllText(Path.Combine(dest, "startup.nsh"), BuildNvPermissiveNsh(true), Encoding.ASCII);
                         log("已部署到 ESP 分区: " + dest, false);
+                        UnmountEsp(esp);
 
                         // ===== 1) 清理旧的同名解锁启动项（保证可重复执行、不会堆积重复项） =====
                         try
@@ -1881,25 +1882,136 @@ namespace CMP90HXToolbox
         /// 依次尝试：已挂载盘符 → mountvol 枚举卷 GUID 路径（验证含 bootmgfw.efi）→ 兼容旧挂载点。
         /// 返回值可直接与 EFI\... 拼接，形如 "S:\" 或 "\\?\Volume{...}\"。
         /// </summary>
-        private static string FindEspPartition()
+        #region ESP 定位与临时挂载（Win32 直读，规避 .NET 对 \\?\ 卷路径的限制）
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFileAttributesW(string lpFileName);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool SetVolumeMountPointW(string lpszVolumeMountPoint, string lpszVolumeName);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool DeleteVolumeMountPointW(string lpszVolumeMountPoint);
+
+        private const uint INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
+        private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
+
+        private static readonly char[] EspMountLetters = new char[] { 'S', 'T', 'U', 'V', 'W', 'Y', 'Z' };
+        private static string _espMountPoint = null;
+
+        /// <summary>Win32 直判存在性：绕过 .NET Framework legacy 路径处理对 \\?\ 前缀的拒绝。</summary>
+        private static bool Win32Exists(string path)
+        {
+            try { return GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES; }
+            catch { return false; }
+        }
+
+        private static bool Win32IsDir(string path)
         {
             try
             {
-                // 1) ESP 已被分配盘符（少数系统）
-                foreach (string d in new string[] { "C:\\", "D:\\", "E:\\", "F:\\", "G:\\", "H:\\" })
+                uint a = GetFileAttributesW(path);
+                return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY) != 0;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>ESP 特征判断：bootmgfw / bootx64 / EFI 目录，命中任一即可。</summary>
+        private static bool LooksLikeEsp(string root)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(root)) return false;
+                if (!root.EndsWith("\\")) root += "\\";
+                if (Win32Exists(root + @"EFI\Microsoft\Boot\bootmgfw.efi")) return true;
+                if (Win32Exists(root + @"EFI\Boot\bootx64.efi")) return true;
+                if (Win32Exists(root + @"EFI\Boot\BOOTX64.EFI")) return true;
+                if (Win32IsDir(root + @"EFI\Microsoft\Boot")) return true;
+                if (Win32IsDir(root + "EFI")) return true;
+                return false;
+            }
+            catch { return false; }
+        }
+
+        private static string FindEspByWmi(Action<string, bool> log)
+        {
+            try
+            {
+                var scope = new System.Management.ManagementScope(@"\\.\root\Microsoft\Windows\Storage");
+                var query = new System.Management.ObjectQuery("SELECT AccessPaths, GptType FROM MSFT_Partition");
+                using (var searcher = new System.Management.ManagementObjectSearcher(scope, query))
                 {
-                    if (File.Exists(d + @"EFI\Microsoft\Boot\bootmgfw.efi")) return d;
+                    foreach (System.Management.ManagementObject p in searcher.Get())
+                    {
+                        object gt = p["GptType"];
+                        if (gt == null) continue;
+                        string g = Convert.ToString(gt);
+                        if (string.IsNullOrEmpty(g) || g.IndexOf("c12a7328", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        string[] paths = p["AccessPaths"] as string[];
+                        if (paths == null) continue;
+                        foreach (string pth in paths)
+                        {
+                            if (string.IsNullOrEmpty(pth)) continue;
+                            if (pth.StartsWith(@"\\?\Volume", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (log != null) log("ESP 命中（WMI EFI 系统分区）: " + pth, false);
+                                return pth;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log("WMI 分区查询不可用，回退卷扫描: " + ex.Message, false);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 定位 ESP：盘符 → WMI EFI 分区 → mountvol 卷扫描（Win32 验证）→ 兼容目录。
+        /// 只返回路径不做挂载；需要读写文件请使用 MountEsp。
+        /// </summary>
+        private static string FindEspPartition(Action<string, bool> log = null)
+        {
+            Action<string, bool> L = (m, e) => { if (log != null) log(m, e); };
+            try
+            {
+                // 1) 已挂载盘符
+                string[] letters = new string[] { "C", "D", "E", "F", "G", "H", "I", "J", "K", "S", "T", "U", "V", "W", "Y", "Z" };
+                foreach (string d in letters)
+                {
+                    string root = d + ":\\";
+                    if (LooksLikeEsp(root))
+                    {
+                        L("ESP 定位成功（已挂载盘符）: " + root, false);
+                        return root;
+                    }
                 }
 
-                // 2) 无盘符 ESP 是常态：从 mountvol 卷列表中逐个验证（纯只读，不做任何挂载）
+                // 2) WMI：EFI 系统分区（GPT 类型 c12a7328-...），Win8+ 最可靠
+                string wmiVol = FindEspByWmi(log);
+                if (!string.IsNullOrEmpty(wmiVol)) return wmiVol;
+
+                // 3) mountvol 卷扫描 + Win32 验证（.NET 的 File.Exists 无法访问 \\?\ 路径）
                 string mv = RunCmd("mountvol", "");
-                foreach (Match m in Regex.Matches(mv, @"\\\\\?\\Volume\{[0-9a-fA-F\-]+\}\\"))
+                int volCount = 0;
+                if (!string.IsNullOrEmpty(mv))
                 {
-                    string vol = m.Value;
-                    if (File.Exists(Path.Combine(vol, @"EFI\Microsoft\Boot\bootmgfw.efi"))) return vol;
+                    foreach (Match m in Regex.Matches(mv, @"\\\\\?\\Volume\{[0-9a-fA-F\-]+\}\\"))
+                    {
+                        volCount++;
+                        string vol = m.Value;
+                        if (LooksLikeEsp(vol))
+                        {
+                            L("ESP 定位成功（mountvol 卷扫描，共 " + volCount + " 个卷）: " + vol, false);
+                            return vol;
+                        }
+                    }
                 }
+                L("ESP 扫描未命中：mountvol 解析到 " + volCount + " 个卷（若为 0 可能被安全软件拦截）", true);
 
-                // 3) 兼容旧版：ESP 曾被挂载到目录的少数情况
+                // 4) 兼容旧版：EFI 曾被挂载到目录
                 string[] legacy = new string[] {
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "EFI"),
                     @"C:\EFI",
@@ -1907,12 +2019,22 @@ namespace CMP90HXToolbox
                 };
                 foreach (string c in legacy)
                 {
-                    if (Directory.Exists(c)) return c;
+                    if (Directory.Exists(c))
+                    {
+                        L("ESP 定位成功（兼容目录）: " + c, false);
+                        return c;
+                    }
                 }
                 return null;
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                L("ESP 探测异常: " + ex.Message, true);
+                return null;
+            }
         }
+
+        #endregion
 
         /// <summary>
         /// 统计系统内 Windows 启动分区数量（只读）。
@@ -2270,28 +2392,71 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>
-        /// 获取 ESP 访问路径：优先已挂载盘符（S/T/U/V/W/Y/Z），否则直接返回免挂载的
-        /// 卷 GUID 路径。全程不调用 mountvol /S（部分主板会卡死），调用方拼 EFI\... 即可。
+        /// 获取可读写的 ESP 根路径：优先已挂载盘符；否则定位 ESP 卷后用 Win32
+        /// SetVolumeMountPoint 临时挂载到空闲盘符（S-Z），返回 "X:"。
+        /// 挂载仅由本进程创建，结束时用 UnmountEsp 卸载。
         /// </summary>
-        private static string MountEsp()
+        private static string MountEsp(Action<string, bool> log = null)
         {
-            foreach (char letter in new char[] { 'S', 'T', 'U', 'V', 'W', 'Y', 'Z' })
+            Action<string, bool> L = (m, e) => { if (log != null) log(m, e); };
+            try
             {
-                string drv = letter + ":";
-                if (File.Exists(Path.Combine(drv, @"EFI\Microsoft\Boot\bootmgfw.efi"))) return drv;
+                // 1) 已挂载盘符
+                foreach (char letter in EspMountLetters)
+                {
+                    string drv = letter + ":";
+                    if (LooksLikeEsp(drv + "\\")) return drv;
+                }
+
+                // 2) 定位 ESP 卷
+                string vol = FindEspPartition(log);
+                if (string.IsNullOrEmpty(vol)) return null;
+
+                // 已是盘符路径
+                if (Regex.IsMatch(vol, @"^[A-Za-z]:\\?$")) return vol.TrimEnd('\\');
+
+                // 3) 挂载到空闲盘符（Win32 API，不调用 mountvol /S，避免卡死）
+                foreach (char letter in EspMountLetters)
+                {
+                    string mp = letter + ":\\";
+                    try
+                    {
+                        if (Directory.Exists(mp)) continue;
+                    }
+                    catch { }
+                    if (SetVolumeMountPointW(mp, vol))
+                    {
+                        _espMountPoint = mp;
+                        if (LooksLikeEsp(mp))
+                        {
+                            L("ESP 已临时挂载到 " + mp + " 用于写入", false);
+                            return mp.TrimEnd('\\');
+                        }
+                        try { DeleteVolumeMountPointW(mp); } catch { }
+                        _espMountPoint = null;
+                    }
+                }
+
+                // 4) 挂载失败：退回卷路径（写入可能失败，但日志明确）
+                L("ESP 未能挂载为盘符，尝试直接写入卷路径（部分系统会失败）", true);
+                return vol;
             }
-            return FindEspPartition();
+            catch (Exception ex)
+            {
+                L("ESP 挂载异常: " + ex.Message, true);
+                return null;
+            }
         }
 
         private static void UnmountEsp(string espPath)
         {
             try
             {
-                // 仅当拿到的是盘符路径时才尝试卸载；卷 GUID 路径无需（也无法）卸载
-                if (!string.IsNullOrEmpty(espPath) && Regex.IsMatch(espPath, @"^[A-Za-z]:\\?$"))
+                // 只卸载本进程临时挂载的盘符，绝不动用户原有挂载
+                if (!string.IsNullOrEmpty(_espMountPoint))
                 {
-                    string root = espPath.TrimEnd('\\');
-                    RunCmd("mountvol", root + " /D");
+                    DeleteVolumeMountPointW(_espMountPoint);
+                    _espMountPoint = null;
                 }
             }
             catch { }
