@@ -285,6 +285,210 @@ namespace CMP90HXToolbox
             return null;
         }
 
+        // ================= DLSS 5 神经渲染（DLSS Unlocked 社区解锁包）=================
+
+        public static string GetDlssUnlockedDirectory()
+        {
+            try { return Path.Combine(GetDataDirectory(), "dlss_unlocked"); }
+            catch { return null; }
+        }
+
+        /// <summary>本地 DLSS Unlocked 包的状态描述。</summary>
+        public static string GetDlssUnlockedLocalVersion()
+        {
+            try
+            {
+                string dir = GetDlssUnlockedDirectory();
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return "未下载";
+                string tag = Path.Combine(dir, "version.txt");
+                if (File.Exists(tag))
+                {
+                    string t = File.ReadAllText(tag).Trim();
+                    if (t.Length > 0) return t;
+                }
+                string[] zips = Directory.GetFiles(dir, "dlss-unlocked-standalone-*.zip");
+                if (zips.Length > 0) return "已下载，未解压";
+            }
+            catch { }
+            return "未下载";
+        }
+
+        /// <summary>解析 dlss-unlocked 最新 release tag（走 302 跳转，不消耗 API 配额）。</summary>
+        public static string CheckDlssUnlockedLatestTag(Action<string, bool> log)
+        {
+            string[] prefixes = new string[] { "https://ghfast.top/", "" };
+            for (int i = 0; i < prefixes.Length; i++)
+            {
+                try
+                {
+                    ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | (SecurityProtocolType)192;
+                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(prefixes[i] + "https://github.com/ShyVortex/dlss-unlocked/releases/latest");
+                    req.AllowAutoRedirect = false;
+                    req.UserAgent = "Mozilla/5.0 CMP90HX_Suite/4.6";
+                    req.Timeout = 15000;
+                    using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                    {
+                        string loc = resp.Headers["Location"];
+                        if (!string.IsNullOrEmpty(loc))
+                        {
+                            int p = loc.LastIndexOf("/tag/", StringComparison.OrdinalIgnoreCase);
+                            if (p >= 0)
+                            {
+                                string tag = loc.Substring(p + 5).Trim();
+                                if (tag.Length > 2 && tag.Length < 48) return tag;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log("检查 DLSS 5 版本失败（" + (i == 0 ? "镜像" : "直连") + "）: " + ex.Message, false);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>下载 DLSS Unlocked standalone 包（约 482MB）到数据目录。</summary>
+        public static Task<bool> DownloadDlssUnlockedAsync(string tag, Action<int, string> progress, Action<string, bool> log)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                try
+                {
+                    string dir = GetDlssUnlockedDirectory();
+                    if (string.IsNullOrEmpty(dir)) return false;
+                    Directory.CreateDirectory(dir);
+
+                    string fileName = "dlss-unlocked-standalone-" + tag + ".zip";
+                    string dest = Path.Combine(dir, fileName);
+                    string[] prefixes = new string[] { "https://ghfast.top/", "https://github.com/" };
+
+                    for (int i = 0; i < prefixes.Length; i++)
+                    {
+                        try
+                        {
+                            string url = prefixes[i] + "https://github.com/ShyVortex/dlss-unlocked/releases/download/" + tag + "/" + fileName;
+                            log("开始下载 " + fileName + "（" + (i == 0 ? "镜像" : "直连") + "线路，约 482MB）...", false);
+                            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | (SecurityProtocolType)192;
+
+                            using (var wc = new WebClient())
+                            {
+                                wc.Headers.Add("User-Agent", "Mozilla/5.0 CMP90HX_Suite/4.6");
+                                wc.DownloadProgressChanged += delegate(object s, DownloadProgressChangedEventArgs e)
+                                {
+                                    progress(e.ProgressPercentage, (e.BytesReceived / 1048576) + " / " + Math.Max(1, e.TotalBytesToReceive / 1048576) + " MB");
+                                };
+                                wc.DownloadFile(url, dest);
+                            }
+
+                            var fi = new FileInfo(dest);
+                            if (fi.Exists && fi.Length > 50L * 1024 * 1024)
+                            {
+                                File.WriteAllText(Path.Combine(dir, "version.txt"), tag);
+                                log("下载完成：" + (fi.Length / 1048576) + " MB", false);
+                                progress(100, "下载完成");
+                                return true;
+                            }
+                            log("下载的文件大小异常（" + (fi.Exists ? fi.Length : 0) + " 字节），已放弃", true);
+                        }
+                        catch (Exception ex)
+                        {
+                            log("下载失败（" + (i == 0 ? "镜像" : "直连") + "）: " + ex.Message, false);
+                        }
+                    }
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    log("下载过程异常: " + ex.Message, true);
+                    return false;
+                }
+            });
+        }
+
+        /// <summary>把已下载的 DLSS Unlocked 包解压部署到游戏目录，原有同名文件备份为 .dlss5.bak。</summary>
+        public static bool DeployDlssUnlockedToGame(string gameDir, Action<string, bool> log)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(gameDir) || !Directory.Exists(gameDir))
+                {
+                    log("游戏目录无效", true);
+                    return false;
+                }
+
+                string root = GetDlssUnlockedDirectory();
+                if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
+                {
+                    log("尚未下载 DLSS Unlocked 包，请先点击下载", true);
+                    return false;
+                }
+
+                string[] zips = Directory.GetFiles(root, "dlss-unlocked-standalone-*.zip");
+                if (zips.Length == 0)
+                {
+                    log("数据目录里没有 DLSS Unlocked 压缩包，请先下载", true);
+                    return false;
+                }
+
+                string zip = zips[0];
+                for (int i = 1; i < zips.Length; i++)
+                {
+                    if (File.GetLastWriteTimeUtc(zips[i]) > File.GetLastWriteTimeUtc(zip)) zip = zips[i];
+                }
+
+                // 代理冲突提示：代理 DLL 只能存在一个
+                string[] proxies = new string[] { "version.dll", "dxgi.dll", "winmm.dll", "dbghelp.dll", "dinput8.dll", "d3d12.dll" };
+                for (int i = 0; i < proxies.Length; i++)
+                {
+                    if (File.Exists(Path.Combine(gameDir, proxies[i])))
+                    {
+                        log("提示：游戏目录已存在 " + proxies[i] + "，将覆盖原文件并备份为 .dlss5.bak", false);
+                    }
+                }
+
+                int written = 0;
+                using (var fs = File.OpenRead(zip))
+                using (var archive = new ZipArchive(fs, ZipArchiveMode.Read))
+                {
+                    for (int i = 0; i < archive.Entries.Count; i++)
+                    {
+                        ZipArchiveEntry e = archive.Entries[i];
+                        if (string.IsNullOrEmpty(e.Name)) continue;
+
+                        string rel = e.FullName.Replace('/', '\\');
+                        if (rel.IndexOf("..", StringComparison.Ordinal) >= 0) continue;
+
+                        string target = Path.Combine(gameDir, rel);
+                        string d = Path.GetDirectoryName(target);
+                        if (!string.IsNullOrEmpty(d)) Directory.CreateDirectory(d);
+
+                        if (File.Exists(target))
+                        {
+                            try { File.Copy(target, target + ".dlss5.bak", true); } catch { }
+                        }
+                        // 不用 ExtractToFile（那是 .NET 4.5 FileSystem 扩展，本项目引用里没有），直接拷贝流
+                        using (Stream es = e.Open())
+                        using (FileStream dfs = new FileStream(target, FileMode.Create, FileAccess.Write))
+                        {
+                            es.CopyTo(dfs);
+                        }
+                        written++;
+                    }
+                }
+
+                File.WriteAllText(Path.Combine(root, "deployed.txt"),
+                    gameDir + "\r\n" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                log("已部署到游戏目录，共写入 " + written + " 个文件", false);
+                return written > 0;
+            }
+            catch (Exception ex)
+            {
+                log("部署失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
         /// <summary>启动工具包里的可执行文件，自动提权并以工具目录为工作目录。</summary>
         public static bool LaunchToolkitApp(string toolkitKey, string exeName, Action<string, bool> log)
         {

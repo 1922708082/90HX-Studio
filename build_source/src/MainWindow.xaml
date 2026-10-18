@@ -843,7 +843,7 @@
 
                         <TextBlock Text="性能优化" Style="{StaticResource NavGroupTitle}" />
                         <RadioButton Name="NavItemDualGpu" Style="{StaticResource NavItemBtn}" Content="双卡调度" Tag="M3,6 H12 V13 H3 Z M13.5,9 H21 V16 H13.5 Z M7.5,13 V16 M4.5,16 H10.5 M17.25,16 V18.5 M15,18.5 H19.5" />
-                        <RadioButton Name="NavItemDlss" Style="{StaticResource NavItemBtn}" Content="DLSS 3 帧生成" Tag="M3.5,17 A9,9 0 0 1 20.5,17 M12,17 L16.8,11.2 M12,13.5 V13.6" />
+                        <RadioButton Name="NavItemDlss" Style="{StaticResource NavItemBtn}" Content="DLSS 5 / 帧生成" Tag="M3.5,17 A9,9 0 0 1 20.5,17 M12,17 L16.8,11.2 M12,13.5 V13.6" />
                         <RadioButton Name="NavItemPower" Style="{StaticResource NavItemBtn}" Content="硬件与电源" Tag="M4,7 H20 M4,12 H20 M4,17 H20 M9,4.5 V9.5 M16,9.5 V14.5 M7,14.5 V19.5" />
 
                         <TextBlock Text="系统" Style="{StaticResource NavGroupTitle}" />
@@ -856,7 +856,7 @@
 
                     <StackPanel Grid.Row="2">
                         <Rectangle Height="1" Fill="{StaticResource BorderLight}" />
-                        <TextBlock Name="TxtSidebarVersion" Text="v4.5.0" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
+                        <TextBlock Name="TxtSidebarVersion" Text="v4.6.0" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -1908,8 +1908,10 @@
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="0,0,0,12">
                     <StackPanel Orientation="Horizontal">
+                        
+
                         <Border Width="4" Height="17" CornerRadius="2" Background="{StaticResource AccentBlue}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                        <TextBlock Text="DLSS 3 帧生成" Style="{StaticResource PageTitle}" />
+                        <TextBlock Text="DLSS 5 / 帧生成" Style="{StaticResource PageTitle}" />
                     </StackPanel>
                     <TextBlock Text="帧生成加速注入" Style="{StaticResource PageDesc}" Margin="0,3,0,0" />
                     <TextBlock Text="SM86 架构强制开放 DLSS-G" Style="{StaticResource PageDesc}" Margin="0,1,0,0" />
@@ -1921,6 +1923,37 @@
                     </Grid.ColumnDefinitions>
                     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,16,24">
                     <StackPanel>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="🧠" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="DLSS 5 神经渲染（社区解锁）" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="13" />
+                                        </StackPanel>
+                                        <TextBlock Text="在 RTX 20 / 30 / 40 上启用 DLSS 5 神经渲染，并附带多帧生成。仅限单机游戏，游戏需原生支持 DLSS 超分与帧生成。" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Name="TxtDlss5Version" Text="未下载" FontSize="11" Foreground="{StaticResource TextSub}" HorizontalAlignment="Right" />
+                                        <TextBlock Name="TxtDlss5Latest" Text="" FontSize="10" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Right" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <ProgressBar Name="ProgDlss5" Height="3" Margin="0,10,0,0" Minimum="0" Maximum="100" Value="0" Visibility="Collapsed" />
+
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Name="BtnDlss5Check" Content="检查更新" Style="{StaticResource StandardBtn}" Height="30" Padding="12,0,12,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnDlss5Download" Content="下载解锁包" Style="{StaticResource PrimaryBtn}" Height="30" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnDlss5Deploy" Content="部署到游戏" Style="{StaticResource StandardBtn}" Height="30" Padding="12,0,12,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnDlss5Repo" Content="项目主页" Style="{StaticResource StandardBtn}" Height="30" Padding="12,0,12,0" Tag="https://github.com/ShyVortex/dlss-unlocked" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
 
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
@@ -2329,7 +2362,7 @@
 
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="当前版本" Foreground="{StaticResource TextSub}" FontSize="11.5" />
-                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.5.0" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
+                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.6.0" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <Border Name="BdAppStatus" Grid.Column="1" Background="#F1F5F9" CornerRadius="14" Padding="12,6" VerticalAlignment="Center">
@@ -2404,7 +2437,7 @@
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="90HX Studio" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
-                                    <TextBlock Name="TxtAboutVersion" Text="v4.5.0" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
+                                    <TextBlock Name="TxtAboutVersion" Text="v4.6.0" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
                                     <TextBlock Text="NVIDIA CMP 系列矿卡硬件调优工具箱 · RainCandy Technology" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
 

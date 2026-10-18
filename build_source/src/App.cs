@@ -1675,6 +1675,131 @@ namespace CMP90HXToolbox
                 if (ok) ModernMessageBox.Show("已从游戏目录清除 DLSS 补丁及相关组件！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             };
 
+            // ===== DLSS 5 神经渲染（DLSS Unlocked 社区解锁）=====
+            {
+                Button btnD5Check = _window.FindName("BtnDlss5Check") as Button;
+                Button btnD5Download = _window.FindName("BtnDlss5Download") as Button;
+                Button btnD5Deploy = _window.FindName("BtnDlss5Deploy") as Button;
+                TextBlock txtD5Ver = _window.FindName("TxtDlss5Version") as TextBlock;
+                TextBlock txtD5Latest = _window.FindName("TxtDlss5Latest") as TextBlock;
+                ProgressBar progD5 = _window.FindName("ProgDlss5") as ProgressBar;
+
+                if (txtD5Ver != null) txtD5Ver.Text = NativeCore.GetDlssUnlockedLocalVersion();
+
+                if (btnD5Check != null)
+                {
+                    btnD5Check.Click += (s, e) =>
+                    {
+                        btnD5Check.IsEnabled = false;
+                        if (txtD5Latest != null) txtD5Latest.Text = "检查中…";
+                        Task.Run(delegate
+                        {
+                            string tag = NativeCore.CheckDlssUnlockedLatestTag(LogCallback);
+                            _window.Dispatcher.BeginInvoke(new Action(delegate
+                            {
+                                btnD5Check.IsEnabled = true;
+                                if (txtD5Latest != null)
+                                    txtD5Latest.Text = string.IsNullOrEmpty(tag) ? "检查失败，请换线路重试" : ("最新 " + tag);
+                                if (!string.IsNullOrEmpty(tag))
+                                {
+                                    string local = NativeCore.GetDlssUnlockedLocalVersion();
+                                    if (txtD5Ver != null) txtD5Ver.Text = local;
+                                    if (local == tag)
+                                        LogCallback("DLSS 5 神经渲染已是最新版本 " + tag, false);
+                                    else
+                                        LogCallback("DLSS 5 神经渲染：本地 " + local + "，最新 " + tag, false);
+                                }
+                            }));
+                        });
+                    };
+                }
+
+                if (btnD5Download != null)
+                {
+                    btnD5Download.Click += async (s, e) =>
+                    {
+                        if (!EnsureAdminPrivilege()) return;
+
+                        btnD5Download.IsEnabled = false;
+                        if (progD5 != null) { progD5.Visibility = Visibility.Visible; progD5.Value = 0; }
+                        if (txtD5Latest != null) txtD5Latest.Text = "获取版本号…";
+
+                        string tag = null;
+                        await Task.Run(delegate { tag = NativeCore.CheckDlssUnlockedLatestTag(LogCallback); });
+
+                        if (string.IsNullOrEmpty(tag))
+                        {
+                            btnD5Download.IsEnabled = true;
+                            if (progD5 != null) progD5.Visibility = Visibility.Collapsed;
+                            if (txtD5Latest != null) txtD5Latest.Text = "获取版本失败";
+                            ModernMessageBox.Show("无法获取最新版本号，请检查网络后重试。", "下载失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        if (txtD5Latest != null) txtD5Latest.Text = tag;
+
+                        bool ok = await NativeCore.DownloadDlssUnlockedAsync(tag, delegate(int pct, string txt)
+                        {
+                            _window.Dispatcher.BeginInvoke(new Action(delegate
+                            {
+                                if (progD5 != null) progD5.Value = pct;
+                                if (txtD5Latest != null && !string.IsNullOrEmpty(txt)) txtD5Latest.Text = pct + "%  " + txt;
+                            }));
+                        }, LogCallback);
+
+                        btnD5Download.IsEnabled = true;
+                        if (progD5 != null) progD5.Visibility = Visibility.Collapsed;
+                        if (txtD5Ver != null) txtD5Ver.Text = NativeCore.GetDlssUnlockedLocalVersion();
+
+                        if (ok)
+                        {
+                            ModernMessageBox.Show("下载完成。\n\n下一步：把游戏主程序所在目录填到上方【目标游戏主程序目录】，再点【部署到游戏】。",
+                                "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            ModernMessageBox.Show("下载未完成，详情见右侧日志。", "下载失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    };
+                }
+
+                if (btnD5Deploy != null)
+                {
+                    btnD5Deploy.Click += (s, e) =>
+                    {
+                        if (!EnsureAdminPrivilege()) return;
+
+                        string dir = Convert.ToString(_txtDlssGameDir != null ? _txtDlssGameDir.Text : "").Trim().Trim('"');
+                        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                        {
+                            ModernMessageBox.Show("请先在上方【目标游戏主程序目录】填入游戏 exe 所在目录。", "需要游戏目录", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        if (ModernMessageBox.Show(
+                            "即将把 DLSS 5 神经渲染部署到：\n" + dir + "\n\n" +
+                            "· 原有同名文件会备份为 .dlss5.bak\n" +
+                            "· 代理 DLL 只能存在一个，若目录里已有其它帧生成补丁请先移除\n" +
+                            "· 仅限单机游戏，网游会被反作弊判定异常\n\n是否继续？",
+                            "确认部署", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                            return;
+
+                        bool ok = NativeCore.DeployDlssUnlockedToGame(dir, LogCallback);
+                        if (txtD5Ver != null) txtD5Ver.Text = NativeCore.GetDlssUnlockedLocalVersion();
+
+                        if (ok)
+                        {
+                            ModernMessageBox.Show("部署完成。\n\n进游戏后按 Home 打开 OptiScaler 面板，开启 DLSS Neural Rendering。",
+                                "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            ModernMessageBox.Show("部署未完成，详情见右侧日志。", "部署失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    };
+                }
+            }
+
             if (_btnCheckDlssUpdate != null)
             {
                 _btnCheckDlssUpdate.Click += async (s, e) =>
