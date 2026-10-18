@@ -856,7 +856,7 @@
 
                     <StackPanel Grid.Row="2">
                         <Rectangle Height="1" Fill="{StaticResource BorderLight}" />
-                        <TextBlock Name="TxtSidebarVersion" Text="v4.6.0" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
+                        <TextBlock Name="TxtSidebarVersion" Text="v4.6.1" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -1693,9 +1693,9 @@
 
                                 <WrapPanel>
                                     <Button Name="BtnUnlock50Install" Content="启动安装器" Style="{StaticResource PrimaryBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,8,0" />
-                                    <Button Name="BtnUnlock50Check" Content="检查状态" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
                                     <Button Name="BtnUnlock50Uninstall" Content="卸载解锁" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
-                                    <Button Name="BtnUnlock50Folder" Content="工具目录" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
+                                    <Button Name="BtnUnlock50Folder" Content="工具目录" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock50Check" ToolTip="运行 50HXCheck.exe 自动诊断算力与 PCIe 链路状态，纯只读；日志在 %LOCALAPPDATA%\50HXUnlock\logs" Content="一键诊断" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
                                 </WrapPanel>
 
                                 <TextBlock Name="TxtUnlock50Status" Text="状态: 待操作" Foreground="{StaticResource TextSub}" FontSize="11" Margin="0,12,0,0" />
@@ -1761,9 +1761,9 @@
 
                                 <WrapPanel>
                                     <Button Name="BtnUnlock40Install" Content="启动安装器" Style="{StaticResource PrimaryBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,8,0" />
-                                    <Button Name="BtnUnlock40Check" Content="检查状态" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
                                     <Button Name="BtnUnlock40Uninstall" Content="卸载解锁" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
-                                    <Button Name="BtnUnlock40Folder" Content="工具目录" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
+                                    <Button Name="BtnUnlock40Folder" Content="工具目录" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock40Check" ToolTip="运行 40HXCheck.exe 自动诊断算力与 PCIe 链路状态，纯只读；日志在 %LOCALAPPDATA%\40HXUnlock\logs" Content="一键诊断" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
                                 </WrapPanel>
 
                                 <TextBlock Name="TxtUnlock40Status" Text="状态: 待操作" Foreground="{StaticResource TextSub}" FontSize="11" Margin="0,12,0,0" />
@@ -2079,8 +2079,8 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Text="更新镜像线路:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" Margin="0,0,10,0" />
-                                    <ComboBox Name="CmbDlssMirrorSource" Grid.Column="1" Height="32" SelectedIndex="0" Margin="0,0,10,0">
+                                    <TextBlock Text="线路: 跟随全局设置" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" Margin="0,0,10,0" ToolTip="下载线路在【软件更新】页统一设置" />
+                                    <ComboBox Name="CmbDlssMirrorSource" Visibility="Collapsed" Grid.Column="1" Height="32" SelectedIndex="0" Margin="0,0,10,0">
                                         <ComboBoxItem Content="Ghproxy 高速镜像 (推荐国内网络)" />
                                         <ComboBoxItem Content="jsDelivr 全球 CDN 源 (极速同步，低延迟)" />
                                         <ComboBoxItem Content="FastGit / GitMirror 镜像加速源" />
@@ -2362,7 +2362,7 @@
 
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="当前版本" Foreground="{StaticResource TextSub}" FontSize="11.5" />
-                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.6.0" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
+                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.6.1" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <Border Name="BdAppStatus" Grid.Column="1" Background="#F1F5F9" CornerRadius="14" Padding="12,6" VerticalAlignment="Center">
@@ -2377,6 +2377,12 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button Name="BtnCheckAppUpdate" Content="检查更新" Style="{StaticResource PrimaryBtn}" Height="36" Width="120" Margin="0,0,10,0" />
                                     <Button Name="BtnApplyAppUpdate" Content="立即更新并重启" Style="{StaticResource PrimaryBtn}" Height="36" Width="170" Visibility="Collapsed" />
+                                    <Button Name="BtnOpenDataDir" Content="打开数据目录" Style="{StaticResource StandardBtn}" Height="36" Width="130" Margin="10,0,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <TextBlock Text="全局下载线路:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontSize="11.5" Margin="0,0,10,0" />
+                                    <ComboBox Name="CmbGlobalMirror" Width="330" Height="32" SelectedIndex="0" />
                                 </StackPanel>
 
                                 <ProgressBar Name="ProgAppUpdate" Height="4" Margin="0,14,0,8" Visibility="Collapsed" />
@@ -2437,7 +2443,7 @@
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="90HX Studio" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
-                                    <TextBlock Name="TxtAboutVersion" Text="v4.6.0" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
+                                    <TextBlock Name="TxtAboutVersion" Text="v4.6.1" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
                                     <TextBlock Text="NVIDIA CMP 系列矿卡硬件调优工具箱 · RainCandy Technology" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
 

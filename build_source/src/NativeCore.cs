@@ -249,7 +249,10 @@ namespace CMP90HXToolbox
                         "files/40HXUNLK.EFI", "files/WinRing0x64.sys",
                         "40HXUNLK.EFI", "WinRing0x64.sys", "ThrottleStop.sys",
                         "manual_install.bat", "manual_uninstall.bat",
-                        "40HXInstaller.exe", "40HXCheck.exe", "40HXUninstaller.exe", "README.md"
+                        "40HXInstaller.exe", "40HXCheck.exe", "40HXUninstaller.exe", "README.md",
+                        "EFI应急修复指南.md",
+                        "gen2/40hx_gen2_byovd.py",
+                        "gen2/drivers/ThrottleStop.sys", "gen2/drivers/WinRing0x64.sys"
                     };
                 }
                 else if (toolkitKey == "50hx")
@@ -371,14 +374,57 @@ namespace CMP90HXToolbox
                             log("开始下载 " + fileName + "（" + (i == 0 ? "镜像" : "直连") + "线路，约 482MB）...", false);
                             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | (SecurityProtocolType)192;
 
-                            using (var wc = new WebClient())
+                            // 必须自己流式读取：WebClient.DownloadFile 是同步方法，不会触发 DownloadProgressChanged，
+                            // 进度条会一直停在 0。这里按块读取并自行计算百分比与已下载体积。
+                            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                            req.UserAgent = "Mozilla/5.0 CMP90HX_Suite/4.6";
+                            req.Timeout = 30000;
+                            req.ReadWriteTimeout = 60000;
+
+                            using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
                             {
-                                wc.Headers.Add("User-Agent", "Mozilla/5.0 CMP90HX_Suite/4.6");
-                                wc.DownloadProgressChanged += delegate(object s, DownloadProgressChangedEventArgs e)
+                                long total = resp.ContentLength;
+                                long read = 0;
+                                int lastPct = -1;
+                                byte[] buf = new byte[131072];
+
+                                using (Stream ns = resp.GetResponseStream())
+                                using (FileStream fs = new FileStream(dest, FileMode.Create, FileAccess.Write))
                                 {
-                                    progress(e.ProgressPercentage, (e.BytesReceived / 1048576) + " / " + Math.Max(1, e.TotalBytesToReceive / 1048576) + " MB");
-                                };
-                                wc.DownloadFile(url, dest);
+                                    int n;
+                                    while ((n = ns.Read(buf, 0, buf.Length)) > 0)
+                                    {
+                                        fs.Write(buf, 0, n);
+                                        read += n;
+
+                                        int pct = total > 0 ? (int)(read * 100L / total) : 0;
+                                        if (pct > 100) pct = 100;
+                                        if (pct != lastPct)
+                                        {
+                                            lastPct = pct;
+                                            string txt;
+                                            if (total > 0)
+                                            {
+                                                txt = (read / 1048576.0).ToString("F1") + " / " + (total / 1048576.0).ToString("F1") + " MB";
+                                            }
+                                            else
+                                            {
+                                                txt = (read / 1048576.0).ToString("F1") + " MB";
+                                            }
+                                            progress(pct, txt);
+                                        }
+                                    }
+                                }
+
+                                if (total > 0 && File.Exists(dest))
+                                {
+                                    long got = new FileInfo(dest).Length;
+                                    if (got < total)
+                                    {
+                                        log("下载不完整：" + got + " / " + total + " 字节", true);
+                                        continue;
+                                    }
+                                }
                             }
 
                             var fi = new FileInfo(dest);

@@ -794,6 +794,45 @@ namespace CMP90HXToolbox
             WireUnlockPage("Unlock50", "50hx", "50HX", "50HX");
             WireUnlockPage("Unlock40", "40hx", "40HX", "40HX");
 
+            // ===== 软件更新页：打开数据目录 + 全局下载线路 =====
+            Button btnOpenDataDir = _window.FindName("BtnOpenDataDir") as Button;
+            if (btnOpenDataDir != null)
+            {
+                btnOpenDataDir.Click += (s, e) =>
+                {
+                    try
+                    {
+                        string dir = NativeCore.GetDataDirectory();
+                        if (string.IsNullOrEmpty(dir)) return;
+                        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                        Process.Start("explorer.exe", "\"" + dir + "\"");
+                        LogAudit("已打开数据目录: " + dir);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogCallback("打开数据目录失败: " + ex.Message, true);
+                    }
+                };
+            }
+
+            ComboBox cmbGlobalMirror = _window.FindName("CmbGlobalMirror") as ComboBox;
+            if (cmbGlobalMirror != null)
+            {
+                cmbGlobalMirror.Items.Clear();
+                var gMirrors = NativeCore.GetDlssMirrors();
+                for (int i = 0; i < gMirrors.Count; i++) cmbGlobalMirror.Items.Add(gMirrors[i].Name);
+                if (cmbGlobalMirror.Items.Count > 0) cmbGlobalMirror.SelectedIndex = 0;
+
+                // 全局线路是唯一入口，DLSS 页那个下拉已隐藏，只作为参数来源同步
+                cmbGlobalMirror.SelectionChanged += (s, e) =>
+                {
+                    int idx = cmbGlobalMirror.SelectedIndex;
+                    if (idx < 0) return;
+                    if (_cmbDlssMirrorSource != null && idx < _cmbDlssMirrorSource.Items.Count)
+                        _cmbDlssMirrorSource.SelectedIndex = idx;
+                };
+            }
+
             Button aboutCheck = _window.FindName("BtnAboutCheckUpdate") as Button;
             if (aboutCheck != null)
             {
