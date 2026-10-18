@@ -1181,12 +1181,12 @@ namespace CMP90HXToolbox
 
                 if (!needRename && !needOverlay && !needPcie)
                 {
-                    ModernMessageBox.Show("【防重复配置提示】\n检测到当前系统已处于全部最优配置状态：\n✓ 显卡已深度伪装为 RTX 3080\n✓ NVIDIA App 游戏覆盖免检已激活\n✓ PCIe 模式 1 极速直启双保险引导已部署\n\n无需重复执行优化序列！若需刷新硬件状态，请直接重启电脑。", "已达最优状态", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ModernMessageBox.Show("【防重复配置提示】\n检测到当前系统已处于全部最优配置状态：\n✓ 显卡已完成深度伪装（目标型号见显卡伪装页）\n✓ NVIDIA App 游戏覆盖免检已激活\n✓ PCIe 模式 1 极速直启双保险引导已部署\n\n无需重复执行优化序列！若需刷新硬件状态，请直接重启电脑。", "已达最优状态", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
                 string plan = "一键最优配置将根据当前硬件环境执行以下调优序列：\n";
-                plan += (needRename ? "1. 【执行】显卡型号深度伪装为 RTX 3080\n" : "1. 【跳过】显卡型号已是 RTX 3080\n");
+                plan += (needRename ? "1. 【执行】显卡型号深度伪装（目标见显卡伪装页）\n" : "1. 【跳过】显卡型号已完成伪装\n");
                 plan += (needOverlay ? "2. 【执行】解除 NVIDIA App 游戏覆盖白名单限制\n" : "2. 【跳过】NVIDIA App 覆盖免检已处于激活状态\n");
                 plan += (needPcie ? "3. 【执行】安装模式 1 (直启双保险) PCIe Gen2\n" : "3. 【跳过】PCIe 模式 1 引导已处于安装就绪状态\n");
                 plan += "\n是否立即开始执行？";

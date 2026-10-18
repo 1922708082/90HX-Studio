@@ -858,6 +858,9 @@ namespace CMP90HXToolbox
                     }
 
                     string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
+                    // ⚠ 改 INF 内容会使它与 .cat 签名哈希不匹配，驱动重载时会被拒绝加载（设备直接消失）。
+                    // 先留 .bak 备份，「恢复原名」流程会自动还原。
+                    try { File.Copy(sysInf, sysInf + ".bak", true); } catch { }
                     PatchInfFile(sysInf, matchedDesc == null ? "NVIDIA CMP 90HX (RainCandy Technology)" : matchedDesc, targetName, log);
 
                     string driverStore = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"DriverStore\FileRepository");
@@ -982,6 +985,19 @@ namespace CMP90HXToolbox
                             }
                         }
                     }
+
+                    // 还原伪装时备份过的 INF（40HX 设备消失问题的恢复路径）
+                    try
+                    {
+                        string infPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
+                        string infBak = infPath + ".bak";
+                        if (File.Exists(infBak))
+                        {
+                            File.Copy(infBak, infPath, true);
+                            log("已还原 INF 备份: " + activeInfName, false);
+                        }
+                    }
+                    catch { }
 
                     using (var sk = Registry.LocalMachine.OpenSubKey(classRoot + "\\" + targetSubKey, true))
                     {
@@ -1123,6 +1139,9 @@ namespace CMP90HXToolbox
                     }
 
                     string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
+                    // ⚠ 改 INF 内容会使它与 .cat 签名哈希不匹配，驱动重载时会被拒绝加载（设备直接消失）。
+                    // 先留 .bak 备份，「恢复原名」流程会自动还原。
+                    try { File.Copy(sysInf, sysInf + ".bak", true); } catch { }
                     PatchInfFile(sysInf, "NVIDIA GeForce RTX 3080", restoreName, log);
 
                     string driverStore = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"DriverStore\FileRepository");
@@ -5693,50 +5712,114 @@ namespace CMP90HXToolbox
             catch { return false; }
         }
 
+        /// <summary>通过 Schedule.Service COM 注册开机自启任务（纯系统 API，不依赖 schtasks.exe，安全软件不会拦）。</summary>
         public static bool InstallPowerSaverTask(Action<string, bool> log)
         {
             try
             {
                 string exe = Process.GetCurrentProcess().MainModule.FileName;
-                string args = "/create /tn \"" + PowerSaverTaskName + "\" /tr \"\\\"" + exe
-                            + "\\\" --powersave\" /sc onstart /ru SYSTEM /rl HIGHEST /f";
-
-                string r = RunCmd("schtasks", args);
-                if (IsPowerSaverTaskInstalled())
+                Type svcType = Type.GetTypeFromProgID("Schedule.Service");
+                if (svcType == null)
                 {
-                    log("系统级省电已注册：开机自动启动，SYSTEM 权限，无需登录", false);
-                    return true;
+                    log("系统缺少 Schedule.Service COM 组件", true);
+                    return false;
                 }
-                log("注册系统级省电失败: " + (string.IsNullOrEmpty(r) ? "schtasks 无返回" : r.Trim()), true);
-                return false;
+
+                object svc = Activator.CreateInstance(svcType);
+                svcType.InvokeMember("Connect", System.Reflection.BindingFlags.InvokeMethod, null, svc, null);
+                object folder = svcType.InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, svc, new object[] { "\\" });
+                object def = svcType.InvokeMember("NewTask", System.Reflection.BindingFlags.InvokeMethod, null, svc, new object[] { (short)0 });
+
+                object regInfo = def.GetType().InvokeMember("RegistrationInfo", System.Reflection.BindingFlags.GetProperty, null, def, null);
+                regInfo.GetType().InvokeMember("Description", System.Reflection.BindingFlags.SetProperty, null, regInfo, new object[] { "90HX Studio 后台省电（空闲压 P8，有负载自动恢复）" });
+                regInfo.GetType().InvokeMember("Author", System.Reflection.BindingFlags.SetProperty, null, regInfo, new object[] { "90HX Studio" });
+
+                object principal = def.GetType().InvokeMember("Principal", System.Reflection.BindingFlags.GetProperty, null, def, null);
+                principal.GetType().InvokeMember("UserId", System.Reflection.BindingFlags.SetProperty, null, principal, new object[] { "SYSTEM" });
+                principal.GetType().InvokeMember("LogonType", System.Reflection.BindingFlags.SetProperty, null, principal, new object[] { 5 });  // TASK_LOGON_SERVICE_ACCOUNT
+                principal.GetType().InvokeMember("RunLevel", System.Reflection.BindingFlags.SetProperty, null, principal, new object[] { 1 });  // TASK_RUNLEVEL_HIGHEST
+
+                object settings = def.GetType().InvokeMember("Settings", System.Reflection.BindingFlags.GetProperty, null, def, null);
+                settings.GetType().InvokeMember("StartWhenAvailable", System.Reflection.BindingFlags.SetProperty, null, settings, new object[] { true });
+                settings.GetType().InvokeMember("ExecutionTimeLimit", System.Reflection.BindingFlags.SetProperty, null, settings, new object[] { "PT0S" });
+                settings.GetType().InvokeMember("DisallowStartIfOnBatteries", System.Reflection.BindingFlags.SetProperty, null, settings, new object[] { false });
+                settings.GetType().InvokeMember("StopIfGoingOnBatteries", System.Reflection.BindingFlags.SetProperty, null, settings, new object[] { false });
+
+                object triggers = def.GetType().InvokeMember("Triggers", System.Reflection.BindingFlags.GetProperty, null, def, null);
+                object boot = triggers.GetType().InvokeMember("Create", System.Reflection.BindingFlags.InvokeMethod, null, triggers, new object[] { (short)9 }); // TASK_TRIGGER_BOOT
+                boot.GetType().InvokeMember("Enabled", System.Reflection.BindingFlags.SetProperty, null, boot, new object[] { true });
+
+                object actions = def.GetType().InvokeMember("Actions", System.Reflection.BindingFlags.GetProperty, null, def, null);
+                object exec = actions.GetType().InvokeMember("Create", System.Reflection.BindingFlags.InvokeMethod, null, actions, new object[] { (short)0 }); // TASK_ACTION_EXEC
+                exec.GetType().InvokeMember("Path", System.Reflection.BindingFlags.SetProperty, null, exec, new object[] { exe });
+                exec.GetType().InvokeMember("Arguments", System.Reflection.BindingFlags.SetProperty, null, exec, new object[] { "--powersave" });
+
+                folder.GetType().InvokeMember("RegisterTaskDefinition", System.Reflection.BindingFlags.InvokeMethod, null, folder,
+                    new object[] { PowerSaverTaskName, def, 6, null, null, 5 }); // TASK_CREATE_OR_UPDATE / SERVICE_ACCOUNT
+
+                log("系统级省电已注册：开机自动启动，SYSTEM 权限，无需登录", false);
+                return true;
             }
             catch (Exception ex)
             {
-                log("注册系统级省电异常: " + ex.Message, true);
+                log("COM 注册系统任务失败: " + ex.Message + "，回退 schtasks", false);
+                try
+                {
+                    string exe2 = Process.GetCurrentProcess().MainModule.FileName;
+                    string args = "/create /tn \"" + PowerSaverTaskName + "\" /tr \"\\\"" + exe2
+                                + "\\\" --powersave\" /sc onstart /ru SYSTEM /rl HIGHEST /f";
+                    RunCmd("schtasks", args);
+                    if (IsPowerSaverTaskInstalled())
+                    {
+                        log("已通过 schtasks 注册成功", false);
+                        return true;
+                    }
+                }
+                catch { }
                 return false;
             }
         }
 
+        /// <summary>通过 Schedule.Service COM 移除任务；失败回退 schtasks。</summary>
         public static bool UninstallPowerSaverTask(Action<string, bool> log)
         {
             try
             {
-                RunCmd("schtasks", "/delete /tn \"" + PowerSaverTaskName + "\" /f");
+                Type svcType = Type.GetTypeFromProgID("Schedule.Service");
+                object svc = Activator.CreateInstance(svcType);
+                svcType.InvokeMember("Connect", System.Reflection.BindingFlags.InvokeMethod, null, svc, null);
+                object folder = svcType.InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, svc, new object[] { "\\" });
+                folder.GetType().InvokeMember("DeleteTask", System.Reflection.BindingFlags.InvokeMethod, null, folder,
+                    new object[] { PowerSaverTaskName, 0 });
                 log("系统级省电已移除", false);
                 return true;
             }
             catch (Exception ex)
             {
-                log("移除系统级省电失败: " + ex.Message, true);
+                log("COM 移除失败: " + ex.Message + "，回退 schtasks", false);
+                try
+                {
+                    RunCmd("schtasks", "/delete /tn \"" + PowerSaverTaskName + "\" /f");
+                    log("已通过 schtasks 移除", false);
+                    return true;
+                }
+                catch { }
                 return false;
             }
         }
 
+        /// <summary>立即启动已注册的系统级省电任务。</summary>
         public static void RunPowerSaverTaskNow(Action<string, bool> log)
         {
             try
             {
-                RunCmd("schtasks", "/run /tn \"" + PowerSaverTaskName + "\"");
+                Type svcType = Type.GetTypeFromProgID("Schedule.Service");
+                object svc = Activator.CreateInstance(svcType);
+                svcType.InvokeMember("Connect", System.Reflection.BindingFlags.InvokeMethod, null, svc, null);
+                object folder = svcType.InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, svc, new object[] { "\\" });
+                object task = folder.GetType().InvokeMember("GetTask", System.Reflection.BindingFlags.InvokeMethod, null, folder,
+                    new object[] { PowerSaverTaskName });
+                task.GetType().InvokeMember("Run", System.Reflection.BindingFlags.InvokeMethod, null, task, null);
                 log("已立即启动系统级省电任务", false);
             }
             catch (Exception ex)
@@ -6926,6 +7009,9 @@ namespace CMP90HXToolbox
                     {
                         if (string.IsNullOrEmpty(activeInfName)) activeInfName = "oem32.inf";
                         string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
+                    // ⚠ 改 INF 内容会使它与 .cat 签名哈希不匹配，驱动重载时会被拒绝加载（设备直接消失）。
+                    // 先留 .bak 备份，「恢复原名」流程会自动还原。
+                    try { File.Copy(sysInf, sysInf + ".bak", true); } catch { }
                         PatchInfFileForGpu(sysInf, gpu, log);
                         anySuccess = true;
 
@@ -7355,6 +7441,9 @@ namespace CMP90HXToolbox
 
                     if (string.IsNullOrEmpty(activeInfName)) activeInfName = "oem32.inf";
                     string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
+                    // ⚠ 改 INF 内容会使它与 .cat 签名哈希不匹配，驱动重载时会被拒绝加载（设备直接消失）。
+                    // 先留 .bak 备份，「恢复原名」流程会自动还原。
+                    try { File.Copy(sysInf, sysInf + ".bak", true); } catch { }
                     PatchInfFile(sysInf, gpu.TargetGeForceName, origName, log);
 
                     gpu.IsSpoofed = false;

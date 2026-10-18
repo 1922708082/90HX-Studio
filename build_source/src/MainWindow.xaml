@@ -856,7 +856,7 @@
 
                     <StackPanel Grid.Row="2">
                         <Rectangle Height="1" Fill="{StaticResource BorderLight}" />
-                        <TextBlock Name="TxtSidebarVersion" Text="v4.6.2" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
+                        <TextBlock Name="TxtSidebarVersion" Text="v4.6.3" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -2355,7 +2355,7 @@
 
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="当前版本" Foreground="{StaticResource TextSub}" FontSize="11.5" />
-                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.6.2" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
+                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.6.3" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <Border Name="BdAppStatus" Grid.Column="1" Background="#F1F5F9" CornerRadius="14" Padding="12,6" VerticalAlignment="Center">
@@ -2436,7 +2436,7 @@
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="90HX Studio" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
-                                    <TextBlock Name="TxtAboutVersion" Text="v4.6.2" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
+                                    <TextBlock Name="TxtAboutVersion" Text="v4.6.3" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
                                     <TextBlock Text="NVIDIA CMP 系列矿卡硬件调优工具箱 · RainCandy Technology" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
 
