@@ -9,6 +9,10 @@
         TextOptions.TextFormattingMode="Ideal"
         UseLayoutRounding="True">
 
+        <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="46" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
     <Window.Resources>
 
         <Style x:Key="AppFocusVisual">
@@ -786,25 +790,91 @@
         <Grid.RenderTransform>
             <ScaleTransform x:Name="RootScale" ScaleX="1" ScaleY="1" />
         </Grid.RenderTransform>
-        <Grid.RowDefinitions>
-
+                <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-
+            <RowDefinition Height="46" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Name="BannerAdminWarning" Grid.Row="0" Background="#FFF4E0" BorderBrush="#FF9500" BorderThickness="0,0,0,1" Padding="14,7,14,7" Visibility="Collapsed">
+        <!-- 管理员提权提示横幅 (极简微弱黄) -->
+        <Border Name="BannerAdminWarning" Grid.Row="0" Background="#FFFBF0" BorderBrush="#FFE4B5" BorderThickness="0,0,0,1" Padding="14,6" Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="注意：当前未以管理员身份运行。修改引导 (BCD) 与写入驱动注册表需要管理员权限，否则部分操作将受限。" Foreground="#8A5300" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" />
-                <Button Name="BtnRestartAsAdmin" Grid.Column="1" Content="以管理员权限重启" Style="{StaticResource StandardBtn}" Height="26" Padding="12,0,12,0" Background="#FF9500" Foreground="#FFFFFF" BorderBrush="#FF9500" FontWeight="SemiBold" />
+                <TextBlock Text="未以管理员权限运行。修改固件引导与写入驱动注册表需要管理员权限。" Foreground="#B45309" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" />
+                <Button Name="BtnRestartAsAdmin" Grid.Column="1" Content="以管理员权限重启" Style="{StaticResource StandardBtn}" Height="24" Padding="10,0,10,0" WindowChrome.IsHitTestVisibleInChrome="True" />
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1">
+        <!-- Apple Studio 统一现代一体化顶栏 (高度 46px，可原生无损随意拖动) -->
+        <Border Grid.Row="1" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1">
+            <Grid Margin="16,0,16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="208" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧：macOS 经典红黄绿交通灯 + 品牌标识 -->
+                <Grid Grid.Column="0" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 红黄绿三色控制圆点 -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Name="BtnWinClose" Width="12" Height="12" Margin="0,0,8,0" ToolTip="关闭窗口" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="6" Background="#FF5F56" BorderBrush="#E0443E" BorderThickness="0.6">
+                                        <TextBlock Text="×" FontSize="9" FontWeight="Bold" Foreground="#4C0002" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" Opacity="0.7" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Name="BtnWinMin" Width="12" Height="12" Margin="0,0,8,0" ToolTip="最小化" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="6" Background="#FFBD2E" BorderBrush="#DEA123" BorderThickness="0.6">
+                                        <TextBlock Text="–" FontSize="9" FontWeight="Bold" Foreground="#5C3B00" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-3,0,0" Opacity="0.7" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Name="BtnWinMax" Width="12" Height="12" ToolTip="最大化 / 还原" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="6" Background="#27C93F" BorderBrush="#1AAB29" BorderThickness="0.6">
+                                        <TextBlock Text="+" FontSize="9" FontWeight="Bold" Foreground="#024D0F" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" Opacity="0.7" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- 分割线与 HX 微标 -->
+                    <Border Grid.Column="2" Width="22" Height="22" CornerRadius="6" Background="#1B1C1F" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Text="HX" Foreground="#FFFFFF" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Grid.Column="3" Text="HX家族多功能工具箱" FontWeight="SemiBold" FontSize="12.5" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </Grid>
+
+                <!-- 右侧：简洁状态回显 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Border Background="#FFFFFF" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="10,4" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessGreen}" Margin="0,0,6,0" />
+                            <TextBlock Name="TxtTopSensors" Text="CMP 90HX · 38 ℃ · 28.5 W" FontSize="11" Foreground="{StaticResource TextSub}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="208" />
                 <ColumnDefinition Width="*" />

@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System;
@@ -1011,6 +1011,18 @@ namespace CMP90HXToolbox
             if (_txtReFwVersion != null) _txtReFwVersion.Text = ShortVersion(EcosystemPatchManager.GetLocalReFrameworkVersion());
 
             _txtSidebarVersion = (TextBlock)_window.FindName("TxtSidebarVersion");
+
+            // macOS 风格红黄绿交通灯控制按钮
+            Button btnWinClose = _window.FindName("BtnWinClose") as Button;
+            Button btnWinMin = _window.FindName("BtnWinMin") as Button;
+            Button btnWinMax = _window.FindName("BtnWinMax") as Button;
+
+            if (btnWinClose != null) btnWinClose.Click += (s, e) => _window.Close();
+            if (btnWinMin != null) btnWinMin.Click += (s, e) => _window.WindowState = WindowState.Minimized;
+            if (btnWinMax != null) btnWinMax.Click += (s, e) =>
+            {
+                _window.WindowState = (_window.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
+            };
             _txtAppVerCurrent = (TextBlock)_window.FindName("TxtAppVerCurrent");
             _txtAppVerLatest = (TextBlock)_window.FindName("TxtAppVerLatest");
             _bdAppStatus = (Border)_window.FindName("BdAppStatus");
@@ -2122,6 +2134,15 @@ namespace CMP90HXToolbox
                         {
                             ModernMessageBox.Show("部署未完成，详情见右侧日志。", "部署失败", MessageBoxButton.OK, MessageBoxImage.Warning);
                         }
+                    };
+                }
+
+                Button btnD5Repo = _window.FindName("BtnDlss5Repo") as Button;
+                if (btnD5Repo != null)
+                {
+                    btnD5Repo.Click += (s, e) =>
+                    {
+                        try { Process.Start("https://github.com/ShyVortex/dlss-unlocked"); } catch { }
                     };
                 }
             }

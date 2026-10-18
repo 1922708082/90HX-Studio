@@ -512,37 +512,30 @@ namespace CMP90HXToolbox
 
         private async void ProcessAiResponseAsync(string userPrompt)
         {
-            TextBlock replyBlock = AddMessageBubble("正在分析硬件并思考中...", false);
-            SetStatus("正在计算...", "#FF9500");
+            TextBlock replyBlock = AddMessageBubble("正在连接云端大模型并思考中...", false);
+            SetStatus("云端模型思考中...", "#FF9500");
             string finalAnswer = "";
             try
             {
-                bool hasApiKey = !string.IsNullOrWhiteSpace(_apiKey) && _apiKey.Length > 5;
-                if (hasApiKey)
+                // 优先无条件调用云端 API（无论是默认国内安全网关，还是用户填写的自定义 Key）
+                string apiResult = await RequestApiCompletionAsync(userPrompt);
+                if (!string.IsNullOrEmpty(apiResult))
                 {
-                    string apiResult = await RequestApiCompletionAsync(userPrompt);
-                    if (!string.IsNullOrEmpty(apiResult))
-                    {
-                        finalAnswer = apiResult;
-                        SetStatus("在线 · 中转站 API 响应", "#34C759");
-                    }
-                    else
-                    {
-                        finalAnswer = GenerateLocalHardwareKnowledge(userPrompt);
-                        SetStatus("在线 · 本地硬件专家库", "#34C759");
-                    }
+                    finalAnswer = apiResult;
+                    string tag = !string.IsNullOrEmpty(_apiKey) ? "在线 · 自定义 API 响应" : "在线 · 国内云端模型响应";
+                    SetStatus(tag, "#34C759");
                 }
                 else
                 {
-                    await Task.Delay(260);
-                    finalAnswer = GenerateLocalHardwareKnowledge(userPrompt);
-                    SetStatus("在线 · 本地硬件专家库就绪", "#34C759");
+                    // 仅当彻底断网或云端超时时，才平滑回退到本地专家知识库
+                    finalAnswer = "【云端接口未响应，已为您调用本地离线急诊专家库回答】：\n\n" + GenerateLocalHardwareKnowledge(userPrompt);
+                    SetStatus("离线 · 本地硬件专家库", "#FF9500");
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                finalAnswer = "【提示】连接遇到异常，已转为本地硬件专家回答：" + Environment.NewLine + Environment.NewLine + GenerateLocalHardwareKnowledge(userPrompt);
-                SetStatus("在线 · 本地硬件专家库", "#34C759");
+                finalAnswer = "【网络异常提示】" + ex.Message + "\n\n【本地硬件专家解答】：\n\n" + GenerateLocalHardwareKnowledge(userPrompt);
+                SetStatus("离线 · 本地硬件急诊库", "#FF9500");
             }
             PlayTypewriterEffect(replyBlock, finalAnswer);
         }
