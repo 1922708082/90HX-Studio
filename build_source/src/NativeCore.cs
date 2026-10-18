@@ -247,9 +247,18 @@ namespace CMP90HXToolbox
                 {
                     files = new string[] {
                         "files/40HXUNLK.EFI", "files/WinRing0x64.sys",
-                        "40HXUNLK.EFI", "WinRing0x64.sys",
+                        "40HXUNLK.EFI", "WinRing0x64.sys", "ThrottleStop.sys",
                         "manual_install.bat", "manual_uninstall.bat",
                         "40HXInstaller.exe", "40HXCheck.exe", "40HXUninstaller.exe", "README.md"
+                    };
+                }
+                else if (toolkitKey == "50hx")
+                {
+                    // 50HX 安装器硬编码从自己目录的 drivers\ 下加载驱动，WinRing0x64.sys 必须在该子目录
+                    files = new string[] {
+                        "50HXInstaller.exe", "50HXCheck.exe", "50HXUninstaller.exe",
+                        "50HXUNLK.EFI", "WinRing0x64.sys",
+                        "drivers/WinRing0x64.sys", "drivers/ThrottleStop.sys"
                     };
                 }
                 else
@@ -276,7 +285,64 @@ namespace CMP90HXToolbox
             return null;
         }
 
+        /// <summary>启动工具包里的可执行文件，自动提权并以工具目录为工作目录。</summary>
+        public static bool LaunchToolkitApp(string toolkitKey, string exeName, Action<string, bool> log)
+        {
+            try
+            {
+                string dir = EnsureToolkitExtracted(toolkitKey);
+                if (string.IsNullOrEmpty(dir))
+                {
+                    log("工具包解压失败，请确认程序完整性", true);
+                    return false;
+                }
+
+                string exe = Path.Combine(dir, exeName);
+                if (!File.Exists(exe))
+                {
+                    log("工具包缺少 " + exeName, true);
+                    return false;
+                }
+
+                ProcessStartInfo psi = new ProcessStartInfo(exe);
+                psi.UseShellExecute = true;
+                psi.WorkingDirectory = dir;
+                psi.Verb = "runas";
+                Process.Start(psi);
+                log("已启动 " + exeName + "（" + dir + "）", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                log("启动 " + exeName + " 失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        /// <summary>打开工具包所在目录。</summary>
+        public static bool OpenToolkitFolder(string toolkitKey, Action<string, bool> log)
+        {
+            try
+            {
+                string dir = EnsureToolkitExtracted(toolkitKey);
+                if (string.IsNullOrEmpty(dir)) return false;
+                Process.Start("explorer.exe", "\"" + dir + "\"");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                log("打开工具目录失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        /// <summary>兼容旧调用：默认伪装为 RTX 3080。</summary>
         public static Task<bool> ApplyGpuRenameTo3080Async(Action<string, bool> log)
+        {
+            return ApplyGpuRenameAsync("NVIDIA GeForce RTX 3080", log);
+        }
+
+        public static Task<bool> ApplyGpuRenameAsync(string targetName, Action<string, bool> log)
         {
             return Task.Factory.StartNew(() =>
             {
@@ -302,7 +368,8 @@ namespace CMP90HXToolbox
                                     var inf = Convert.ToString(sk.GetValue("InfPath") ?? "");
                                     if (matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                         desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                        desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        desc.IndexOf("CMP", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        desc.IndexOf("GeForce", StringComparison.OrdinalIgnoreCase) >= 0)
                                     {
                                         targetSubKey = sub;
                                         if (!string.IsNullOrEmpty(inf)) activeInfName = inf;
@@ -338,15 +405,15 @@ namespace CMP90HXToolbox
                     {
                         if (sk != null)
                         {
-                            sk.SetValue("DriverDesc", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
-                            sk.SetValue("HardwareInformation.AdapterString", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
-                            sk.SetValue("HardwareInformation.ChipType", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
+                            sk.SetValue("DriverDesc", targetName, RegistryValueKind.String);
+                            sk.SetValue("HardwareInformation.AdapterString", targetName, RegistryValueKind.String);
+                            sk.SetValue("HardwareInformation.ChipType", targetName, RegistryValueKind.String);
 
                             sk.SetValue("AdapterType", 1, RegistryValueKind.DWord);
                             sk.SetValue("EnableMsHybrid", 1, RegistryValueKind.DWord);
                             sk.SetValue("RMDisableTcc", 1, RegistryValueKind.DWord);
                             sk.SetValue("D3DMappingLayerEnable", 1, RegistryValueKind.DWord);
-                            log("已更新系统驱动类描述为 NVIDIA GeForce RTX 3080 并激活 WDDM/MsHybrid 3D 图形加速", false);
+                            log("已更新系统驱动类描述为 " + targetName + " 并激活 WDDM/MsHybrid 3D 图形加速", false);
                         }
                     }
 
@@ -372,7 +439,7 @@ namespace CMP90HXToolbox
                                                     var drv = Convert.ToString(nk.GetValue("Driver") ?? "");
                                                     if (drv.IndexOf(targetSubKey, StringComparison.OrdinalIgnoreCase) >= 0)
                                                     {
-                                                        nk.SetValue("DeviceDesc", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
+                                                        nk.SetValue("DeviceDesc", targetName, RegistryValueKind.String);
                                                     }
                                                 }
                                             }
@@ -412,8 +479,8 @@ namespace CMP90HXToolbox
                                                         {
                                                             if (ik != null)
                                                             {
-                                                                ik.SetValue("FriendlyName", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
-                                                                ik.SetValue("DeviceDesc", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
+                                                                ik.SetValue("FriendlyName", targetName, RegistryValueKind.String);
+                                                                ik.SetValue("DeviceDesc", targetName, RegistryValueKind.String);
                                                                 log("已更新设备管理器友好名称: " + inst, false);
                                                             }
                                                         }
@@ -450,7 +517,7 @@ namespace CMP90HXToolbox
                                         var devId = Convert.ToInt32(sk.GetValue("DeviceId") ?? 0);
                                         if (desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 || devId == 8717)
                                         {
-                                            sk.SetValue("Description", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
+                                            sk.SetValue("Description", targetName, RegistryValueKind.String);
                                             log("已更新 DirectX 适配器描述: " + sub, false);
                                         }
                                     }
@@ -470,8 +537,8 @@ namespace CMP90HXToolbox
                         {
                             if (nvKey != null)
                             {
-                                nvKey.SetValue("DeviceDesc", "NVIDIA GeForce RTX 3080", RegistryValueKind.String);
-                                log("已更新 nvlddmkm 底层驱动服务配置为 RTX 3080", false);
+                                nvKey.SetValue("DeviceDesc", targetName, RegistryValueKind.String);
+                                log("已更新 nvlddmkm 底层驱动服务配置为 " + targetName, false);
                             }
                         }
                     }
@@ -481,7 +548,7 @@ namespace CMP90HXToolbox
                     }
 
                     string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
-                    PatchInfFile(sysInf, "NVIDIA CMP 90HX (RainCandy Technology)", "NVIDIA GeForce RTX 3080", log);
+                    PatchInfFile(sysInf, "NVIDIA CMP 90HX (RainCandy Technology)", targetName, log);
 
                     string driverStore = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"DriverStore\FileRepository");
                     if (Directory.Exists(driverStore))
@@ -489,11 +556,11 @@ namespace CMP90HXToolbox
                         foreach (var dir in Directory.GetDirectories(driverStore, "nvac.inf*"))
                         {
                             string targetInf = Path.Combine(dir, "nvac.inf");
-                            PatchInfFile(targetInf, "NVIDIA CMP 90HX (RainCandy Technology)", "NVIDIA GeForce RTX 3080", log);
+                            PatchInfFile(targetInf, "NVIDIA CMP 90HX (RainCandy Technology)", targetName, log);
                         }
                     }
 
-                    UpdateNvAppShimJson("NVIDIA CMP 90HX", "NVIDIA GeForce RTX 3080", log);
+                    UpdateNvAppShimJson("NVIDIA CMP 90HX", targetName, log);
 
                     try
                     {
@@ -512,7 +579,7 @@ namespace CMP90HXToolbox
                     }
                     catch { }
 
-                    log("显卡型号深度修改完成 (已设置为 NVIDIA GeForce RTX 3080)。", false);
+                    log("显卡型号深度修改完成 (已设置为 " + targetName + ")。", false);
                     return true;
                 }
                 catch (Exception ex)
@@ -5488,6 +5555,59 @@ namespace CMP90HXToolbox
             new CmpModelDef { ModelName = "CMP 70HX", ChipName = "GA104", MatchDevIds = new string[] { "248A", "24CA" }, DefaultVram = "8GB GDDR6", TargetGeForce = "NVIDIA GeForce RTX 3070", DirectXDevId = 9354, SmArch = "sm_86" },
             new CmpModelDef { ModelName = "CMP 30HX", ChipName = "TU116", MatchDevIds = new string[] { "2189" }, DefaultVram = "6GB GDDR6", TargetGeForce = "NVIDIA GeForce GTX 1660 Super", DirectXDevId = 8585, SmArch = "sm_75" },
             new CmpModelDef { ModelName = "CMP 170HX", ChipName = "GA100", MatchDevIds = new string[] { "2082", "20C2", "2083" }, DefaultVram = "8GB HBM2e", TargetGeForce = "NVIDIA A100-PCIE-40GB", DirectXDevId = 8322, SmArch = "sm_80" }
+        };
+
+        /// <summary>
+        /// 伪装目标型号预设。只改显示名称（DriverDesc / DeviceDesc / FriendlyName / INF 描述），
+        /// 不改 MatchingDeviceId，驱动匹配不受影响。名字要与 NVIDIA 官方 INF 里的写法一致，
+        /// 否则设备管理器里会出现不认识的字符串。
+        /// </summary>
+        public static readonly string[] SpoofTargetModels = new string[]
+        {
+            "NVIDIA GeForce RTX 5090",
+            "NVIDIA GeForce RTX 5080",
+            "NVIDIA GeForce RTX 5070 Ti",
+            "NVIDIA GeForce RTX 5070",
+            "NVIDIA GeForce RTX 5060 Ti",
+            "NVIDIA GeForce RTX 5060",
+            "NVIDIA GeForce RTX 4090",
+            "NVIDIA GeForce RTX 4080 SUPER",
+            "NVIDIA GeForce RTX 4080",
+            "NVIDIA GeForce RTX 4070 Ti SUPER",
+            "NVIDIA GeForce RTX 4070 Ti",
+            "NVIDIA GeForce RTX 4070 SUPER",
+            "NVIDIA GeForce RTX 4070",
+            "NVIDIA GeForce RTX 4060 Ti",
+            "NVIDIA GeForce RTX 4060",
+            "NVIDIA GeForce RTX 3090 Ti",
+            "NVIDIA GeForce RTX 3090",
+            "NVIDIA GeForce RTX 3080 Ti",
+            "NVIDIA GeForce RTX 3080",
+            "NVIDIA GeForce RTX 3070 Ti",
+            "NVIDIA GeForce RTX 3070",
+            "NVIDIA GeForce RTX 3060 Ti",
+            "NVIDIA GeForce RTX 3060",
+            "NVIDIA GeForce RTX 3050",
+            "NVIDIA GeForce RTX 2080 Ti",
+            "NVIDIA GeForce RTX 2080 SUPER",
+            "NVIDIA GeForce RTX 2080",
+            "NVIDIA GeForce RTX 2070 SUPER",
+            "NVIDIA GeForce RTX 2070",
+            "NVIDIA GeForce RTX 2060 SUPER",
+            "NVIDIA GeForce RTX 2060",
+            "NVIDIA GeForce GTX 1660 Ti",
+            "NVIDIA GeForce GTX 1660 SUPER",
+            "NVIDIA GeForce GTX 1660",
+            "NVIDIA GeForce GTX 1650 SUPER",
+            "NVIDIA GeForce GTX 1650",
+            "NVIDIA GeForce GTX 1080 Ti",
+            "NVIDIA GeForce GTX 1080",
+            "NVIDIA GeForce GTX 1070 Ti",
+            "NVIDIA GeForce GTX 1070",
+            "NVIDIA GeForce GTX 1060 6GB",
+            "NVIDIA GeForce GTX 1060 3GB",
+            "NVIDIA GeForce GTX 1050 Ti",
+            "NVIDIA GeForce GTX 1050"
         };
 
         public class InstalledMiningGpu

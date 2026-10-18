@@ -838,6 +838,8 @@
                         <RadioButton Name="NavItemSpoof" Style="{StaticResource NavItemBtn}" Content="显卡型号伪装" Tag="M7,7 H17 M14,4 L17,7 L14,10 M17,17 H7 M10,14 L7,17 L10,20" />
                         <RadioButton Name="NavItemOverlay" Style="{StaticResource NavItemBtn}" Content="游戏内覆盖" Tag="M7,10 H17 A4,4 0 0 1 17,18 H7 A4,4 0 0 1 7,10 Z M10,12.5 V15.5 M8.25,14 H11.75 M15.5,13.5 H15.6 M17,15.5 H17.1" />
                         <RadioButton Name="NavItemMatrix" Style="{StaticResource NavItemBtn}" Content="90HX 解锁" Tag="M13.5,3 L5.5,13.5 H11.5 L10.5,21 L18.5,10.5 H12.5 Z" />
+                        <RadioButton Name="NavItemUnlock50" Style="{StaticResource NavItemBtn}" Content="50HX 解锁" Tag="M8,8 H16 V16 H8 Z M4,10.5 H8 M4,13.5 H8 M16,10.5 H20 M16,13.5 H20 M10.5,4 V8 M13.5,4 V8 M10.5,16 V20 M13.5,16 V20" />
+                        <RadioButton Name="NavItemUnlock40" Style="{StaticResource NavItemBtn}" Content="40HX 解锁" Tag="M8,8 H16 V16 H8 Z M4,10.5 H8 M4,13.5 H8 M16,10.5 H20 M16,13.5 H20 M10.5,4 V8 M13.5,4 V8 M10.5,16 V20 M13.5,16 V20" />
 
                         <TextBlock Text="性能优化" Style="{StaticResource NavGroupTitle}" />
                         <RadioButton Name="NavItemDualGpu" Style="{StaticResource NavItemBtn}" Content="双卡调度" Tag="M3,6 H12 V13 H3 Z M13.5,9 H21 V16 H13.5 Z M7.5,13 V16 M4.5,16 H10.5 M17.25,16 V18.5 M15,18.5 H19.5" />
@@ -846,7 +848,7 @@
 
                         <TextBlock Text="系统" Style="{StaticResource NavGroupTitle}" />
                         <RadioButton Name="NavItemLogs" Style="{StaticResource NavItemBtn}" Content="审计日志" Tag="M6,3.5 H14 L18.5,8 V20.5 H6 Z M14,3.5 V8 H18.5 M9.5,12 H15 M9.5,15.5 H15 M9.5,19 H13" />
-                        <RadioButton Name="NavItemSponsor" Style="{StaticResource NavItemBtn}" Content="赞赏与支持" Tag="M12,20 C12,20 4.5,14.8 4.5,9.8 A4,4 0 0 1 12,7.5 A4,4 0 0 1 19.5,9.8 C19.5,14.8 12,20 12,20 Z" />
+                        <RadioButton Name="NavItemSponsor" Style="{StaticResource NavItemBtn}" Content="关于" Tag="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,10.5 V16.5 M12,7.2 V7.4" />
                         <RadioButton Name="NavItemUpdate" Style="{StaticResource NavItemBtn}" Content="软件更新" Tag="M12,4 V15 M7.5,10.5 L12,15 L16.5,10.5 M5,18.5 H19" />
 
                         </StackPanel>
@@ -854,7 +856,7 @@
 
                     <StackPanel Grid.Row="2">
                         <Rectangle Height="1" Fill="{StaticResource BorderLight}" />
-                        <TextBlock Name="TxtSidebarVersion" Text="v4.4.2" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
+                        <TextBlock Name="TxtSidebarVersion" Text="v4.5.0" Style="{StaticResource SidebarFooter}" Margin="16,10,16,10" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -1249,14 +1251,26 @@
 
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="2.6*" />
+                                    <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="目标显卡（CMP 90HX）:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,12,0" />
-                                <ComboBox Name="CmbSpoofTargetCard" Grid.Column="1" Height="34" SelectedIndex="0" Margin="0,0,14,0" />
-                                <Button Name="BtnSpoofAllGpus" Grid.Column="2" Content="⚡ 一键全机多卡全部伪装" Style="{StaticResource PrimaryBtn}" Height="34" Padding="16,0,16,0" />
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="目标显卡:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,12,10" />
+                                <ComboBox Grid.Row="0" Grid.Column="1" Name="CmbSpoofTargetCard" Height="34" SelectedIndex="0" Margin="0,0,14,10" />
+                                <Button Grid.Row="0" Grid.Column="2" Name="BtnSpoofAllGpus" Content="⚡ 一键全机伪装" Style="{StaticResource StandardBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,0,10" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="伪装为:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,12,0" />
+                                <ComboBox Grid.Row="1" Grid.Column="1" Name="CmbSpoofModel" Height="34" SelectedIndex="0" Margin="0,0,14,0" />
+                                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
+                                    <Button Name="BtnApplySpoof" Content="应用伪装" Style="{StaticResource PrimaryBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnRestoreGpuName" Content="恢复原名" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
+                                </StackPanel>
                             </Grid>
                         </Border>
 
@@ -1295,8 +1309,6 @@
                             <StackPanel>
                                 <TextBlock Text="执行操作" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,10" />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <Button Name="BtnRenameTo3080" Content="一键伪装当前显卡" Style="{StaticResource PrimaryBtn}" Height="34" Padding="18,0,18,0" Margin="0,0,10,0" />
-                                    <Button Name="BtnRestore90hx" Content="恢复当前显卡出厂原名" Style="{StaticResource StandardBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,10,0" />
                                     <Button Name="BtnQuickRestartDriver" Content="快捷软重启驱动" Style="{StaticResource StandardBtn}" Height="34" Padding="16,0,16,0" ToolTip="刷新显示服务，无需重启电脑即可重载显卡名称" />
                                 </StackPanel>
                                 <TextBlock Text="说明：修改完成后，可直接点击【快捷软重启驱动】使设备管理器与系统信息立刻刷新。" Foreground="{StaticResource TextMuted}" FontSize="10.5" />
@@ -1479,7 +1491,7 @@
                                         <TextBlock Text="图形 + 算力 + 光追" FontSize="10.5" FontWeight="SemiBold" Foreground="#15803D" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Text="• 图形 / 算力 / 光追 一并解锁，不用分开勾选&#x0a;• EFI Shell 直接运行，比单文件固化启动更快（文章同款方案）&#x0a;• 需配合 616.92 魔改驱动才能真正开启光追&#x0a;• 每次开机自动重跑，重启后依然保持生效" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="19" />
+                                <TextBlock Text="• 图形 / 算力 / 光追 一并解锁，不用分开勾选&#x0a;• EFI Shell 直接运行，每次开机自动重跑，重启后依然生效" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="19" />
                             </StackPanel>
                         </Border>
 
@@ -1551,6 +1563,26 @@
                             </StackPanel>
                         </Border>
 
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,12" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🎮" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="魔改驱动（图形与光追）" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="12.5" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="616.92 支持光追；582.78 仅 PCIe Gen2 与功耗解锁。约 900MB，按需下载。" Foreground="{StaticResource TextMuted}" FontSize="10.5" Margin="0,3,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Name="BtnDownloadRtDriver" Content="下载光追驱动" Tag="https://alist.homelabproject.cc/d/foxipan/vGPU/CMP_90HX/GraphicsUnlock/NVIDIADriver_RCTSE_616.92_64bit_Win10Win11_DCH_20261013_Experimental.exe" Style="{StaticResource PrimaryBtn}" Height="30" Padding="12,0,12,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnOpenDriverFolder" Content="驱动目录" Tag="https://alist.homelabproject.cc/foxipan/vGPU/CMP_90HX/GraphicsUnlock" Style="{StaticResource StandardBtn}" Height="30" Padding="10,0,10,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,16" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -1618,6 +1650,142 @@
                     </Border>
                 </Grid>
 
+            </Grid>
+
+            <Grid Name="PageUnlock50" Visibility="Collapsed" Margin="20,16,20,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="4" Height="17" CornerRadius="2" Background="{StaticResource AccentBlue}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                        <TextBlock Text="CMP 50HX 解锁" Style="{StaticResource PageTitle}" />
+                    </StackPanel>
+                    <TextBlock Text="TU102 · 算力解锁 + PCIe Gen2" Style="{StaticResource PageDesc}" Margin="0,3,0,0" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,4,24,24">
+                    <StackPanel>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="22,16" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Name="DotDotUnlock50" Width="8" Height="8" CornerRadius="4" Background="#94A3B8" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Name="TxtUnlock50Device" Text="未检测到本机显卡" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextMain}" />
+                                    </StackPanel>
+                                    <TextBlock Name="TxtUnlock50Detail" Text="PCI ID 10DE:1E09 · 插好卡后点右侧重新检测" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Name="BtnUnlock50Detect" Content="重新检测" Style="{StaticResource StandardBtn}" Height="32" Padding="14,0,14,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="22,18" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="解锁工具" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                <TextBlock Text="Windows 安装器会自动部署 EFI 固件与 Gen2 驱动，全程约一分钟，不需要联网。" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,4,0,12" TextWrapping="Wrap" />
+
+                                <WrapPanel>
+                                    <Button Name="BtnUnlock50Install" Content="启动安装器" Style="{StaticResource PrimaryBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock50Check" Content="检查状态" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock50Uninstall" Content="卸载解锁" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock50Folder" Content="工具目录" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
+                                </WrapPanel>
+
+                                <TextBlock Name="TxtUnlock50Status" Text="状态: 待操作" Foreground="{StaticResource TextSub}" FontSize="11" Margin="0,12,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#FFFDF5" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="12" Padding="22,16" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="⚠️ 前置条件（缺一不可）" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="13" Margin="0,0,0,8" />
+                                <TextBlock Text="• Above 4G Decoding = Enabled，关闭会静默失败&#x0a;• Secure Boot = Disabled，固件无微软签名&#x0a;• CSM = Disabled，需要纯 UEFI&#x0a;• Fast Boot = Disabled，否则会跳过固件&#x0a;• 建议插在 CPU 直连的 PCIe 插槽" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="20" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="22,16" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="能力与限制" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,8" />
+                                <TextBlock Text="• 算力：FP32 约 0.43 → 13.5 TFLOPS（约 31.7 倍），DP4A 约 28.4 倍&#x0a;• PCIe：Gen1 → Gen2，但只有 x4。这是芯片层锁死，焊回 x16 也不生效&#x0a;• 显示输出：物理没有接口，画面必须由核显或亮机卡输出&#x0a;• 光追：该卡解锁后依然不可用&#x0a;• 支持 10GB 与 20GB 两种板型" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="11" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <Grid Name="PageUnlock40" Visibility="Collapsed" Margin="20,16,20,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="4" Height="17" CornerRadius="2" Background="{StaticResource AccentBlue}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                        <TextBlock Text="CMP 40HX 解锁" Style="{StaticResource PageTitle}" />
+                    </StackPanel>
+                    <TextBlock Text="TU106 · 算力解锁 + PCIe Gen2 x16" Style="{StaticResource PageDesc}" Margin="0,3,0,0" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,4,24,24">
+                    <StackPanel>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="22,16" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Name="DotDotUnlock40" Width="8" Height="8" CornerRadius="4" Background="#94A3B8" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Name="TxtUnlock40Device" Text="未检测到本机显卡" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextMain}" />
+                                    </StackPanel>
+                                    <TextBlock Name="TxtUnlock40Detail" Text="PCI ID 10DE:1F0B · 插好卡后点右侧重新检测" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Name="BtnUnlock40Detect" Content="重新检测" Style="{StaticResource StandardBtn}" Height="32" Padding="14,0,14,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="22,18" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="解锁工具" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                <TextBlock Text="Windows 安装器会自动部署 EFI 固件与 Gen2 驱动，全程约一分钟，不需要联网。" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,4,0,12" TextWrapping="Wrap" />
+
+                                <WrapPanel>
+                                    <Button Name="BtnUnlock40Install" Content="启动安装器" Style="{StaticResource PrimaryBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock40Check" Content="检查状态" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock40Uninstall" Content="卸载解锁" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnUnlock40Folder" Content="工具目录" Style="{StaticResource StandardBtn}" Height="34" Padding="14,0,14,0" />
+                                </WrapPanel>
+
+                                <TextBlock Name="TxtUnlock40Status" Text="状态: 待操作" Foreground="{StaticResource TextSub}" FontSize="11" Margin="0,12,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#FFFDF5" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="12" Padding="22,16" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="⚠️ 前置条件（缺一不可）" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="13" Margin="0,0,0,8" />
+                                <TextBlock Text="• Above 4G Decoding = Enabled，关闭会静默失败&#x0a;• Secure Boot = Disabled，固件无微软签名&#x0a;• CSM = Disabled，需要纯 UEFI&#x0a;• Fast Boot = Disabled，否则会跳过固件&#x0a;• 必须插在第一个 PCIe x16 槽（CPU 直连）" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="20" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="22,16" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="能力与限制" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,8" />
+                                <TextBlock Text="• 算力：FP32 约 1.9 → 8.35 TFLOPS，Tensor Core 满速&#x0a;• PCIe：Gen1 → Gen2 x16，双向带宽约 6.4 GB/s&#x0a;• 显示输出：物理没有接口，画面必须由核显或亮机卡输出&#x0a;• 光追：硬件有 RT Core，需配合 616.92 魔改驱动才能真正开启&#x0a;• 首次开机走一次解锁固件，之后每次开机自动执行" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="11" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
 
             <Grid Name="PageDualGpu" Visibility="Collapsed" Margin="20,16,20,12">
@@ -2161,7 +2329,7 @@
 
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="当前版本" Foreground="{StaticResource TextSub}" FontSize="11.5" />
-                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.4.2" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
+                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.5.0" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <Border Name="BdAppStatus" Grid.Column="1" Background="#F1F5F9" CornerRadius="14" Padding="12,6" VerticalAlignment="Center">
@@ -2210,76 +2378,128 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <StackPanel Grid.Row="0" Margin="0,0,0,12">
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,14">
                     <StackPanel Orientation="Horizontal">
                         <Border Width="4" Height="17" CornerRadius="2" Background="{StaticResource AccentBlue}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                        <TextBlock Text="赞赏与支持" Style="{StaticResource PageTitle}" />
+                        <TextBlock Text="关于与致谢" Style="{StaticResource PageTitle}" />
                     </StackPanel>
-                    <TextBlock Text="如果这个工具帮到了你" Style="{StaticResource PageDesc}" Margin="0,3,0,0" />
-                    <TextBlock Text="扫码请作者喝杯咖啡" Style="{StaticResource PageDesc}" Margin="0,1,0,0" />
+                    <TextBlock Text="项目信息、上游来源与许可" Style="{StaticResource PageDesc}" Margin="0,3,0,0" />
                 </StackPanel>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,4,24,24">
                     <StackPanel>
 
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#C7F0D8" BorderThickness="1" CornerRadius="12" Padding="20,18" Margin="0,0,8,0" Effect="{StaticResource ShadowCard}">
-                                <StackPanel HorizontalAlignment="Center">
-
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <Border Width="22" Height="22" CornerRadius="11" Background="#07C160" Margin="0,0,8,0">
-                                            <TextBlock Text="✓" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
-                                        <TextBlock Text="微信赞赏支持" FontSize="14" FontWeight="SemiBold" Foreground="#1D1D1F" VerticalAlignment="Center" />
-                                    </StackPanel>
-
-                                    <Border Width="320" Height="320" CornerRadius="12" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="10" Margin="0,0,0,14" Effect="{StaticResource ShadowCard}">
-                                        <Image Name="ImgWechatPay" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-
-                                    <TextBlock Text="使用微信扫一扫 · 为开发加个鸡腿" FontSize="11" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Column="1" Background="#FFFFFF" BorderBrush="#C6E0FA" BorderThickness="1" CornerRadius="12" Padding="20,18" Margin="8,0,0,0" Effect="{StaticResource ShadowCard}">
-                                <StackPanel HorizontalAlignment="Center">
-
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <Border Width="22" Height="22" CornerRadius="11" Background="#1677FF" Margin="0,0,8,0">
-                                            <TextBlock Text="支" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
-                                        <TextBlock Text="支付宝赞助支持" FontSize="14" FontWeight="SemiBold" Foreground="#1D1D1F" VerticalAlignment="Center" />
-                                    </StackPanel>
-
-                                    <Border Width="320" Height="320" CornerRadius="12" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="10" Margin="0,0,0,14" Effect="{StaticResource ShadowCard}">
-                                        <Image Name="ImgAlipay" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-
-                                    <TextBlock Text="使用支付宝扫一扫 · 请作者喝罐红牛" FontSize="11" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <Border Background="#FFFFFF" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,14" Effect="{StaticResource ShadowCard}">
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="24,20" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="致谢与开发者寄语" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,4" />
-                                    <TextBlock Text="承诺永久免费无流氓插件、无暗刷后门，纯净免安装。您的赞赏将优先用于采购更多 90HX 测试平台，持续打磨驱动适配与解锁兼容性！" Foreground="{StaticResource TextMuted}" FontSize="11" TextWrapping="Wrap" LineHeight="17" Margin="0,0,14,0" />
+
+                                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="14" Background="#EEF4FF" VerticalAlignment="Top" Margin="0,0,16,0">
+                                    <TextBlock Text="90" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBlue}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="90HX Studio" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
+                                    <TextBlock Name="TxtAboutVersion" Text="v4.5.0" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
+                                    <TextBlock Text="NVIDIA CMP 系列矿卡硬件调优工具箱 · RainCandy Technology" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <TextBlock Grid.Column="1" Text="RainCandy Technology · 极客同行" Foreground="{StaticResource AccentBlue}" FontWeight="SemiBold" FontSize="11.5" VerticalAlignment="Center" />
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Name="BtnAboutCheckUpdate" Content="检查更新" Style="{StaticResource StandardBtn}" Height="32" Padding="14,0,14,0" Margin="0,0,8,0" />
+                                    <Button Name="BtnLinkRepo" Content="GitHub" Tag="https://github.com/1922708082/90HX-Studio" Style="{StaticResource PrimaryBtn}" Height="32" Padding="16,0,16,0" />
+                                </StackPanel>
                             </Grid>
                         </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="24,18" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="致谢开源项目" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
+                                <TextBlock Text="本软件的功能建立在这些项目之上，版权与许可归各作者所有。" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,4,0,14" TextWrapping="Wrap" />
+
+                                <Border BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                            <TextBlock Text="CMP 90HX 图形解锁（NVPermissive）" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                            <TextBlock Text="homelabproject.cc · 解锁固件与魔改驱动 582.78 / 616.92 下载" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Name="BtnLinkCmp90" Content="访问" Tag="https://alist.homelabproject.cc/foxipan/vGPU/CMP_90HX/GraphicsUnlock" Style="{StaticResource StandardBtn}" Height="28" Width="58" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <Border BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                            <TextBlock Text="DLSSG SM86 帧生成运行库" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                            <TextBlock Text="sdli1995/dlssg_for_sm86 · 为 RTX 30 系与 CMP 卡提供 DLSS-G 帧生成" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Name="BtnLinkDlss" Content="访问" Tag="https://github.com/sdli1995/dlssg_for_sm86" Style="{StaticResource StandardBtn}" Height="28" Width="58" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <Border BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                            <TextBlock Text="REFramework" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                            <TextBlock Text="praydog/REFramework-nightly · RE 引擎游戏的脚本与 Mod 框架" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Name="BtnLinkRefw" Content="访问" Tag="https://github.com/praydog/REFramework-nightly" Style="{StaticResource StandardBtn}" Height="28" Width="58" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <Border BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                            <TextBlock Text="CMP 40HX 解锁工具" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                            <TextBlock Text="nie2100/40hx-unlock-recovery · 算力 + PCIe Gen2 + ReBAR 一键解锁" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Name="BtnLinkCmp40" Content="访问" Tag="https://github.com/nie2100/40hx-unlock-recovery" Style="{StaticResource StandardBtn}" Height="28" Width="58" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                        <TextBlock Text="CMP 50HX 解锁工具" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" />
+                                        <TextBlock Text="xrip/cmp50hx-unlock · 算力 + PCIe Gen2 + ReBAR，支持 20GB 版本" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Name="BtnLinkCmp50" Content="访问" Tag="https://github.com/xrip/cmp50hx-unlock" Style="{StaticResource StandardBtn}" Height="28" Width="58" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="24,18" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="使用声明" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,10" />
+                                <TextBlock Text="本软件仅用于个人硬件研究与学习。解锁操作会修改 UEFI 引导项与显卡寄存器，存在一定系统风险，请在操作前备份重要数据并确认主板 BIOS 设置。" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" LineHeight="18" />
+                                <TextBlock Text="软件按“现状”提供，不对因使用造成的硬件损坏、数据丢失或保修失效承担责任。" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" LineHeight="18" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
                 </ScrollViewer>
-
             </Grid>
 
                 </Grid>

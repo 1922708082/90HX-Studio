@@ -79,6 +79,9 @@ namespace CMP90HXToolbox
 
         private ComboBox _cmbSpoofTargetCard;
         private Button _btnSpoofAllGpus;
+        private ComboBox _cmbSpoofModel;
+        private Button _btnApplySpoof;
+        private Button _btnRestoreGpuName;
         private TextBlock _txtClassSubKey;
         private TextBlock _txtCurrentDriverDesc;
         private TextBlock _txtCurrentGpuMatchId;
@@ -554,6 +557,8 @@ namespace CMP90HXToolbox
                 (RadioButton)_window.FindName("NavItemSpoof"),
                 (RadioButton)_window.FindName("NavItemOverlay"),
                 (RadioButton)_window.FindName("NavItemMatrix"),
+                (RadioButton)_window.FindName("NavItemUnlock50"),
+                (RadioButton)_window.FindName("NavItemUnlock40"),
                 (RadioButton)_window.FindName("NavItemDualGpu"),
                 (RadioButton)_window.FindName("NavItemDlss"),
                 (RadioButton)_window.FindName("NavItemPower"),
@@ -566,6 +571,8 @@ namespace CMP90HXToolbox
                 (Grid)_window.FindName("PageSpoof"),
                 (Grid)_window.FindName("PageOverlay"),
                 (Grid)_window.FindName("PageMatrix"),
+                (Grid)_window.FindName("PageUnlock50"),
+                (Grid)_window.FindName("PageUnlock40"),
                 (Grid)_window.FindName("PageDualGpu"),
                 (Grid)_window.FindName("PageDlss"),
                 (Grid)_window.FindName("PagePower"),
@@ -614,6 +621,17 @@ namespace CMP90HXToolbox
 
             _cmbSpoofTargetCard = (ComboBox)_window.FindName("CmbSpoofTargetCard");
             _btnSpoofAllGpus = (Button)_window.FindName("BtnSpoofAllGpus");
+
+            _cmbSpoofModel = (ComboBox)_window.FindName("CmbSpoofModel");
+            _btnApplySpoof = (Button)_window.FindName("BtnApplySpoof");
+            _btnRestoreGpuName = (Button)_window.FindName("BtnRestoreGpuName");
+            if (_cmbSpoofModel != null)
+            {
+                _cmbSpoofModel.Items.Clear();
+                for (int i = 0; i < NativeCore.SpoofTargetModels.Length; i++)
+                    _cmbSpoofModel.Items.Add(NativeCore.SpoofTargetModels[i]);
+                _cmbSpoofModel.SelectedIndex = 0;
+            }
 
             _txtClassSubKey = (TextBlock)_window.FindName("TxtClassSubKey");
             _txtCurrentDriverDesc = (TextBlock)_window.FindName("TxtCurrentDriverDesc");
@@ -760,6 +778,34 @@ namespace CMP90HXToolbox
             string curVer = NativeCore.GetCurrentAppVersion();
             if (_txtAppVerCurrent != null) _txtAppVerCurrent.Text = "v" + curVer;
             if (_txtSidebarVersion != null) _txtSidebarVersion.Text = "v" + curVer;
+
+            TextBlock aboutVer = _window.FindName("TxtAboutVersion") as TextBlock;
+            if (aboutVer != null) aboutVer.Text = "v" + curVer;
+
+            WireLinkButton("BtnLinkRepo");
+            WireLinkButton("BtnLinkCmp90");
+            WireLinkButton("BtnLinkDlss");
+            WireLinkButton("BtnLinkRefw");
+            WireLinkButton("BtnLinkCmp40");
+            WireLinkButton("BtnLinkCmp50");
+            WireLinkButton("BtnDownloadRtDriver");
+            WireLinkButton("BtnOpenDriverFolder");
+
+            WireUnlockPage("Unlock50", "50hx", "50HX", "50HX");
+            WireUnlockPage("Unlock40", "40hx", "40HX", "40HX");
+
+            Button aboutCheck = _window.FindName("BtnAboutCheckUpdate") as Button;
+            if (aboutCheck != null)
+            {
+                aboutCheck.Click += (s, e) =>
+                {
+                    // 跳到「软件更新」页（导航索引 11）
+                    if (_navItems != null && _navItems.Length > 11 && _navItems[11] != null)
+                        _navItems[11].IsChecked = true;
+                    else
+                        SwitchPage(11, true);
+                };
+            }
 
             _btnToolRestartDriver = (Button)_window.FindName("BtnToolRestartDriver");
             _btnToolToggleHags = (Button)_window.FindName("BtnToolToggleHags");
@@ -1033,6 +1079,50 @@ namespace CMP90HXToolbox
                     _btnSpoofAllGpus.IsEnabled = true;
                     RefreshSystemStatus();
                     if (ok) ModernMessageBox.Show("全机所有矿卡已全部完成型号与图形深度伪装！\n设备管理器与图形系统已就绪。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+            }
+
+            if (_btnApplySpoof != null)
+            {
+                _btnApplySpoof.Click += async (s, e) =>
+                {
+                    if (!EnsureAdminPrivilege()) return;
+
+                    string model = Convert.ToString(_cmbSpoofModel != null ? _cmbSpoofModel.SelectedItem : "");
+                    if (string.IsNullOrEmpty(model))
+                    {
+                        ModernMessageBox.Show("请先在【伪装为】下拉框里选一个目标型号。", "未选择型号", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    if (ModernMessageBox.Show(
+                        "将把显卡显示名称改为：\n" + model + "\n\n" +
+                        "只改显示名称，不改 PCI ID，驱动匹配不受影响。\n" +
+                        "修改后到设备管理器禁用再启用一次显卡即可看到变化。\n\n是否继续？",
+                        "确认伪装型号", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                        return;
+
+                    _btnApplySpoof.IsEnabled = false;
+                    bool ok = await NativeCore.ApplyGpuRenameAsync(model, LogCallback);
+                    _btnApplySpoof.IsEnabled = true;
+                    RefreshSystemStatus();
+                    if (ok) ModernMessageBox.Show("已将显示名称改为 " + model + "\n\n到设备管理器禁用再启用显卡即可生效。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+            }
+
+            if (_btnRestoreGpuName != null)
+            {
+                _btnRestoreGpuName.Click += async (s, e) =>
+                {
+                    if (!EnsureAdminPrivilege()) return;
+                    if (ModernMessageBox.Show("将把显卡显示名称恢复为 NVIDIA CMP 90HX，是否继续？", "恢复原名", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                        return;
+
+                    _btnRestoreGpuName.IsEnabled = false;
+                    bool ok = await NativeCore.RestoreGpuTo90hxAsync(LogCallback);
+                    _btnRestoreGpuName.IsEnabled = true;
+                    RefreshSystemStatus();
+                    if (ok) ModernMessageBox.Show("已恢复原始名称。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
                 };
             }
 
@@ -2465,6 +2555,100 @@ namespace CMP90HXToolbox
             if (i <= 0) return fallback;
             string p = text.Substring(0, i).Trim();
             return p.Length == 0 ? fallback : p;
+        }
+
+        /// <summary>绑定 40HX / 50HX 解锁页的检测与工具按钮。</summary>
+        private void WireUnlockPage(string key, string toolkit, string exePrefix, string modelMatch)
+        {
+            Button detect = _window.FindName("Btn" + key + "Detect") as Button;
+            Button install = _window.FindName("Btn" + key + "Install") as Button;
+            Button check = _window.FindName("Btn" + key + "Check") as Button;
+            Button uninstall = _window.FindName("Btn" + key + "Uninstall") as Button;
+            Button folder = _window.FindName("Btn" + key + "Folder") as Button;
+            Border dot = _window.FindName("DotDot" + key) as Border;
+            TextBlock dev = _window.FindName("Txt" + key + "Device") as TextBlock;
+            TextBlock detail = _window.FindName("Txt" + key + "Detail") as TextBlock;
+            TextBlock status = _window.FindName("Txt" + key + "Status") as TextBlock;
+
+            Action refresh = delegate
+            {
+                try
+                {
+                    NativeCore.InstalledMiningGpu found = null;
+                    var gpus = NativeCore.DetectAllMiningGpus();
+                    if (gpus != null)
+                    {
+                        for (int i = 0; i < gpus.Count; i++)
+                        {
+                            string m = gpus[i].DetectedModel == null ? "" : gpus[i].DetectedModel;
+                            if (m.IndexOf(modelMatch, StringComparison.OrdinalIgnoreCase) >= 0) { found = gpus[i]; break; }
+                        }
+                    }
+
+                    if (found != null)
+                    {
+                        if (dot != null) dot.Background = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                        if (dev != null) dev.Text = "已检测到 " + found.DetectedModel;
+                        if (detail != null) detail.Text = "槽位 " + (found.SlotIndex + 1) + " · " + (found.CurrentDesc == null ? "" : found.CurrentDesc);
+                    }
+                    else
+                    {
+                        if (dot != null) dot.Background = new SolidColorBrush(Color.FromRgb(148, 163, 184));
+                        if (dev != null) dev.Text = "未检测到 " + modelMatch + " 显卡";
+                        if (detail != null) detail.Text = "插好卡后点右侧重新检测";
+                    }
+                }
+                catch { }
+            };
+
+            if (detect != null) detect.Click += (s, e) => { refresh(); };
+            if (install != null)
+            {
+                install.Click += (s, e) =>
+                {
+                    NativeCore.LaunchToolkitApp(toolkit, exePrefix + "Installer.exe", LogCallback);
+                    if (status != null) status.Text = "状态: 已启动安装器，请按提示操作";
+                };
+            }
+            if (check != null)
+            {
+                check.Click += (s, e) =>
+                {
+                    NativeCore.LaunchToolkitApp(toolkit, exePrefix + "Check.exe", LogCallback);
+                    if (status != null) status.Text = "状态: 已启动检查器（只读诊断）";
+                };
+            }
+            if (uninstall != null)
+            {
+                uninstall.Click += (s, e) =>
+                {
+                    NativeCore.LaunchToolkitApp(toolkit, exePrefix + "Uninstaller.exe", LogCallback);
+                    if (status != null) status.Text = "状态: 已启动卸载程序";
+                };
+            }
+            if (folder != null)
+            {
+                folder.Click += (s, e) =>
+                {
+                    NativeCore.OpenToolkitFolder(toolkit, LogCallback);
+                    if (status != null) status.Text = "状态: 已打开工具目录";
+                };
+            }
+
+            refresh();
+        }
+
+        /// <summary>把按钮的 Tag 当 URL，点击时用默认浏览器打开。</summary>
+        private void WireLinkButton(string name)
+        {
+            Button b = _window.FindName(name) as Button;
+            if (b == null) return;
+            b.Click += (s, e) =>
+            {
+                string url = Convert.ToString(b.Tag);
+                if (string.IsNullOrEmpty(url)) return;
+                try { Process.Start(url); } catch { }
+            };
         }
 
         /// <summary>版本号过长时截断展示：内置 revision 是 40 位 commit，直接显示会撑破右侧布局。</summary>
