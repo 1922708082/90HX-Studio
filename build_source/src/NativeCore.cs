@@ -452,6 +452,62 @@ namespace CMP90HXToolbox
             });
         }
 
+        /// <summary>校验已下载的 DLSS Unlocked 压缩包，返回简要结果并写日志。</summary>
+        public static string ValidateDlssUnlockedPackage(Action<string, bool> log)
+        {
+            try
+            {
+                string root = GetDlssUnlockedDirectory();
+                if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) return "未下载";
+
+                string[] zips = Directory.GetFiles(root, "dlss-unlocked-standalone-*.zip");
+                if (zips.Length == 0) return "未下载";
+
+                string zip = zips[0];
+                for (int i = 1; i < zips.Length; i++)
+                {
+                    if (File.GetLastWriteTimeUtc(zips[i]) > File.GetLastWriteTimeUtc(zip)) zip = zips[i];
+                }
+
+                // 部署到游戏目录时必须存在的三件套
+                string[] need = new string[] { "dxgi.dll", "OptiScaler.ini", "nvngx.dll_dlssnr.dll" };
+
+                using (var fs = File.OpenRead(zip))
+                using (var archive = new ZipArchive(fs, ZipArchiveMode.Read))
+                {
+                    HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    long totalBytes = 0;
+                    for (int i = 0; i < archive.Entries.Count; i++)
+                    {
+                        ZipArchiveEntry e = archive.Entries[i];
+                        names.Add(e.FullName.Replace('\\', '/'));
+                        totalBytes += e.Length;
+                    }
+
+                    int missing = 0;
+                    for (int i = 0; i < need.Length; i++)
+                    {
+                        if (!names.Contains(need[i]))
+                        {
+                            missing++;
+                            log("压缩包缺少关键文件: " + need[i], true);
+                        }
+                    }
+
+                    if (missing > 0) return "缺少 " + missing + " 个关键文件";
+
+                    log("压缩包校验通过：共 " + names.Count + " 个条目 / 解压后 "
+                        + (totalBytes / 1048576) + " MB，关键文件齐全", false);
+                    return "完整（" + names.Count + " 项 / " + (totalBytes / 1048576) + " MB）";
+                }
+            }
+            catch (Exception ex)
+            {
+                log("校验压缩包失败: " + ex.Message, true);
+                return "校验失败";
+            }
+        }
+
         /// <summary>把已下载的 DLSS Unlocked 包解压部署到游戏目录，原有同名文件备份为 .dlss5.bak。</summary>
         public static bool DeployDlssUnlockedToGame(string gameDir, Action<string, bool> log)
         {
@@ -602,6 +658,9 @@ namespace CMP90HXToolbox
                     string classRoot = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
                     string targetSubKey = "0001";
                     string activeInfName = "oem32.inf";
+                    // 记录实际命中的驱动描述，40HX/50HX 的 desc 和 90HX 不同，
+                    // 后面 patch INF 和 nvApp 配置要用它，不能写死 90HX 的字符串
+                    string matchedDesc = null;
 
                     using (var key = Registry.LocalMachine.OpenSubKey(classRoot, false))
                     {
@@ -622,6 +681,7 @@ namespace CMP90HXToolbox
                                         desc.IndexOf("GeForce", StringComparison.OrdinalIgnoreCase) >= 0)
                                     {
                                         targetSubKey = sub;
+                                        matchedDesc = desc;
                                         if (!string.IsNullOrEmpty(inf)) activeInfName = inf;
                                         break;
                                     }
@@ -715,7 +775,7 @@ namespace CMP90HXToolbox
                             {
                                 foreach (var dev in epKey.GetSubKeyNames())
                                 {
-                                    if (dev.IndexOf("DEV_220D", StringComparison.OrdinalIgnoreCase) >= 0)
+                                    if (IsCmpDevId(dev))
                                     {
                                         using (var dk = epKey.OpenSubKey(dev, false))
                                         {
@@ -765,7 +825,7 @@ namespace CMP90HXToolbox
                                         if (sk == null) continue;
                                         var desc = Convert.ToString(sk.GetValue("Description") ?? "");
                                         var devId = Convert.ToInt32(sk.GetValue("DeviceId") ?? 0);
-                                        if (desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 || devId == 8717)
+                                        if (IsCmpDevId(desc) || devId == 8717)
                                         {
                                             sk.SetValue("Description", targetName, RegistryValueKind.String);
                                             log("已更新 DirectX 适配器描述: " + sub, false);
@@ -798,7 +858,7 @@ namespace CMP90HXToolbox
                     }
 
                     string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
-                    PatchInfFile(sysInf, "NVIDIA CMP 90HX (RainCandy Technology)", targetName, log);
+                    PatchInfFile(sysInf, matchedDesc == null ? "NVIDIA CMP 90HX (RainCandy Technology)" : matchedDesc, targetName, log);
 
                     string driverStore = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"DriverStore\FileRepository");
                     if (Directory.Exists(driverStore))
@@ -806,11 +866,11 @@ namespace CMP90HXToolbox
                         foreach (var dir in Directory.GetDirectories(driverStore, "nvac.inf*"))
                         {
                             string targetInf = Path.Combine(dir, "nvac.inf");
-                            PatchInfFile(targetInf, "NVIDIA CMP 90HX (RainCandy Technology)", targetName, log);
+                            PatchInfFile(targetInf, matchedDesc == null ? "NVIDIA CMP 90HX (RainCandy Technology)" : matchedDesc, targetName, log);
                         }
                     }
 
-                    UpdateNvAppShimJson("NVIDIA CMP 90HX", targetName, log);
+                    UpdateNvAppShimJson(matchedDesc == null ? "NVIDIA CMP 90HX" : matchedDesc, targetName, log);
 
                     try
                     {
@@ -840,6 +900,16 @@ namespace CMP90HXToolbox
             });
         }
 
+        /// <summary>判断字符串里是否含任意 CMP 卡的 PCI Device ID（90HX 220D / 40HX 1F0B,21C4 / 50HX 1E09）。</summary>
+        private static bool IsCmpDevId(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return false;
+            return value.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   value.IndexOf("1F0B", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   value.IndexOf("21C4", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   value.IndexOf("1E09", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         public static Task<bool> RestoreGpuTo90hxAsync(Action<string, bool> log)
         {
             return Task.Factory.StartNew(() =>
@@ -850,6 +920,11 @@ namespace CMP90HXToolbox
                     string classRoot = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
                     string targetSubKey = "0001";
                     string activeInfName = "oem32.inf";
+
+                    // 恢复目标按实际卡型决定，40HX/50HX 不能还原成 90HX 的名字
+                    string restoreName = "NVIDIA CMP 90HX (RainCandy Technology)";
+                    string restoreBase = "NVIDIA CMP 90HX";
+                    string restoreDev = "220d";
 
                     using (var key = Registry.LocalMachine.OpenSubKey(classRoot, false))
                     {
@@ -864,12 +939,34 @@ namespace CMP90HXToolbox
                                     var matchId = Convert.ToString(sk.GetValue("MatchingDeviceId") ?? "");
                                     var desc = Convert.ToString(sk.GetValue("DriverDesc") ?? "");
                                     var inf = Convert.ToString(sk.GetValue("InfPath") ?? "");
-                                    if (matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                        desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                        desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0)
+                                    bool isCmp = matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 matchId.IndexOf("1F0B", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 matchId.IndexOf("21C4", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 matchId.IndexOf("1E09", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 desc.IndexOf("CMP", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 (desc.IndexOf("GeForce", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                                                  matchId.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                                    if (isCmp)
                                     {
                                         targetSubKey = sub;
                                         if (!string.IsNullOrEmpty(inf)) activeInfName = inf;
+
+                                        if (matchId.IndexOf("1F0B", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            matchId.IndexOf("21C4", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            desc.IndexOf("40HX", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        {
+                                            restoreName = "NVIDIA CMP 40HX";
+                                            restoreBase = "NVIDIA CMP 40HX";
+                                            restoreDev = "1f0b";
+                                        }
+                                        else if (matchId.IndexOf("1E09", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 desc.IndexOf("50HX", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        {
+                                            restoreName = "NVIDIA CMP 50HX";
+                                            restoreBase = "NVIDIA CMP 50HX";
+                                            restoreDev = "1e09";
+                                        }
                                         break;
                                     }
                                 }
@@ -881,9 +978,9 @@ namespace CMP90HXToolbox
                     {
                         if (sk != null)
                         {
-                            sk.SetValue("DriverDesc", "NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
-                            sk.SetValue("HardwareInformation.AdapterString", "NVIDIA CMP 90HX", RegistryValueKind.String);
-                            sk.SetValue("HardwareInformation.ChipType", "NVIDIA CMP 90HX", RegistryValueKind.String);
+                            sk.SetValue("DriverDesc", restoreName, RegistryValueKind.String);
+                            sk.SetValue("HardwareInformation.AdapterString", restoreBase, RegistryValueKind.String);
+                            sk.SetValue("HardwareInformation.ChipType", restoreBase, RegistryValueKind.String);
                             log("已还原驱动类描述为 NVIDIA CMP 90HX", false);
                         }
                     }
@@ -910,7 +1007,7 @@ namespace CMP90HXToolbox
                                                     var drv = Convert.ToString(nk.GetValue("Driver") ?? "");
                                                     if (drv.IndexOf(targetSubKey, StringComparison.OrdinalIgnoreCase) >= 0)
                                                     {
-                                                        nk.SetValue("DeviceDesc", "@" + activeInfName + ",%nvidia_dev.220d%;NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
+                                                        nk.SetValue("DeviceDesc", "@" + activeInfName + ",%nvidia_dev." + restoreDev + "%;NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
                                                     }
                                                 }
                                             }
@@ -936,7 +1033,7 @@ namespace CMP90HXToolbox
                             {
                                 foreach (var dev in epKey.GetSubKeyNames())
                                 {
-                                    if (dev.IndexOf("DEV_220D", StringComparison.OrdinalIgnoreCase) >= 0)
+                                    if (IsCmpDevId(dev))
                                     {
                                         using (var dk = epKey.OpenSubKey(dev, false))
                                         {
@@ -951,7 +1048,7 @@ namespace CMP90HXToolbox
                                                             if (ik != null)
                                                             {
                                                                 try { ik.DeleteValue("FriendlyName"); } catch { }
-                                                                ik.SetValue("DeviceDesc", "@" + activeInfName + ",%nvidia_dev.220d%;NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
+                                                                ik.SetValue("DeviceDesc", "@" + activeInfName + ",%nvidia_dev." + restoreDev + "%;NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
                                                             }
                                                         }
                                                     }
@@ -985,9 +1082,9 @@ namespace CMP90HXToolbox
                                         if (sk == null) continue;
                                         var desc = Convert.ToString(sk.GetValue("Description") ?? "");
                                         var devId = Convert.ToInt32(sk.GetValue("DeviceId") ?? 0);
-                                        if (desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0 || devId == 8717)
+                                        if (IsCmpDevId(desc) || devId == 8717)
                                         {
-                                            sk.SetValue("Description", "NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
+                                            sk.SetValue("Description", restoreName, RegistryValueKind.String);
                                         }
                                     }
                                 }
@@ -1006,7 +1103,7 @@ namespace CMP90HXToolbox
                         {
                             if (nvKey != null)
                             {
-                                nvKey.SetValue("DeviceDesc", "@" + activeInfName + ",%nvidia_dev.220d%;NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
+                                nvKey.SetValue("DeviceDesc", "@" + activeInfName + ",%nvidia_dev." + restoreDev + "%;NVIDIA CMP 90HX (RainCandy Technology)", RegistryValueKind.String);
                                 log("已还原 nvlddmkm 底层驱动服务配置为官方出厂值", false);
                             }
                         }
@@ -1017,7 +1114,7 @@ namespace CMP90HXToolbox
                     }
 
                     string sysInf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "INF", activeInfName);
-                    PatchInfFile(sysInf, "NVIDIA GeForce RTX 3080", "NVIDIA CMP 90HX (RainCandy Technology)", log);
+                    PatchInfFile(sysInf, "NVIDIA GeForce RTX 3080", restoreName, log);
 
                     string driverStore = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"DriverStore\FileRepository");
                     if (Directory.Exists(driverStore))
@@ -1025,11 +1122,11 @@ namespace CMP90HXToolbox
                         foreach (var dir in Directory.GetDirectories(driverStore, "nvac.inf*"))
                         {
                             string targetInf = Path.Combine(dir, "nvac.inf");
-                            PatchInfFile(targetInf, "NVIDIA GeForce RTX 3080", "NVIDIA CMP 90HX (RainCandy Technology)", log);
+                            PatchInfFile(targetInf, "NVIDIA GeForce RTX 3080", restoreName, log);
                         }
                     }
 
-                    UpdateNvAppShimJson("NVIDIA GeForce RTX 3080", "NVIDIA CMP 90HX", log);
+                    UpdateNvAppShimJson("NVIDIA GeForce RTX 3080", restoreBase, log);
 
                     try
                     {
@@ -2898,8 +2995,7 @@ namespace CMP90HXToolbox
                                 var matchId = Convert.ToString(subKey.GetValue("MatchingDeviceId") ?? "");
                                 var desc = Convert.ToString(subKey.GetValue("DriverDesc") ?? "");
 
-                                if (matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                if (IsCmpDevId(matchId) || IsCmpDevId(desc) ||
                                     (desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0 && matchId.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0))
                                 {
                                     topo.HasRenderGpu = true;
@@ -5355,6 +5451,512 @@ namespace CMP90HXToolbox
             catch { }
         }
 
+        /// <summary>当前是否处于待机省电状态（显存被锁在最低档）。</summary>
+        public static bool IsGpuIdleSaveActive()
+        {
+            try
+            {
+                string smi = FindNvidiaSmi();
+                if (!File.Exists(smi)) return false;
+                string v = RunCmd(smi, "--query-gpu=clocks.mem --format=csv,noheader,nounits");
+                if (string.IsNullOrEmpty(v)) return false;
+                int mem;
+                if (int.TryParse(v.Trim().Replace("\r", "").Replace("\n", ""), out mem))
+                    return mem > 0 && mem < 1000;
+            }
+            catch { }
+            return false;
+        }
+
+        // ================= NVAPI 直接限制 P-State（比 nvidia-smi 锁频更彻底）=================
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr LoadLibraryEx(string name, IntPtr file, uint flags);
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi)]
+        private static extern IntPtr GetProcAddress(IntPtr module, string name);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr NvQueryDel(uint id);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NvSimple();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NvEnumGpu([Out] IntPtr[] handles, out uint count);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NvReadUint(IntPtr handle, out uint value);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NvPciIds(IntPtr handle, out uint device, out uint subsystem, out uint revision, out uint external);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NvSetLimit(IntPtr handle, uint type, uint pstate);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NvDynamicInfo(IntPtr handle, [In, Out] byte[] data);
+
+        private static IntPtr _nvapiModule = IntPtr.Zero;
+        private static NvQueryDel _nvQuery;
+        private static NvEnumGpu _nvEnum;
+        private static NvReadUint _nvPstate;
+        private static NvPciIds _nvPci;
+        private static NvSetLimit _nvLimit;
+        private static NvDynamicInfo _nvDynamic;
+        private static bool _nvReady;
+
+        private static Delegate NvFn(Type t, uint id)
+        {
+            IntPtr addr = _nvQuery(id);
+            if (addr == IntPtr.Zero) throw new InvalidOperationException("驱动不支持接口 0x" + id.ToString("X8"));
+            return Marshal.GetDelegateForFunctionPointer(addr, t);
+        }
+
+        /// <summary>初始化 NVAPI（只从 System32 加载系统 nvapi64.dll）。</summary>
+        private static bool NvInit(out string err)
+        {
+            err = null;
+            if (_nvReady) return true;
+            try
+            {
+                if (_nvapiModule == IntPtr.Zero)
+                {
+                    _nvapiModule = LoadLibraryEx("nvapi64.dll", IntPtr.Zero, 0x800);
+                    if (_nvapiModule == IntPtr.Zero) { err = "系统缺少 nvapi64.dll"; return false; }
+                }
+
+                IntPtr entry = GetProcAddress(_nvapiModule, "nvapi_QueryInterface");
+                if (entry == IntPtr.Zero) { err = "NVAPI 缺少 QueryInterface"; return false; }
+                _nvQuery = (NvQueryDel)Marshal.GetDelegateForFunctionPointer(entry, typeof(NvQueryDel));
+
+                IntPtr initAddr = _nvQuery(0x0150E828);
+                if (initAddr == IntPtr.Zero) { err = "NVAPI 无 Initialize"; return false; }
+                NvSimple init = (NvSimple)Marshal.GetDelegateForFunctionPointer(initAddr, typeof(NvSimple));
+                if (init() != 0) { err = "NVAPI 初始化失败"; return false; }
+
+                _nvEnum = (NvEnumGpu)NvFn(typeof(NvEnumGpu), 0xE5AC921F);
+                _nvPci = (NvPciIds)NvFn(typeof(NvPciIds), 0x2DDFB66E);
+                _nvPstate = (NvReadUint)NvFn(typeof(NvReadUint), 0x927DA4F6);
+                _nvLimit = (NvSetLimit)NvFn(typeof(NvSetLimit), 0xFDFC7D49);
+                _nvDynamic = (NvDynamicInfo)NvFn(typeof(NvDynamicInfo), 0x60DED2ED);
+
+                _nvReady = true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                err = "NVAPI 初始化异常: " + ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>按 PCI ID 找 CMP 90HX 的 NVAPI 句柄。</summary>
+        private static IntPtr NvFind90hx()
+        {
+            IntPtr[] handles = new IntPtr[64];
+            uint count;
+            if (_nvEnum(handles, out count) != 0 || count == 0 || count > 64) return IntPtr.Zero;
+            for (int i = 0; i < count; i++)
+            {
+                uint dev, sub, rev, ext;
+                if (_nvPci(handles[i], out dev, out sub, out rev, out ext) != 0) continue;
+                if (dev == 0x220D10DE) return handles[i];
+            }
+            return IntPtr.Zero;
+        }
+
+        /// <summary>
+        /// 设置 P-State 上限。pstate=8 压到 P8（最低性能态），pstate=0 解除限制交还驱动动态策略。
+        /// 返回 null 表示 NVAPI 不可用，调用方应回退到 nvidia-smi 方案。
+        /// </summary>
+        public static bool? SetPstateCeiling(int pstate, Action<string, bool> log)
+        {
+            string err;
+            if (!NvInit(out err))
+            {
+                log("NVAPI 不可用（" + err + "），回退到 nvidia-smi", false);
+                return null;
+            }
+            try
+            {
+                IntPtr h = NvFind90hx();
+                if (h == IntPtr.Zero) { log("NVAPI 未找到 CMP 90HX", true); return null; }
+
+                int r = _nvLimit(h, 3, (uint)pstate);
+                if (r != 0) { log("SetPstateClientLimits 返回 " + r, true); return null; }
+
+                log(pstate == 8 ? "已通过 NVAPI 将 P-State 上限压到 P8" : "已解除 P-State 上限，交还驱动动态调度", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                log("设置 P-State 上限异常: " + ex.Message, true);
+                return null;
+            }
+        }
+
+        // ---- 系统级省电：注册为开机自启的计划任务（SYSTEM 权限）----
+
+        private const string PowerSaverTaskName = "90HXStudioPowerSaver";
+
+        public static bool IsPowerSaverTaskInstalled()
+        {
+            try
+            {
+                string r = RunCmd("schtasks", "/query /tn \"" + PowerSaverTaskName + "\"");
+                return !string.IsNullOrEmpty(r) && r.IndexOf(PowerSaverTaskName, StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            catch { return false; }
+        }
+
+        public static bool InstallPowerSaverTask(Action<string, bool> log)
+        {
+            try
+            {
+                string exe = Process.GetCurrentProcess().MainModule.FileName;
+                string args = "/create /tn \"" + PowerSaverTaskName + "\" /tr \"\\\"" + exe
+                            + "\\\" --powersave\" /sc onstart /ru SYSTEM /rl HIGHEST /f";
+
+                string r = RunCmd("schtasks", args);
+                if (IsPowerSaverTaskInstalled())
+                {
+                    log("系统级省电已注册：开机自动启动，SYSTEM 权限，无需登录", false);
+                    return true;
+                }
+                log("注册系统级省电失败: " + (string.IsNullOrEmpty(r) ? "schtasks 无返回" : r.Trim()), true);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                log("注册系统级省电异常: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        public static bool UninstallPowerSaverTask(Action<string, bool> log)
+        {
+            try
+            {
+                RunCmd("schtasks", "/delete /tn \"" + PowerSaverTaskName + "\" /f");
+                log("系统级省电已移除", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                log("移除系统级省电失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        public static void RunPowerSaverTaskNow(Action<string, bool> log)
+        {
+            try
+            {
+                RunCmd("schtasks", "/run /tn \"" + PowerSaverTaskName + "\"");
+                log("已立即启动系统级省电任务", false);
+            }
+            catch (Exception ex)
+            {
+                log("启动任务失败: " + ex.Message, true);
+            }
+        }
+
+        // ---- 后台省电进程管理 ----
+
+        public static string GetPowerSaverPidFile()
+        {
+            try { return Path.Combine(GetDataDirectory(), "powersaver.pid"); }
+            catch { return null; }
+        }
+
+        public static bool IsPowerSaverRunning()
+        {
+            try
+            {
+                string f = GetPowerSaverPidFile();
+                if (f == null || !File.Exists(f)) return false;
+                int pid;
+                if (!int.TryParse(File.ReadAllText(f).Trim(), out pid)) return false;
+                Process p = Process.GetProcessById(pid);
+                return p != null && !p.HasExited;
+            }
+            catch { return false; }
+        }
+
+        public static bool StartPowerSaverProcess(Action<string, bool> log)
+        {
+            try
+            {
+                if (IsPowerSaverRunning())
+                {
+                    log("后台省电进程已在运行", false);
+                    return true;
+                }
+
+                string exe = Process.GetCurrentProcess().MainModule.FileName;
+                ProcessStartInfo psi = new ProcessStartInfo(exe, "--powersave");
+                psi.UseShellExecute = true;
+                psi.Verb = "runas";
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+                Process.Start(psi);
+                log("后台省电进程已启动（关闭主程序后仍继续工作）", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                log("启动后台省电失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        public static void StopPowerSaverProcess(Action<string, bool> log)
+        {
+            try
+            {
+                string f = GetPowerSaverPidFile();
+                if (f != null && File.Exists(f))
+                {
+                    int pid;
+                    if (int.TryParse(File.ReadAllText(f).Trim(), out pid))
+                    {
+                        try { Process.GetProcessById(pid).Kill(); } catch { }
+                    }
+                    try { File.Delete(f); } catch { }
+                }
+                log("后台省电进程已停止", false);
+            }
+            catch (Exception ex)
+            {
+                log("停止后台省电失败: " + ex.Message, true);
+            }
+        }
+
+        /// <summary>读当前 GPU 利用率（%）。失败返回 -1。</summary>
+        public static int ReadGpuUtilization()
+        {
+            string err;
+            if (!NvInit(out err)) return -1;
+            try
+            {
+                IntPtr h = NvFind90hx();
+                if (h == IntPtr.Zero) return -1;
+
+                // NVAPI 结构：version=0x10048；[8] bit0 = GPU 利用率有效；[12] = GPU%
+                byte[] data = new byte[72];
+                Array.Copy(BitConverter.GetBytes(0x10048u), 0, data, 0, 4);
+                if (_nvDynamic(h, data) != 0) return -1;
+                if ((BitConverter.ToUInt32(data, 8) & 1) == 0) return -1;
+
+                uint gpu = BitConverter.ToUInt32(data, 12);
+                if (gpu > 100) return -1;
+                return (int)gpu;
+            }
+            catch { return -1; }
+        }
+
+        // ---- 动态省电：空闲压 P8，有负载自动解除 ----
+
+        private static Timer _idleTimer;
+        private static volatile bool _idleLimited;
+        private static DateTime _lastBusy = DateTime.Now;
+        private static int _idleSeconds = 60;
+
+        public static bool IsAutoIdleSaveRunning()
+        {
+            return _idleTimer != null;
+        }
+
+        /// <summary>开启自动省电：连续空闲 N 秒后把 P-State 压到 P8，检测到负载立刻解除。</summary>
+        public static void StartAutoIdleSave(int idleSeconds, Action<string, bool> log)
+        {
+            StopAutoIdleSave(log);
+            _idleSeconds = idleSeconds < 10 ? 10 : idleSeconds;
+            _lastBusy = DateTime.Now;
+            _idleLimited = false;
+            _idleTimer = new Timer(IdleTick, log, 3000, 3000);
+            log("自动省电已开启：空闲 " + _idleSeconds + " 秒后压到 P8，检测到负载自动恢复", false);
+        }
+
+        /// <summary>关闭自动省电，并解除可能存在的 P8 限制。</summary>
+        public static void StopAutoIdleSave(Action<string, bool> log)
+        {
+            if (_idleTimer != null)
+            {
+                try { _idleTimer.Dispose(); } catch { }
+                _idleTimer = null;
+            }
+            // 无条件解除：可能包含上一次会话（软件已退出）残留的 nvidia-smi 全局锁
+            SetPstateCeiling(0, log);
+            try
+            {
+                string smi = FindNvidiaSmi();
+                if (File.Exists(smi))
+                {
+                    RunCmd(smi, "-rgc");
+                    RunCmd(smi, "-pl 250");
+                }
+            }
+            catch { }
+            _idleLimited = false;
+            if (log != null) log("自动省电已关闭", false);
+        }
+
+        private static void IdleTick(object state)
+        {
+            Action<string, bool> log = state as Action<string, bool>;
+            try
+            {
+                int util = ReadGpuUtilization();
+                if (util < 0) return;
+
+                if (util > 3)
+                {
+                    _lastBusy = DateTime.Now;
+                    if (_idleLimited)
+                    {
+                        SetPstateCeiling(0, log);
+                        try
+                        {
+                            string smi = FindNvidiaSmi();
+                            if (File.Exists(smi))
+                            {
+                                RunCmd(smi, "-rgc");
+                                RunCmd(smi, "-pl 250");
+                            }
+                        }
+                        catch { }
+                        _idleLimited = false;
+                        if (log != null) log("检测到 GPU 负载 " + util + "%，已解除省电限制", false);
+                    }
+                }
+                else if (!_idleLimited && (DateTime.Now - _lastBusy).TotalSeconds >= _idleSeconds)
+                {
+                    bool? r = SetPstateCeiling(8, log);
+                    if (r == true)
+                    {
+                        _idleLimited = true;
+
+                        // 额外落一份 nvidia-smi 的全局锁：
+                        // NVAPI 的 client limit 会随进程退出被驱动清掉，而 smi 的锁频是驱动全局状态，
+                        // 这样关掉软件后省电依然生效。
+                        try
+                        {
+                            string smi = FindNvidiaSmi();
+                            if (File.Exists(smi))
+                            {
+                                RunCmd(smi, "-lgc 210,210");
+                                RunCmd(smi, "-pl 45");
+                            }
+                        }
+                        catch { }
+
+                        if (log != null) log("空闲满 " + _idleSeconds + " 秒，P-State 已限制到 P8（关闭软件后仍生效）", false);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>读当前 P-State（如 P8），失败返回 null。</summary>
+        public static string ReadPstate()
+        {
+            string err;
+            if (!NvInit(out err)) return null;
+            try
+            {
+                IntPtr h = NvFind90hx();
+                if (h == IntPtr.Zero) return null;
+                uint state;
+                if (_nvPstate(h, out state) != 0) return null;
+                return "P" + state;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// 90HX 待机省电：核心频率锁到最低 210MHz，并把功耗墙压到 70W。
+        /// 矿卡没有显示输出，驱动常年停在 P0、显存满速，待机会白白吃掉七八十瓦。
+        /// </summary>
+        public static Task<bool> ToggleGpuIdleSaveAsync(bool enable, Action<string, bool> log)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                try
+                {
+                    string smi = FindNvidiaSmi();
+                    if (!File.Exists(smi))
+                    {
+                        log("未找到 nvidia-smi.exe，无法调整功耗", true);
+                        return false;
+                    }
+
+                    string bakFile = Path.Combine(GetDataDirectory(), "gpu_pl_backup.txt");
+
+                    if (enable)
+                    {
+                        // 首选 NVAPI：直接把 P-State 上限压到 P8，比锁频率更彻底
+                        SetPstateCeiling(8, log);
+
+                        string cur = RunCmd(smi, "--query-gpu=power.limit --format=csv,noheader,nounits");
+                        int curPl = 0;
+                        if (!string.IsNullOrEmpty(cur))
+                        {
+                            string t = cur.Trim().Replace("\r", "").Replace("\n", "");
+                            int dot = t.IndexOf('.');
+                            if (dot > 0) t = t.Substring(0, dot);
+                            int.TryParse(t, out curPl);
+                        }
+                        if (curPl > 0)
+                        {
+                            try { File.WriteAllText(bakFile, curPl.ToString()); } catch { }
+                            log("已记录当前功耗墙: " + curPl + "W", false);
+                        }
+
+                        // 必须先开持久模式，-ac 才会真正锁住；接着用 -ac 同时锁显存+核心
+                        string pm = RunCmd(smi, "-pm 1");
+                        log("持久模式: " + (string.IsNullOrEmpty(pm) ? "已启用" : pm.Trim()), false);
+
+                        string ac = RunCmd(smi, "-ac 405,210");
+                        log("应用时钟锁 显存405/核心210: " + (string.IsNullOrEmpty(ac) ? "已执行" : ac.Trim()), false);
+
+                        string lg = RunCmd(smi, "-lgc 210,210");
+                        log("核心锁 210MHz: " + (string.IsNullOrEmpty(lg) ? "已执行" : lg.Trim()), false);
+
+                        string lp = RunCmd(smi, "-pl 45");
+                        log("功耗墙 45W: " + (string.IsNullOrEmpty(lp) ? "已执行" : lp.Trim()), false);
+
+                        log("待机省电已开启。跑重负载前请先恢复，否则会被功耗墙限制性能。", false);
+                        return true;
+                    }
+
+                    // 逐条执行并记录返回，任何一条失败也不影响后续步骤
+                    SetPstateCeiling(0, log);
+
+                    string r0 = RunCmd(smi, "-rac");
+                    log("应用时钟恢复: " + (string.IsNullOrEmpty(r0) ? "已执行" : r0.Trim()), false);
+
+                    string r1 = RunCmd(smi, "-rgc");
+                    log("核心频率解除锁定: " + (string.IsNullOrEmpty(r1) ? "已执行" : r1.Trim()), false);
+
+                    string r2 = RunCmd(smi, "-rmc");
+                    log("显存频率恢复默认: " + (string.IsNullOrEmpty(r2) ? "已执行" : r2.Trim()), false);
+
+                    RunCmd(smi, "-pm 0");
+
+                    // 备份值只在合理范围内才采用，避免把 70W 这种省电值又写回去
+                    int pl = 250;
+                    if (File.Exists(bakFile))
+                    {
+                        int parsed;
+                        if (int.TryParse(File.ReadAllText(bakFile).Trim(), out parsed) && parsed >= 100 && parsed <= 400) pl = parsed;
+                    }
+                    string r3 = RunCmd(smi, string.Format("-pl {0}", pl));
+                    log("功耗墙恢复为 " + pl + "W: " + (string.IsNullOrEmpty(r3) ? "已执行" : r3.Trim()), false);
+                    log("已退出待机省电。", false);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    log("调整功耗失败: " + ex.Message, true);
+                    return false;
+                }
+            });
+        }
+
         private static string RunCmd(string exe, string args)
         {
             try
@@ -5409,8 +6011,7 @@ namespace CMP90HXToolbox
                                     if (sk == null) continue;
                                     var match = Convert.ToString(sk.GetValue("MatchingDeviceId") ?? "");
                                     var desc = Convert.ToString(sk.GetValue("DriverDesc") ?? "");
-                                    if (match.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                        desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    if (IsCmpDevId(match) || IsCmpDevId(desc) ||
                                         (desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0 && match.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0))
                                     {
                                         subKey = sub;
@@ -5651,8 +6252,7 @@ namespace CMP90HXToolbox
                                 if (sk == null) continue;
                                 var matchId = Convert.ToString(sk.GetValue("MatchingDeviceId") ?? "");
                                 var desc = Convert.ToString(sk.GetValue("DriverDesc") ?? "");
-                                if (matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                if (IsCmpDevId(matchId) || IsCmpDevId(desc) ||
                                     (desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0 && matchId.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0))
                                 {
                                     object obj64 = sk.GetValue("OpenGLDriverName") ?? sk.GetValue("_OpenGLDriverName");
@@ -6240,7 +6840,7 @@ namespace CMP90HXToolbox
                                 {
                                     string sample = File.ReadAllText(f, Encoding.Default);
                                     if (sample.IndexOf("RainCandy", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                        sample.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        IsCmpDevId(sample) ||
                                         sample.IndexOf(gpu.DetectedModel, StringComparison.OrdinalIgnoreCase) >= 0)
                                     {
                                         PatchInfFileForGpu(f, gpu, log);

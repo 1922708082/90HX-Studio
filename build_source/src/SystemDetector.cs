@@ -435,15 +435,24 @@ namespace CMP90HXToolbox
                                 var desc = Convert.ToString(subKey.GetValue("DriverDesc") ?? "");
                                 var drvVer = Convert.ToString(subKey.GetValue("DriverVersion") ?? "");
 
-                                if (matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    desc.IndexOf("90HX", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    (desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0 && matchId.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0))
+                                // 支持全系列 CMP：90HX(220D) / 40HX(1F0B,21C4) / 50HX(1E09)，
+                                // 以及已被伪装成任意 GeForce 的情况
+                                bool isCmpCard = matchId.IndexOf("220D", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 matchId.IndexOf("1F0B", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 matchId.IndexOf("21C4", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 matchId.IndexOf("1E09", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 desc.IndexOf("CMP", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 (desc.IndexOf("GeForce", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                                                  matchId.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                                if (isCmpCard)
                                 {
                                     status.GpuDesc = desc;
                                     status.GpuId = matchId;
                                     status.ClassSubKey = subName;
                                     status.DriverVersion = drvVer;
-                                    if (desc.IndexOf("3080", StringComparison.OrdinalIgnoreCase) >= 0)
+                                    // 描述里已经没有 CMP 字样，说明被伪装过（不限于 3080）
+                                    if (desc.IndexOf("CMP", StringComparison.OrdinalIgnoreCase) < 0)
                                     {
                                         status.IsSpoofedTo3080 = true;
                                     }

@@ -105,6 +105,7 @@ namespace CMP90HXToolbox
         private TextBlock _txtDashPcie;
         private TextBlock _txtDashOverlay;
         private Button _btnDashRename;
+        private bool _dashIdleSaveOn;
         private Button _btnDashUnlock;
         private Button _btnDashRestart;
 
@@ -334,9 +335,61 @@ namespace CMP90HXToolbox
 
         #endregion
 
-        [STAThread]
-        public static void Main()
+        /// <summary>
+        /// 后台省电进程：不创建任何窗口，只按空闲/负载动态限制 P-State。
+        /// 由主程序以 --powersave 拉起，主程序关闭后仍继续运行，直到被显式停止或重启。
+        /// </summary>
+        private static void RunPowerSaverBackground()
         {
+            Mutex mutex = null;
+            bool created = false;
+            try { mutex = new Mutex(true, "CMP90HX_Toolbox_PowerSaver_Mutex", out created); }
+            catch { created = true; }
+
+            if (!created) return;
+
+            try
+            {
+                string dir = NativeCore.GetDataDirectory();
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                    File.WriteAllText(Path.Combine(dir, "powersaver.pid"),
+                        Process.GetCurrentProcess().Id.ToString());
+                }
+            }
+            catch { }
+
+            Action<string, bool> silent = delegate { };
+            NativeCore.StartAutoIdleSave(60, silent);
+
+            try
+            {
+                System.Windows.Threading.Dispatcher.Run();
+            }
+            catch { }
+            finally
+            {
+                try { NativeCore.StopAutoIdleSave(silent); } catch { }
+                try
+                {
+                    string pidFile = Path.Combine(NativeCore.GetDataDirectory(), "powersaver.pid");
+                    if (File.Exists(pidFile)) File.Delete(pidFile);
+                }
+                catch { }
+            }
+        }
+
+        [STAThread]
+        public static void Main(string[] args)
+        {
+            // 后台省电模式：由主程序以 --powersave 拉起，不开窗口，只跑空闲监控
+            if (args != null && args.Length > 0 && args[0] == "--powersave")
+            {
+                RunPowerSaverBackground();
+                return;
+            }
+
             try
             {
                 bool isNewInstance = false;
@@ -657,6 +710,85 @@ namespace CMP90HXToolbox
             _btnDashRename = (Button)_window.FindName("BtnDashRename");
             _btnDashUnlock = (Button)_window.FindName("BtnDashUnlock");
             _btnDashRestart = (Button)_window.FindName("BtnDashRestart");
+
+            // 首页快捷动作：此前这三个按钮只取了引用、没绑事件，点了没反应
+            if (_btnDashRename != null)
+            {
+                _btnDashRename.Click += async (s, e) =>
+                {
+                    if (!EnsureAdminPrivilege()) return;
+                    if (ModernMessageBox.Show(
+                        "将把当前显卡显示名称改为：\nNVIDIA GeForce RTX 5090\n\n只改显示名称，不改 PCI ID，驱动匹配不受影响。\n\n是否继续？",
+                        "一键伪装", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+                    _btnDashRename.IsEnabled = false;
+                    bool ok = await NativeCore.ApplyGpuRenameAsync("NVIDIA GeForce RTX 5090", LogCallback);
+                    _btnDashRename.IsEnabled = true;
+                    RefreshSystemStatus();
+                    if (ok) ModernMessageBox.Show("已伪装为 RTX 5090。\n到设备管理器禁用再启用显卡即可生效。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+            }
+
+            if (_btnDashUnlock != null)
+            {
+                if (NativeCore.IsPowerSaverTaskInstalled())
+                    _btnDashUnlock.Content = "🔋 关闭系统省电";
+
+                _btnDashUnlock.Click += (s, e) =>
+                {
+                    if (!EnsureAdminPrivilege()) return;
+
+                    if (!NativeCore.IsPowerSaverTaskInstalled())
+                    {
+                        if (ModernMessageBox.Show(
+                            "将注册开机自启的系统级省电：\n\n" +
+                            "· 以 SYSTEM 权限运行，不需要用户登录\n" +
+                            "· 连续空闲 60 秒 → 压到 P8\n" +
+                            "· 检测到 GPU 占用 > 3% → 立刻恢复性能\n" +
+                            "· 无窗口，不占任务栏\n\n" +
+                            "是否继续？",
+                            "系统级省电", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+                        if (NativeCore.InstallPowerSaverTask(LogCallback))
+                        {
+                            _btnDashUnlock.Content = "🔋 关闭系统省电";
+                            NativeCore.RunPowerSaverTaskNow(LogCallback);
+                            ModernMessageBox.Show(
+                                "已注册并启动。\n\n以后每次开机自动生效，不需要打开软件。\n想关掉再点一次这个按钮。",
+                                "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            ModernMessageBox.Show("注册失败，详情见日志。", "失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    }
+                    else
+                    {
+                        if (ModernMessageBox.Show("将移除系统级省电任务，是否继续？", "移除", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+                        NativeCore.UninstallPowerSaverTask(LogCallback);
+                        _btnDashUnlock.Content = "🔋 系统级省电";
+                        ModernMessageBox.Show(
+                            "已移除。\n\n频率锁可能还留在驱动里，点【软重启显卡驱动】可彻底恢复。",
+                            "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    RefreshSensors();
+                };
+            }
+
+            if (_btnDashRestart != null)
+            {
+                _btnDashRestart.Click += async (s, e) =>
+                {
+                    if (!EnsureAdminPrivilege()) return;
+                    _btnDashRestart.IsEnabled = false;
+                    await NativeCore.SoftRestartGpuDriverAsync(LogCallback);
+                    _btnDashRestart.IsEnabled = true;
+                    RefreshSystemStatus();
+                };
+            }
+
+            // 系统级省电已合并到上面的「🔋 系统级省电」按钮，不再单独占一个入口
 
             _txtNvAppPath = (TextBlock)_window.FindName("TxtNvAppPath");
             _txtOverlayPatchState = (TextBlock)_window.FindName("TxtOverlayPatchState");
@@ -1216,26 +1348,8 @@ namespace CMP90HXToolbox
                     RefreshSensors();
                 };
 
-            // —— 驾驶舱快捷动作：桥接触发主页既有按钮的逻辑（不复制业务代码）——
-            if (_btnDashRename != null && _btnRenameTo3080 != null)
-                _btnDashRename.Click += (s, e) =>
-                {
-                    if (_btnRenameTo3080.IsEnabled)
-                        _btnRenameTo3080.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, _btnRenameTo3080));
-                };
-            if (_btnDashUnlock != null && _btnApplyNewUnlock != null)
-                _btnDashUnlock.Click += (s, e) =>
-                {
-                    if (_btnApplyNewUnlock.IsEnabled)
-                        _btnApplyNewUnlock.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, _btnApplyNewUnlock));
-                };
-            if (_btnDashRestart != null && _btnQuickRestartDriver != null)
-                _btnDashRestart.Click += (s, e) =>
-                {
-                    if (_btnQuickRestartDriver.IsEnabled)
-                        _btnQuickRestartDriver.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, _btnQuickRestartDriver));
-                };
-
+            // 驾驶舱快捷动作已在 LoadControlRefs 里各自绑定，这里不再做二次转发，
+            // 否则一次点击会触发两遍业务逻辑（待机省电曾被重复触发到一键解锁上）。
             if (_btnUnlockOverlay != null)
                 _btnUnlockOverlay.Click += async (s, e) =>
             {
@@ -1792,8 +1906,17 @@ namespace CMP90HXToolbox
 
                         if (ok)
                         {
-                            ModernMessageBox.Show("下载完成。\n\n下一步：把游戏主程序所在目录填到上方【目标游戏主程序目录】，再点【部署到游戏】。",
-                                "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                            string vres = NativeCore.ValidateDlssUnlockedPackage(LogCallback);
+                            if (txtD5Ver != null) txtD5Ver.Text = "已下载 · " + vres;
+
+                            ModernMessageBox.Show(
+                                "下载完成，包校验：" + vres + "\n\n" +
+                                "⚠ 下载得到的是压缩包，不能直接放进游戏目录。\n\n" +
+                                "正确用法：\n" +
+                                "1. 把游戏主程序 exe 所在目录填到上方【目标游戏主程序目录】\n" +
+                                "2. 点【部署到游戏】，程序会自动解压并放到正确位置\n" +
+                                "3. 进游戏后按 Home 打开面板，开启 DLSS Neural Rendering",
+                                "下载完成", MessageBoxButton.OK, MessageBoxImage.Information);
                         }
                         else
                         {

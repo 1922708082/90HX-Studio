@@ -1215,8 +1215,8 @@
                                 <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="14" Effect="{StaticResource ShadowSm}">
                                     <StackPanel>
                                         <TextBlock Text="快捷动作" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,10" />
-                                        <Button Name="BtnDashRename" Content="🎭 一键伪装 RTX 3080" Style="{StaticResource PrimaryBtn}" Height="34" Margin="0,0,0,8" />
-                                        <Button Name="BtnDashUnlock" Content="⚡ 一键新版解锁" Style="{StaticResource StandardBtn}" Height="34" Margin="0,0,0,8" />
+                                        <Button Name="BtnDashRename" Content="🎭 一键伪装 RTX 5090" Style="{StaticResource PrimaryBtn}" Height="34" Margin="0,0,0,8" />
+                                        <Button Name="BtnDashUnlock" Content="🔋 系统级省电" Style="{StaticResource StandardBtn}" Height="34" Margin="0,0,0,8" />
                                         <Button Name="BtnDashRestart" Content="⟳ 软重启显卡驱动" Style="{StaticResource StandardBtn}" Height="34" />
                                     </StackPanel>
                                 </Border>
@@ -1447,6 +1447,8 @@
                             </Grid>
                         </Border>
 
+                        
+
                         <Border Name="Card90hxStatusInfo" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
@@ -1480,20 +1482,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Name="CardNewUnlock" Background="{StaticResource BgCard}" BorderBrush="#93C5FD" BorderThickness="1.5" CornerRadius="12" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,10">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="新版解锁" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="14" />
-                                        <TextBlock Text="NVPermissiveEFI · EFI Shell 直跑" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                    <Border Background="#DCFCE7" CornerRadius="9" Padding="9,3,9,3" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                        <TextBlock Text="图形 + 算力 + 光追" FontSize="10.5" FontWeight="SemiBold" Foreground="#15803D" />
-                                    </Border>
-                                </Grid>
-                                <TextBlock Text="• 图形 / 算力 / 光追 一并解锁，不用分开勾选&#x0a;• EFI Shell 直接运行，每次开机自动重跑，重启后依然生效" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="19" />
-                            </StackPanel>
-                        </Border>
+                        
 
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
@@ -1538,6 +1527,17 @@
                             </StackPanel>
                         </Border>
 
+                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,16" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Name="BtnApplyNewUnlock" Content="执行新版解锁 (图形+算力+光追)" Style="{StaticResource PrimaryBtn}" Height="38" Padding="22,0,22,0" Margin="0,0,12,0" />
+                                    <Button Name="BtnRollbackPcieOfficial" Content="一键还原官方出厂" Style="{StaticResource StandardBtn}" Height="38" Width="140" Margin="0,0,12,0" />
+                                    <Button Name="BtnFixBcdConflicts" Content="BCD 引导自检与修复" Style="{StaticResource StandardBtn}" Height="38" Width="160" />
+                                </StackPanel>
+                                <TextBlock Text="新版走 EFI Shell 直跑：图形 / 算力 / 光追一并解锁；重复执行会自动覆盖旧配置。" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+
                         <StackPanel Visibility="Collapsed">
                             <ListBox Name="LstMiningGpus" />
                             <TextBlock Name="TxtPcieCurrentMode" />
@@ -1548,20 +1548,7 @@
                             <Button Name="BtnDeploy90hxFull" />
                         </StackPanel>
 
-                        <Border Name="CardBootSafety" Background="{StaticResource BgCard}" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="12" Padding="20,16" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
-                                    <TextBlock Text="⚠️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="引导安全" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
-                                </StackPanel>
-                                <TextBlock Text="本工具改动引导前会自动导出 BCD 备份；新版解锁（NVPermissiveEFI）默认【不创建任何启动项】，只在 ESP 放文件，由你从 BIOS 启动菜单手动选择，最大程度保护现有引导。" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="18" />
-                                <TextBlock Text="如果开机出现「系统选择框 / 多个 Windows Boot Manager」，说明有历史遗留的重复启动项，点下面按钮一键清掉。" TextWrapping="Wrap" Foreground="#B45309" FontSize="11.5" Margin="0,6,0,0" />
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <Button Name="BtnRepairBootMenu" Content="🔧 一键修复引导菜单（清掉系统选择框）" Style="{StaticResource StandardBtn}" Height="36" Padding="18,0,18,0" Margin="0,0,12,0" />
-                                    <Button Name="BtnRestoreBcdBackup" Content="从 BCD 备份还原引导" Style="{StaticResource StandardBtn}" Height="36" Width="180" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
+                        
 
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,12" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <Grid>
@@ -1583,16 +1570,22 @@
                             </Grid>
                         </Border>
 
-                        <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,16" Effect="{StaticResource ShadowCard}">
+                        <Border Name="CardBootSafety" Background="{StaticResource BgCard}" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="12" Padding="20,16" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                    <Button Name="BtnApplyNewUnlock" Content="执行新版解锁 (图形+算力+光追)" Style="{StaticResource PrimaryBtn}" Height="38" Padding="22,0,22,0" Margin="0,0,12,0" />
-                                    <Button Name="BtnRollbackPcieOfficial" Content="一键还原官方出厂" Style="{StaticResource StandardBtn}" Height="38" Width="140" Margin="0,0,12,0" />
-                                    <Button Name="BtnFixBcdConflicts" Content="BCD 引导自检与修复" Style="{StaticResource StandardBtn}" Height="38" Width="160" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                                    <TextBlock Text="⚠️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="引导安全" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="13.5" />
                                 </StackPanel>
-                                <TextBlock Text="新版走 EFI Shell 直跑：图形 / 算力 / 光追一并解锁；重复执行会自动覆盖旧配置。" Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                <TextBlock Text="本工具改动引导前会自动导出 BCD 备份；新版解锁（NVPermissiveEFI）默认【不创建任何启动项】，只在 ESP 放文件，由你从 BIOS 启动菜单手动选择，最大程度保护现有引导。" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="18" />
+                                <TextBlock Text="如果开机出现「系统选择框 / 多个 Windows Boot Manager」，说明有历史遗留的重复启动项，点下面按钮一键清掉。" TextWrapping="Wrap" Foreground="#B45309" FontSize="11.5" Margin="0,6,0,0" />
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Name="BtnRepairBootMenu" Content="🔧 一键修复引导菜单（清掉系统选择框）" Style="{StaticResource StandardBtn}" Height="36" Padding="18,0,18,0" Margin="0,0,12,0" />
+                                    <Button Name="BtnRestoreBcdBackup" Content="从 BCD 备份还原引导" Style="{StaticResource StandardBtn}" Height="36" Width="180" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
+
+                        
                     </StackPanel>
                     </ScrollViewer>
 
@@ -1936,7 +1929,7 @@
                                             <TextBlock Text="🧠" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center" />
                                             <TextBlock Text="DLSS 5 神经渲染（社区解锁）" FontWeight="Bold" Foreground="{StaticResource TextMain}" FontSize="13" />
                                         </StackPanel>
-                                        <TextBlock Text="在 RTX 20 / 30 / 40 上启用 DLSS 5 神经渲染，并附带多帧生成。仅限单机游戏，游戏需原生支持 DLSS 超分与帧生成。" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                        <TextBlock Text="在 RTX 20 / 30 / 40 上启用 DLSS 5 神经渲染，并附带多帧生成。下载得到的是压缩包，点【部署到游戏】自动解压到游戏目录。仅限单机。" FontSize="10.5" Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Name="TxtDlss5Version" Text="未下载" FontSize="11" Foreground="{StaticResource TextSub}" HorizontalAlignment="Right" />
