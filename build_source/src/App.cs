@@ -672,7 +672,7 @@ namespace CMP90HXToolbox
                             _window.Activate();
                             RefreshSensors();
                             LogAudit("启动动画播放完毕。HX家族多功能工具箱 v5.0 已就绪。");
-                            try { AiAssistantController.EnsureInitialized(StartWithAi); } catch { }
+                            try { AiAssistantController.EnsureInitialized(true); } catch { }
                         }
                     }
                     catch
@@ -1035,6 +1035,37 @@ namespace CMP90HXToolbox
             WireLinkButton("BtnLinkCmp50");
             WireLinkButton("BtnDownloadRtDriver");
             WireLinkButton("BtnOpenDriverFolder");
+
+            // ===== AI 助手唤出按钮 =====
+            Button btnOpenAi = _window.FindName("BtnOpenAiAssistant") as Button;
+            if (btnOpenAi != null)
+            {
+                btnOpenAi.Click += (s, e) =>
+                {
+                    try
+                    {
+                        var ctrl = AiAssistantController.EnsureInitialized(true);
+                        if (ctrl != null)
+                        {
+                            ctrl.SwitchMode(true, true);
+                            if (ctrl.Window != null) ctrl.Window.Activate();
+                        }
+                    }
+                    catch { }
+                };
+            }
+
+            // ===== 极简无边框/空白处随意拖拽窗口移动 =====
+            if (_window != null)
+            {
+                _window.MouseLeftButtonDown += (s, e) =>
+                {
+                    if (e.ButtonState == MouseButtonState.Pressed)
+                    {
+                        try { _window.DragMove(); } catch { }
+                    }
+                };
+            }
 
             WireUnlockPage("Unlock50", "50hx", "50HX", "50HX");
             WireUnlockPage("Unlock40", "40hx", "40HX", "40HX");

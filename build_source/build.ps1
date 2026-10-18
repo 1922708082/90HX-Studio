@@ -19,6 +19,7 @@ $argsList = @(
     "/win32icon:D:\app\app.ico",
     "/resource:D:\app\build_source\src\MainWindow.xaml,MainWindow.xaml",
     "/resource:D:\app\build_source\src\SplashWindow.xaml,SplashWindow.xaml",
+    "/resource:D:\app\build_source\src\AiAssistantWindow.xaml,AiAssistantWindow.xaml",
     "/resource:D:\app\build_source\assets\wechat_pay.png,wechat_pay.png",
     "/resource:D:\app\build_source\assets\alipay.png,alipay.png",
     "/resource:D:\app\assets.zip,assets.zip",
