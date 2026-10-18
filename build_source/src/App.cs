@@ -361,7 +361,8 @@ namespace CMP90HXToolbox
             catch { }
 
             Action<string, bool> silent = delegate { };
-            NativeCore.StartAutoIdleSave(60, silent);
+            NativeCore.LoadDynamicClockParams(silent);
+            NativeCore.StartAutoIdleSave(8, silent);
 
             try
             {

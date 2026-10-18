@@ -900,6 +900,15 @@ namespace CMP90HXToolbox
             });
         }
 
+        // —— 省电参数统一变量（避免硬编码散落）——
+        private const string IdleCoreClock = "210,210";   // nvidia-smi -lgc 参数
+        private const string IdleAppClocks = "405,210";   // NVAPI -ac 参数（显存档,核心档）
+        private const int IdlePowerLimitW = 45;            // 省电时的功耗墙
+        private const int DefaultPowerLimitW = 250;        // 恢复时的功耗墙
+        private const int IdleEnterSeconds = 8;            // 连续空闲多少秒后进入省电
+        private const int IdlePollMs = 2000;               // 轮询间隔
+        private const int IdleSwitchCooldownSec = 10;      // 切换最小间隔（防抖）
+
         /// <summary>判断字符串里是否含任意 CMP 卡的 PCI Device ID（90HX 220D / 40HX 1F0B,21C4 / 50HX 1E09）。</summary>
         private static bool IsCmpDevId(string value)
         {
@@ -5544,9 +5553,10 @@ namespace CMP90HXToolbox
             }
         }
 
-        /// <summary>按 PCI ID 找 CMP 90HX 的 NVAPI 句柄。</summary>
+        /// <summary>按 PCI ID 找 CMP 系列显卡的 NVAPI 句柄（全系列：90HX 220D / 40HX 1F0B,21C4 / 50HX 1E09，不限 90HX）。</summary>
         private static IntPtr NvFind90hx()
         {
+            uint[] targets = new uint[] { 0x220D10DE, 0x1F0B10DE, 0x21C410DE, 0x1E0910DE };
             IntPtr[] handles = new IntPtr[64];
             uint count;
             if (_nvEnum(handles, out count) != 0 || count == 0 || count > 64) return IntPtr.Zero;
@@ -5554,12 +5564,92 @@ namespace CMP90HXToolbox
             {
                 uint dev, sub, rev, ext;
                 if (_nvPci(handles[i], out dev, out sub, out rev, out ext) != 0) continue;
-                if (dev == 0x220D10DE) return handles[i];
+                for (int j = 0; j < targets.Length; j++)
+                {
+                    if (dev == targets[j]) return handles[i];
+                }
             }
             return IntPtr.Zero;
         }
 
+        // ---- 动态查询频率档位与默认功耗墙（不同卡型数值不一样，不能写死）----
+
+        private static string _minGrClock;      // 最低核心频率（MHz）
+        private static string _minMemClock;     // 最低显存频率（MHz）
+        private static int _defaultPowerLimitW; // 驱动默认功耗墙
+        private static bool _clockParamsLoaded;
+
+        /// <summary>启动省电前查询一次本卡的频率档位与默认功耗墙，结果缓存。</summary>
+        public static void LoadDynamicClockParams(Action<string, bool> log)
+        {
+            if (_clockParamsLoaded) return;
+            try
+            {
+                string smi = FindNvidiaSmi();
+                if (!File.Exists(smi)) return;
+
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | (SecurityProtocolType)192;
+                string q = RunCmd(smi, "-q -d SUPPORTED_CLOCKS");
+                if (!string.IsNullOrEmpty(q))
+                {
+                    var gr = Regex.Matches(q, @"Graphics\s*:\s*(\d+)");
+                    var mem = Regex.Matches(q, @"Memory\s*:\s*(\d+)");
+                    if (gr.Count > 0) _minGrClock = gr[gr.Count - 1].Groups[1].Value;
+                    if (mem.Count > 0) _minMemClock = mem[mem.Count - 1].Groups[1].Value;
+                }
+
+                string pl = RunCmd(smi, "--query-gpu=power.default_limit --format=csv,noheader,nounits");
+                if (!string.IsNullOrEmpty(pl))
+                {
+                    string t = pl.Trim().Split('.')[0];
+                    int v;
+                    if (int.TryParse(t, out v) && v > 0) _defaultPowerLimitW = v;
+                }
+
+                _clockParamsLoaded = true;
+                log("动态参数已读取：最低核心 " + (_minGrClock ?? "?") + "MHz / 最低显存 "
+                    + (_minMemClock ?? "?") + "MHz / 默认功耗墙 " + _defaultPowerLimitW + "W", false);
+            }
+            catch (Exception ex)
+            {
+                log("读取动态频率参数失败，将使用保守默认值: " + ex.Message, false);
+            }
+        }
+
+        /// <summary>取最低核心频率的锁频参数（如 "210,210"），查询失败返回 null。</summary>
+        public static string GetMinCoreClockLock()
+        {
+            return (string.IsNullOrEmpty(_minGrClock) || _clockParamsLoaded == false)
+                ? null
+                : _minGrClock + "," + _minGrClock;
+        }
+
+        /// <summary>取最低显存+核心的 NVAPI -ac 参数（如 "405,210"），查询失败返回 null。</summary>
+        public static string GetIdleAppClocks()
+        {
+            if (string.IsNullOrEmpty(_minMemClock) || string.IsNullOrEmpty(_minGrClock) || !_clockParamsLoaded)
+                return null;
+            return _minMemClock + "," + _minGrClock;
+        }
+
         /// <summary>
+        private static string SmiLockArg()
+        {
+            string dyn = GetMinCoreClockLock();
+            return dyn != null ? dyn : IdleCoreClock;
+        }
+
+        private static string SmiAppClocksArg()
+        {
+            string dyn = GetIdleAppClocks();
+            return dyn != null ? dyn : IdleAppClocks;
+        }
+
+        private static int EffectiveDefaultPowerLimit()
+        {
+            return _defaultPowerLimitW > 0 ? _defaultPowerLimitW : DefaultPowerLimitW;
+        }
+
         /// 设置 P-State 上限。pstate=8 压到 P8（最低性能态），pstate=0 解除限制交还驱动动态策略。
         /// 返回 null 表示 NVAPI 不可用，调用方应回退到 nvidia-smi 方案。
         /// </summary>
@@ -5753,7 +5843,8 @@ namespace CMP90HXToolbox
         private static Timer _idleTimer;
         private static volatile bool _idleLimited;
         private static DateTime _lastBusy = DateTime.Now;
-        private static int _idleSeconds = 60;
+        private static int _idleSeconds = IdleEnterSeconds;
+        private static DateTime _lastSwitch = DateTime.MinValue;
 
         public static bool IsAutoIdleSaveRunning()
         {
@@ -5764,10 +5855,11 @@ namespace CMP90HXToolbox
         public static void StartAutoIdleSave(int idleSeconds, Action<string, bool> log)
         {
             StopAutoIdleSave(log);
-            _idleSeconds = idleSeconds < 10 ? 10 : idleSeconds;
+            _idleSeconds = idleSeconds < 5 ? 5 : idleSeconds;
             _lastBusy = DateTime.Now;
             _idleLimited = false;
-            _idleTimer = new Timer(IdleTick, log, 3000, 3000);
+            _lastSwitch = DateTime.MinValue;
+            _idleTimer = new Timer(IdleTick, log, IdlePollMs, IdlePollMs);
             log("自动省电已开启：空闲 " + _idleSeconds + " 秒后压到 P8，检测到负载自动恢复", false);
         }
 
@@ -5787,7 +5879,7 @@ namespace CMP90HXToolbox
                 if (File.Exists(smi))
                 {
                     RunCmd(smi, "-rgc");
-                    RunCmd(smi, "-pl 250");
+                    RunCmd(smi, "-pl " + EffectiveDefaultPowerLimit());
                 }
             }
             catch { }
@@ -5815,20 +5907,24 @@ namespace CMP90HXToolbox
                             if (File.Exists(smi))
                             {
                                 RunCmd(smi, "-rgc");
-                                RunCmd(smi, "-pl 250");
+                                RunCmd(smi, "-pl " + EffectiveDefaultPowerLimit());
                             }
                         }
                         catch { }
                         _idleLimited = false;
+                        _lastSwitch = DateTime.Now;
                         if (log != null) log("检测到 GPU 负载 " + util + "%，已解除省电限制", false);
                     }
                 }
-                else if (!_idleLimited && (DateTime.Now - _lastBusy).TotalSeconds >= _idleSeconds)
+                else if (!_idleLimited
+                         && (DateTime.Now - _lastBusy).TotalSeconds >= _idleSeconds
+                         && (DateTime.Now - _lastSwitch).TotalSeconds >= IdleSwitchCooldownSec)
                 {
                     bool? r = SetPstateCeiling(8, log);
                     if (r == true)
                     {
                         _idleLimited = true;
+                        _lastSwitch = DateTime.Now;
 
                         // 额外落一份 nvidia-smi 的全局锁：
                         // NVAPI 的 client limit 会随进程退出被驱动清掉，而 smi 的锁频是驱动全局状态，
@@ -5838,8 +5934,8 @@ namespace CMP90HXToolbox
                             string smi = FindNvidiaSmi();
                             if (File.Exists(smi))
                             {
-                                RunCmd(smi, "-lgc 210,210");
-                                RunCmd(smi, "-pl 45");
+                                RunCmd(smi, "-lgc " + SmiLockArg());
+                                RunCmd(smi, "-pl " + IdlePowerLimitW);
                             }
                         }
                         catch { }
@@ -5888,6 +5984,9 @@ namespace CMP90HXToolbox
 
                     if (enable)
                     {
+                        // 先查本卡的频率档位与默认功耗墙（各卡型不一样，不能写死）
+                        LoadDynamicClockParams(log);
+
                         // 首选 NVAPI：直接把 P-State 上限压到 P8，比锁频率更彻底
                         SetPstateCeiling(8, log);
 
@@ -5910,13 +6009,13 @@ namespace CMP90HXToolbox
                         string pm = RunCmd(smi, "-pm 1");
                         log("持久模式: " + (string.IsNullOrEmpty(pm) ? "已启用" : pm.Trim()), false);
 
-                        string ac = RunCmd(smi, "-ac 405,210");
+                        string ac = RunCmd(smi, "-ac " + SmiAppClocksArg());
                         log("应用时钟锁 显存405/核心210: " + (string.IsNullOrEmpty(ac) ? "已执行" : ac.Trim()), false);
 
-                        string lg = RunCmd(smi, "-lgc 210,210");
+                        string lg = RunCmd(smi, "-lgc " + SmiLockArg());
                         log("核心锁 210MHz: " + (string.IsNullOrEmpty(lg) ? "已执行" : lg.Trim()), false);
 
-                        string lp = RunCmd(smi, "-pl 45");
+                        string lp = RunCmd(smi, "-pl " + IdlePowerLimitW);
                         log("功耗墙 45W: " + (string.IsNullOrEmpty(lp) ? "已执行" : lp.Trim()), false);
 
                         log("待机省电已开启。跑重负载前请先恢复，否则会被功耗墙限制性能。", false);
