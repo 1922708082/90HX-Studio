@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -104,8 +106,8 @@ namespace CMP90HXToolbox
         private TextBlock _txtRingDashPowerVal;
         private TextBlock _txtDashPcie;
         private TextBlock _txtDashOverlay;
+        private TextBlock _txtDashPowerState;
         private Button _btnDashRename;
-        private bool _dashIdleSaveOn;
         private Button _btnDashUnlock;
         private Button _btnDashRestart;
 
@@ -294,6 +296,7 @@ namespace CMP90HXToolbox
 
                 foreach (var p in Process.GetProcessesByName(current.ProcessName))
                 {
+                    // 仅寻找拥有有效前台窗口的实例，安全跳过无窗口的 --powersave 后台省电进程
                     if (p.Id != current.Id && p.MainWindowHandle != IntPtr.Zero)
                     {
                         targetHwnd = p.MainWindowHandle;
@@ -308,7 +311,8 @@ namespace CMP90HXToolbox
                         var sb = new StringBuilder(256);
                         GetWindowText(hWnd, sb, sb.Capacity);
                         string title = sb.ToString();
-                        if (title.StartsWith("CMP 90HX 控制中心") || title.StartsWith("CMP90HX"))
+                        // 覆盖主窗口与历史窗口标题：90HX Studio, CMP 90HX 控制中心, CMP90HX
+                        if (title.StartsWith("HX家族多功能工具箱") || title.StartsWith("CMP 90HX 控制中心") || title.StartsWith("CMP90HX"))
                         {
                             targetHwnd = hWnd;
                             return false;
@@ -341,13 +345,26 @@ namespace CMP90HXToolbox
         /// </summary>
         private static void RunPowerSaverBackground()
         {
-            Mutex mutex = null;
             bool created = false;
-            try { mutex = new Mutex(true, "CMP90HX_Toolbox_PowerSaver_Mutex", out created); }
-            catch { created = true; }
+            Mutex mutex = null;
+            try
+            {
+                mutex = NativeCore.CreateGlobalMutex("CMP90HX_Toolbox_PowerSaver_Mutex", out created);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // 系统服务已在运行且权限更高，直接安全退出避免重复运行
+                return;
+            }
+            catch { }
 
-            if (!created) return;
+            if (!created || mutex == null)
+            {
+                if (mutex != null) { try { mutex.Close(); } catch { } }
+                return;
+            }
 
+            EventWaitHandle exitEvent = null;
             try
             {
                 string dir = NativeCore.GetDataDirectory();
@@ -361,12 +378,31 @@ namespace CMP90HXToolbox
             catch { }
 
             Action<string, bool> silent = delegate { };
-            NativeCore.LoadDynamicClockParams(silent);
-            NativeCore.StartAutoIdleSave(8, silent);
 
             try
             {
-                System.Windows.Threading.Dispatcher.Run();
+                exitEvent = NativeCore.CreateGlobalExitEvent("CMP90HX_PowerSaver_ExitEvent");
+
+                AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+                {
+                    try { NativeCore.StopAutoIdleSave(silent); } catch { }
+                };
+
+                NativeCore.LoadDynamicClockParams(silent);
+                NativeCore.StartAutoIdleSave(8, silent);
+
+                // 使用系统同步事件阻塞等待退出信号，替代依赖 WPF Win32 消息泵的 Dispatcher.Run()
+                if (exitEvent != null)
+                {
+                    exitEvent.WaitOne();
+                }
+                else
+                {
+                    using (var fallback = new ManualResetEvent(false))
+                    {
+                        fallback.WaitOne();
+                    }
+                }
             }
             catch { }
             finally
@@ -378,14 +414,38 @@ namespace CMP90HXToolbox
                     if (File.Exists(pidFile)) File.Delete(pidFile);
                 }
                 catch { }
+
+                if (exitEvent != null)
+                {
+                    try { exitEvent.Close(); } catch { }
+                }
+
+                if (mutex != null)
+                {
+                    try { mutex.ReleaseMutex(); } catch { }
+                    try { mutex.Close(); } catch { }
+                }
             }
         }
 
         [STAThread]
         public static void Main(string[] args)
         {
-            // 后台省电模式：由主程序以 --powersave 拉起，不开窗口，只跑空闲监控
-            if (args != null && args.Length > 0 && args[0] == "--powersave")
+            // 后台省电模式判断：支持命令行中任意位置包含 --powersave，不区分大小写，去除引号
+            bool isPowerSaveMode = false;
+            if (args != null && args.Length > 0)
+            {
+                foreach (var arg in args)
+                {
+                    if (arg != null && string.Equals(arg.Trim('"', ' ', '\''), "--powersave", StringComparison.OrdinalIgnoreCase))
+                    {
+                        isPowerSaveMode = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isPowerSaveMode)
             {
                 RunPowerSaverBackground();
                 return;
@@ -397,16 +457,21 @@ namespace CMP90HXToolbox
                 Mutex mutex = null;
                 try
                 {
-                    mutex = new Mutex(true, "CMP90HX_Toolbox_SingleInstance_App_Mutex", out isNewInstance);
+                    mutex = NativeCore.CreateGlobalMutex("CMP90HX_Toolbox_SingleInstance_App_Mutex", out isNewInstance);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    isNewInstance = false;
                 }
                 catch
                 {
                     isNewInstance = true;
                 }
 
-                if (!isNewInstance && mutex != null)
+                if (!isNewInstance || mutex == null)
                 {
                     ActivateExistingInstance();
+                    if (mutex != null) { try { mutex.Close(); } catch { } }
                     return;
                 }
 
@@ -451,7 +516,7 @@ namespace CMP90HXToolbox
                 }
                 finally
                 {
-                    if (mutex != null)
+                    if (mutex != null && isNewInstance)
                     {
                         try { mutex.ReleaseMutex(); } catch { }
                         try { mutex.Close(); } catch { }
@@ -571,7 +636,7 @@ namespace CMP90HXToolbox
                             _window.Show();
                             _window.Activate();
                             RefreshSensors();
-                            LogAudit("启动动画播放完毕。90HX Studio 已就绪。");
+                            LogAudit("启动动画播放完毕。HX家族多功能工具箱 v5.0 已就绪。");
                         }
                     }
                     catch
@@ -708,6 +773,7 @@ namespace CMP90HXToolbox
             _txtRingDashPowerVal = (TextBlock)_window.FindName("TxtRingDashPowerVal");
             _txtDashPcie = (TextBlock)_window.FindName("TxtDashPcie");
             _txtDashOverlay = (TextBlock)_window.FindName("TxtDashOverlay");
+            _txtDashPowerState = (TextBlock)_window.FindName("TxtDashPowerState");
             _btnDashRename = (Button)_window.FindName("BtnDashRename");
             _btnDashUnlock = (Button)_window.FindName("BtnDashUnlock");
             _btnDashRestart = (Button)_window.FindName("BtnDashRestart");
@@ -732,30 +798,51 @@ namespace CMP90HXToolbox
 
             if (_btnDashUnlock != null)
             {
-                if (NativeCore.IsPowerSaverTaskInstalled())
-                    _btnDashUnlock.Content = "🔋 关闭系统省电";
+                UpdatePowerSaverButtonVisual();
 
                 _btnDashUnlock.Click += (s, e) =>
                 {
                     if (!EnsureAdminPrivilege()) return;
 
-                    if (!NativeCore.IsPowerSaverTaskInstalled())
+                    bool taskInstalled = NativeCore.IsPowerSaverTaskInstalled();
+                    bool isRunning = NativeCore.IsPowerSaverRunning() || NativeCore.IsAutoIdleSaveRunning();
+
+                    if (isRunning || taskInstalled)
                     {
                         if (ModernMessageBox.Show(
-                            "将注册开机自启的系统级省电：\n\n" +
-                            "· 以 SYSTEM 权限运行，不需要用户登录\n" +
-                            "· 连续空闲 60 秒 → 压到 P8\n" +
-                            "· 检测到 GPU 占用 > 3% → 立刻恢复性能\n" +
-                            "· 无窗口，不占任务栏\n\n" +
+                            "将关闭系统级后台省电服务，并恢复显卡出厂全速调度，是否继续？",
+                            "关闭省电", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+                        NativeCore.StopPowerSaverProcess(LogCallback);
+                        if (taskInstalled)
+                        {
+                            NativeCore.UninstallPowerSaverTask(LogCallback);
+                        }
+
+                        UpdatePowerSaverButtonVisual();
+                        RefreshSensors();
+                        ModernMessageBox.Show("系统级省电已彻底关闭，显卡频率限制已完全解除。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        if (ModernMessageBox.Show(
+                            "将注册开机自启的系统级省电服务：\n\n" +
+                            "· 以管理员最高权限运行（免 UAC 弹窗）\n" +
+                            "· 用户登录后在桌面会话中自动启动，确保 GPU 与 NVAPI 正常控制\n" +
+                            "· 连续空闲 8 秒 → 自动压到 P8 深度节能\n" +
+                            "· 检测到 GPU 占用 (>3%) → 毫秒级恢复全速性能\n" +
+                            "· 静默无窗口，不占任务栏\n\n" +
                             "是否继续？",
                             "系统级省电", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
                         if (NativeCore.InstallPowerSaverTask(LogCallback))
                         {
-                            _btnDashUnlock.Content = "🔋 关闭系统省电";
                             NativeCore.RunPowerSaverTaskNow(LogCallback);
+                            NativeCore.StartPowerSaverProcess(LogCallback);
+                            UpdatePowerSaverButtonVisual();
+                            RefreshSensors();
                             ModernMessageBox.Show(
-                                "已注册并启动。\n\n以后每次开机自动生效，不需要打开软件。\n想关掉再点一次这个按钮。",
+                                "已成功部署并启动系统级省电！\n\n以后每次开机登录自动生效，空闲时自动降频节能。\n想关闭时再点一次此按钮即可。",
                                 "完成", MessageBoxButton.OK, MessageBoxImage.Information);
                         }
                         else
@@ -763,17 +850,6 @@ namespace CMP90HXToolbox
                             ModernMessageBox.Show("注册失败，详情见日志。", "失败", MessageBoxButton.OK, MessageBoxImage.Warning);
                         }
                     }
-                    else
-                    {
-                        if (ModernMessageBox.Show("将移除系统级省电任务，是否继续？", "移除", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-
-                        NativeCore.UninstallPowerSaverTask(LogCallback);
-                        _btnDashUnlock.Content = "🔋 系统级省电";
-                        ModernMessageBox.Show(
-                            "已移除。\n\n频率锁可能还留在驱动里，点【软重启显卡驱动】可彻底恢复。",
-                            "完成", MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                    RefreshSensors();
                 };
             }
 
@@ -1260,6 +1336,10 @@ namespace CMP90HXToolbox
                 {
                     if (!EnsureAdminPrivilege()) return;
 
+                    int selIdx = _cmbSpoofTargetCard != null ? _cmbSpoofTargetCard.SelectedIndex : 0;
+                    var gpus = NativeCore.DetectAllMiningGpus();
+                    var targetGpu = (selIdx >= 0 && selIdx < gpus.Count) ? gpus[selIdx] : (gpus.Count > 0 ? gpus[0] : null);
+
                     string model = Convert.ToString(_cmbSpoofModel != null ? _cmbSpoofModel.SelectedItem : "");
                     if (string.IsNullOrEmpty(model))
                     {
@@ -1267,18 +1347,28 @@ namespace CMP90HXToolbox
                         return;
                     }
 
+                    string cardName = targetGpu != null ? targetGpu.DetectedModel : "当前显卡";
                     if (ModernMessageBox.Show(
-                        "将把显卡显示名称改为：\n" + model + "\n\n" +
-                        "只改显示名称，不改 PCI ID，驱动匹配不受影响。\n" +
-                        "修改后到设备管理器禁用再启用一次显卡即可看到变化。\n\n是否继续？",
+                        "将把 [" + cardName + "] 显示名称深度伪装为：\n" + model + "\n\n" +
+                        "采用纯注册表与 3D 加速属性注入，不破坏系统 INF 驱动签名，设备绝对稳定。\n" +
+                        "修改后将自动执行 PnP 硬件驱动热重载即时生效。\n\n是否继续？",
                         "确认伪装型号", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                         return;
 
                     _btnApplySpoof.IsEnabled = false;
-                    bool ok = await NativeCore.ApplyGpuRenameAsync(model, LogCallback);
+                    bool ok = false;
+                    if (targetGpu != null)
+                    {
+                        ok = await NativeCore.ApplySingleGpuGraphicsUnlockAsync(targetGpu, LogCallback, model);
+                    }
+                    else
+                    {
+                        ok = await NativeCore.ApplyGpuRenameAsync(model, LogCallback);
+                    }
+                    await NativeCore.SoftRestartGpuDriverAsync(LogCallback);
                     _btnApplySpoof.IsEnabled = true;
                     RefreshSystemStatus();
-                    if (ok) ModernMessageBox.Show("已将显示名称改为 " + model + "\n\n到设备管理器禁用再启用显卡即可生效。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (ok) ModernMessageBox.Show("已成功将 [" + cardName + "] 伪装为 " + model + "，驱动已即时热重载生效！", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
                 };
             }
 
@@ -1287,14 +1377,20 @@ namespace CMP90HXToolbox
                 _btnRestoreGpuName.Click += async (s, e) =>
                 {
                     if (!EnsureAdminPrivilege()) return;
-                    if (ModernMessageBox.Show("将把显卡显示名称恢复为 NVIDIA CMP 90HX，是否继续？", "恢复原名", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                    int selIdx = _cmbSpoofTargetCard != null ? _cmbSpoofTargetCard.SelectedIndex : 0;
+                    var gpus = NativeCore.DetectAllMiningGpus();
+                    var targetGpu = (selIdx >= 0 && selIdx < gpus.Count) ? gpus[selIdx] : (gpus.Count > 0 ? gpus[0] : null);
+                    string targetName = targetGpu != null ? targetGpu.DetectedModel : "官方出厂名称";
+
+                    if (ModernMessageBox.Show("将把 [" + targetName + "] 恢复为官方出厂标准名称并清理伪装注入，是否继续？", "恢复原名", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                         return;
 
                     _btnRestoreGpuName.IsEnabled = false;
-                    bool ok = await NativeCore.RestoreGpuTo90hxAsync(LogCallback);
+                    bool ok = await NativeCore.RestoreMiningGpuByNameAsync(targetGpu, LogCallback);
+                    await NativeCore.SoftRestartGpuDriverAsync(LogCallback);
                     _btnRestoreGpuName.IsEnabled = true;
                     RefreshSystemStatus();
-                    if (ok) ModernMessageBox.Show("已恢复原始名称。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (ok) ModernMessageBox.Show("已成功恢复 [" + targetName + "] 为官方出厂名称，无任何残留。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
                 };
             }
 
@@ -2306,7 +2402,20 @@ namespace CMP90HXToolbox
         {
             try
             {
-                var snap = await Task.Run(() => NativeCore.QueryGpuSensors());
+                var snap = await Task.Run(() =>
+                {
+                    var s = NativeCore.QueryGpuSensors();
+                    try
+                    {
+                        string realPstate = NativeCore.ReadPstate();
+                        if (!string.IsNullOrEmpty(realPstate))
+                        {
+                            s.PState = realPstate;
+                        }
+                    }
+                    catch { }
+                    return s;
+                });
                 if (snap != null && snap.IsValid && _window != null)
                 {
                     Dispatcher.Invoke(() =>
@@ -2349,11 +2458,25 @@ namespace CMP90HXToolbox
                         if (_barSensUtil != null) _barSensUtil.Value = snap.GpuUtilPercent;
 
                         if (_txtSensClocks != null) _txtSensClocks.Text = snap.GraphicsClockMHz + " MHz / " + snap.MemoryClockMHz + " MHz";
-                        if (_txtSensPstate != null) _txtSensPstate.Text = "P-State 状态: " + snap.PState;
+
+                        bool isPowerSaving = snap.PState == "P8" || NativeCore.IsGpuIdleSaveActive();
+                        string pstateDesc = isPowerSaving ? "待机省电 (P8)" : (snap.PState == "P0" ? "全速运行 (P0)" : "运行中 (" + snap.PState + ")");
+                        if (_txtSensPstate != null) _txtSensPstate.Text = "P-State 状态: " + pstateDesc;
+                        if (_txtDashPowerState != null)
+                        {
+                            _txtDashPowerState.Text = pstateDesc;
+                            _txtDashPowerState.Foreground = isPowerSaving
+                                ? new SolidColorBrush(Color.FromRgb(22, 163, 74))
+                                : new SolidColorBrush(Color.FromRgb(0, 113, 227));
+                        }
+                        string pstateTag = isPowerSaving ? " · P8省电" : "";
+                        if (_txtTopSensors != null) _txtTopSensors.Text = snap.Temperature + " ℃ | " + snap.PowerDraw.ToString("F1") + " W" + pstateTag;
 
                         if (_txtSensPcieLink != null) _txtSensPcieLink.Text = "当前链路状态: " + snap.PcieFormatted;
                         if (_txtTopPcieStatus != null) _txtTopPcieStatus.Text = snap.PcieGen == "2" ? "PCIe x" + snap.PcieWidth + " 2.0 (已解锁)" : "PCIe x" + snap.PcieWidth + " " + snap.PcieGen + ".0";
                         if (_txtDashPcie != null) _txtDashPcie.Text = snap.PcieGen == "2" ? "Gen2 x" + snap.PcieWidth + " · 已解锁" : "Gen" + snap.PcieGen + ".0 x" + snap.PcieWidth;
+
+                        UpdatePowerSaverButtonVisual();
                     });
                 }
             }
@@ -2376,7 +2499,35 @@ namespace CMP90HXToolbox
             arc.StrokeDashArray = new DoubleCollection(new double[] { Math.Max(0.8, circUnits * frac), circUnits * 2.0 });
         }
 
-        private void RefreshSystemStatus()
+                private void UpdatePowerSaverButtonVisual()
+        {
+            if (_btnDashUnlock == null) return;
+            bool taskInstalled = NativeCore.IsPowerSaverTaskInstalled();
+            bool isRunning = NativeCore.IsPowerSaverRunning() || NativeCore.IsAutoIdleSaveRunning();
+
+            if (taskInstalled && isRunning)
+            {
+                _btnDashUnlock.Content = "关闭系统省电";
+                _btnDashUnlock.ToolTip = "系统省电服务正在后台运行（开机自启）。点击停止并移除。";
+            }
+            else if (taskInstalled && !isRunning)
+            {
+                _btnDashUnlock.Content = "启动省电服务";
+                _btnDashUnlock.ToolTip = "省电任务已注册但后台进程未运行。点击重新拉起。";
+            }
+            else if (!taskInstalled && isRunning)
+            {
+                _btnDashUnlock.Content = "停止后台省电";
+                _btnDashUnlock.ToolTip = "后台省电进程正在运行。点击停止并恢复全速。";
+            }
+            else
+            {
+                _btnDashUnlock.Content = "系统级省电";
+                _btnDashUnlock.ToolTip = "点击注册开机自启省电任务：空闲 8 秒压 P8，有负载自动恢复。";
+            }
+        }
+
+private void RefreshSystemStatus()
         {
             var status = SystemDetector.DetectAll();
             if (_txtDlssLocalVersion != null) _txtDlssLocalVersion.Text = "v" + NativeCore.GetLocalDlssVersion();
@@ -3219,7 +3370,7 @@ namespace CMP90HXToolbox
 
     public static class ModernMessageBox
     {
-        public static MessageBoxResult Show(string text, string caption = "90HX Studio", MessageBoxButton button = MessageBoxButton.OK, MessageBoxImage icon = MessageBoxImage.None)
+        public static MessageBoxResult Show(string text, string caption = "HX家族多功能工具箱", MessageBoxButton button = MessageBoxButton.OK, MessageBoxImage icon = MessageBoxImage.None)
         {
             MessageBoxResult result = MessageBoxResult.None;
 

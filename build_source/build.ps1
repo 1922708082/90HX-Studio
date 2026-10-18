@@ -6,7 +6,7 @@ $gac64Path = "C:\Windows\Microsoft.NET\assembly\GAC_64"
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "90HX Studio 绿色免安装版构建流程" -ForegroundColor Cyan
+Write-Host "HX家族多功能工具箱 v5.0 绿色免安装版构建流程" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
 $targetExe = "D:\app\90HX Studio.exe"
@@ -48,6 +48,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "==================================================" -ForegroundColor Green
-Write-Host "[OK] 构建成功！双击即可直接使用：90HX Studio.exe" -ForegroundColor Green
+Write-Host "[OK] 构建成功！双击即可直接使用：90HX Studio.exe 与 HX家族多功能工具箱.exe" -ForegroundColor Green
+Copy-Item $targetExe "D:\app\HX家族多功能工具箱.exe" -Force
 Write-Host "==================================================" -ForegroundColor Green
 Get-Item -LiteralPath $targetExe | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize

@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="90HX Studio"
+        Title="HX家族多功能工具箱"
         Width="1200" Height="760" MinWidth="1160" MinHeight="660"
         WindowStartupLocation="CenterScreen"
         Background="#FBFBFD" Foreground="#1D1D1F"
@@ -820,10 +820,10 @@
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16,16,16,12" VerticalAlignment="Center">
                         <Border Width="30" Height="30" CornerRadius="8" Background="#1B1C1F" Margin="0,0,10,0">
-                            <TextBlock Text="90" Foreground="#FFFFFF" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="HX" Foreground="#FFFFFF" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel>
-                            <TextBlock Text="90HX Studio" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextMain}" />
+                            <TextBlock Text="HX家族多功能工具箱" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextMain}" />
                         </StackPanel>
                     </StackPanel>
 
@@ -1169,13 +1169,21 @@
                                             <TextBlock Text="PCIe" FontSize="10.5" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                             <TextBlock Grid.Column="1" Name="TxtDashPcie" Text="检测中..." FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         </Grid>
-                                        <Grid>
+                                        <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="52" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="覆盖" FontSize="10.5" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                             <TextBlock Grid.Column="1" Name="TxtDashOverlay" Text="检测中..." FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="52" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="电源" FontSize="10.5" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Name="TxtDashPowerState" Text="检测中..." FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -1216,7 +1224,7 @@
                                     <StackPanel>
                                         <TextBlock Text="快捷动作" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,10" />
                                         <Button Name="BtnDashRename" Content="🎭 一键伪装 RTX 5090" Style="{StaticResource PrimaryBtn}" Height="34" Margin="0,0,0,8" />
-                                        <Button Name="BtnDashUnlock" Content="🔋 系统级省电" Style="{StaticResource StandardBtn}" Height="34" Margin="0,0,0,8" />
+                                        <Button Name="BtnDashUnlock" Content="系统级省电" Style="{StaticResource StandardBtn}" Height="34" Margin="0,0,0,8" />
                                         <Button Name="BtnDashRestart" Content="⟳ 软重启显卡驱动" Style="{StaticResource StandardBtn}" Height="34" />
                                     </StackPanel>
                                 </Border>
@@ -2431,13 +2439,13 @@
                                 </Grid.ColumnDefinitions>
 
                                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="14" Background="#EEF4FF" VerticalAlignment="Top" Margin="0,0,16,0">
-                                    <TextBlock Text="90" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBlue}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <TextBlock Text="HX" FontSize="19" FontWeight="Bold" Foreground="{StaticResource AccentBlue}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="90HX Studio" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
-                                    <TextBlock Name="TxtAboutVersion" Text="v4.6.3" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
-                                    <TextBlock Text="NVIDIA CMP 系列矿卡硬件调优工具箱 · RainCandy Technology" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="HX家族多功能工具箱" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextMain}" />
+                                    <TextBlock Name="TxtAboutVersion" Text="v5.0.0" FontSize="11.5" Foreground="{StaticResource TextSub}" Margin="0,3,0,0" />
+                                    <TextBlock Text="NVIDIA CMP HX全系矿卡硬件调优工具箱 · RainCandy Technology" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
