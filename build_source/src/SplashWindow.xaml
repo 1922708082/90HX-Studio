@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="90HX Studio"
+        Title="HX家族多功能工具箱"
         Width="360" Height="360"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
