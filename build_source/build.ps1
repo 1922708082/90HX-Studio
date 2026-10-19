@@ -6,7 +6,7 @@ $gac64Path = "C:\Windows\Microsoft.NET\assembly\GAC_64"
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "90HX Studio 绿色免安装版构建流程" -ForegroundColor Cyan
+Write-Host "HX家族多功能工具箱 v5.0 绿色免安装版构建流程" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
 $targetExe = "D:\app\90HX Studio.exe"
@@ -15,10 +15,13 @@ Write-Host "正在编译免安装可执行程序: $targetExe ..." -ForegroundCol
 $argsList = @(
     "/target:winexe",
     "/optimize+",
+    "/warn:4",
+    "/warnaserror+",
     "/win32manifest:D:\app\build_source\app.manifest",
     "/win32icon:D:\app\app.ico",
     "/resource:D:\app\build_source\src\MainWindow.xaml,MainWindow.xaml",
     "/resource:D:\app\build_source\src\SplashWindow.xaml,SplashWindow.xaml",
+    "/resource:D:\app\build_source\src\AiAssistantWindow.xaml,AiAssistantWindow.xaml",
     "/resource:D:\app\build_source\assets\wechat_pay.png,wechat_pay.png",
     "/resource:D:\app\build_source\assets\alipay.png,alipay.png",
     "/resource:D:\app\assets.zip,assets.zip",
@@ -36,6 +39,14 @@ $argsList = @(
     ("/r:" + $gacPath + "\UIAutomationClient\v4.0_4.0.0.0__31bf3856ad364e35\UIAutomationClient.dll"),
     ("/r:" + $gacPath + "\UIAutomationTypes\v4.0_4.0.0.0__31bf3856ad364e35\UIAutomationTypes.dll"),
     "D:\app\build_source\src\SystemDetector.cs",
+    "D:\app\build_source\src\GpuHardwareManager.cs",
+    "D:\app\build_source\src\PcieUnlockManager.cs",
+    "D:\app\build_source\src\GpuSpoofManager.cs",
+    "D:\app\build_source\src\EcoPowerManager.cs",
+    "D:\app\build_source\src\EcosystemPatchManager.cs",
+    "D:\app\build_source\src\AiAssistantEngine.cs",
+    "D:\app\build_source\src\AiAgentActionRegistry.cs",
+    "D:\app\build_source\src\AiAssistantWindow.cs",
     "D:\app\build_source\src\NativeCore.cs",
     "D:\app\build_source\src\VirusOverlay.cs",
     "D:\app\build_source\src\App.cs",
@@ -48,6 +59,17 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "==================================================" -ForegroundColor Green
-Write-Host "[OK] 构建成功！双击即可直接使用：90HX Studio.exe" -ForegroundColor Green
+Write-Host "[OK] 构建成功！正在同步二进制文件..." -ForegroundColor Green
+Copy-Item $targetExe "D:\app\HX家族多功能工具箱.exe" -Force
+Write-Host "[OK] 已同步至: D:\app\HX家族多功能工具箱.exe" -ForegroundColor Green
+
+$desktopDir = "C:\Users\19227\Desktop"
+if (Test-Path $desktopDir) {
+    Copy-Item $targetExe "$desktopDir\90HX Studio.exe" -Force
+    Copy-Item $targetExe "$desktopDir\HX家族多功能工具箱.exe" -Force
+    Write-Host "[OK] 已成功同步至桌面: $desktopDir\90HX Studio.exe 与 HX家族多功能工具箱.exe" -ForegroundColor Green
+}
+
 Write-Host "==================================================" -ForegroundColor Green
 Get-Item -LiteralPath $targetExe | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
+
