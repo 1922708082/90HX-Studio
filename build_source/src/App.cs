@@ -25,6 +25,44 @@ namespace CMP90HXToolbox
 {
     public class App : Application
     {
+        /// <summary>
+        /// WebView2 的托管程序集以嵌入资源形式随 exe 分发（保持单文件），
+        /// 由这里在首次解析时从内存加载，无需在 exe 旁边放 dll。
+        /// </summary>
+        static App()
+        {
+            try { AppDomain.CurrentDomain.AssemblyResolve += ResolveEmbeddedAssembly; } catch { }
+        }
+
+        private static Assembly ResolveEmbeddedAssembly(object sender, ResolveEventArgs args)
+        {
+            try
+            {
+                string simpleName = new AssemblyName(args.Name).Name;
+                if (simpleName != "Microsoft.Web.WebView2.Core" &&
+                    simpleName != "Microsoft.Web.WebView2.Wpf") return null;
+
+                Assembly self = Assembly.GetExecutingAssembly();
+                using (Stream s = self.GetManifestResourceStream(simpleName + ".dll"))
+                {
+                    if (s == null) return null;
+                    byte[] buf = new byte[s.Length];
+                    int offset = 0;
+                    while (offset < buf.Length)
+                    {
+                        int n = s.Read(buf, offset, buf.Length - offset);
+                        if (n <= 0) break;
+                        offset += n;
+                    }
+                    return Assembly.Load(buf);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private Window _window;
 
         private RadioButton[] _navItems;
@@ -445,6 +483,15 @@ namespace CMP90HXToolbox
                     (SecurityProtocolType)3072 | (SecurityProtocolType)12288; // Tls12 | Tls13
             }
             catch { }
+
+            // 新界面（WebView2 宿主）冒烟入口：HX家族多功能工具箱.exe --shell
+            // 默认仍启动旧 WPF 界面，等 P5 业务接入完成后再切换默认。
+            if (HasArgument(args, "--shell"))
+            {
+                RunWebShell();
+                return;
+            }
+
             // 后台省电模式判断：支持命令行中任意位置包含 --powersave，不区分大小写，去除引号
             bool isPowerSaveMode = false;
             if (args != null && args.Length > 0)
@@ -541,6 +588,47 @@ namespace CMP90HXToolbox
             catch (Exception ex)
             {
                 ModernMessageBox.Show("进程启动致命异常: " + ex.Message, "90HX Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>命令行开关判定：忽略大小写、允许带引号、允许出现在任意位置。</summary>
+        private static bool HasArgument(string[] args, string name)
+        {
+            if (args == null || args.Length == 0) return false;
+            for (int i = 0; i < args.Length; i++)
+            {
+                string a = args[i];
+                if (a == null) continue;
+                if (string.Equals(a.Trim('"', ' ', '\''), name, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 启动 WebView2 宿主窗口（新界面）。
+        /// 与旧界面互不干扰：不接管单实例互斥体，可同时开着便于对照验收。
+        /// </summary>
+        private static void RunWebShell()
+        {
+            try
+            {
+                Application shellApp = new Application();
+                shellApp.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                WebShellWindow win = new WebShellWindow();
+                shellApp.Run(win);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    File.AppendAllText(Path.Combine(NativeCore.GetLogsDirectory(), "crash.log"),
+                        "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] Shell 模式启动失败: " + ex.ToString() + "\r\n");
+                }
+                catch { }
+                ModernMessageBox.Show(
+                    "新界面启动失败：\n" + ex.Message +
+                    "\n\n不影响旧界面——不加 --shell 启动即可继续使用。",
+                    "HX Studio 6.x", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

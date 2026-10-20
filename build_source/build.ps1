@@ -23,6 +23,11 @@ $argsList = @(
     "/resource:D:\app\build_source\src\SplashWindow.xaml,SplashWindow.xaml",
     "/resource:D:\app\build_source\assets\wechat_pay.png,wechat_pay.png",
     "/resource:D:\app\build_source\assets\alipay.png,alipay.png",
+    "/resource:D:\app\build_source\web\index.html,index.html",
+    "/resource:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Core.dll,Microsoft.Web.WebView2.Core.dll",
+    "/resource:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Wpf.dll,Microsoft.Web.WebView2.Wpf.dll",
+    "/resource:D:\app\build_source\lib\webview2\x64\WebView2Loader.dll,wv2loader64.dll",
+    "/resource:D:\app\build_source\lib\webview2\x86\WebView2Loader.dll,wv2loader32.dll",
     "/resource:D:\app\assets.zip,assets.zip",
     ("/out:" + $targetExe),
     "/r:System.dll",
@@ -47,6 +52,7 @@ $argsList = @(
     "D:\app\build_source\src\EcosystemPatchManager.cs",
     "D:\app\build_source\src\NativeCore.cs",
     "D:\app\build_source\src\VirusOverlay.cs",
+    "D:\app\build_source\src\WebShell.cs",
     "D:\app\build_source\src\App.cs",
     "D:\app\build_source\src\AssemblyInfo.cs"
 )

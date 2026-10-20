@@ -1,0 +1,308 @@
+using System;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Shell;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
+
+namespace CMP90HXToolbox
+{
+    /// <summary>
+    /// HX Studio 6.x 的 WebView2 宿主窗口。
+    ///
+    /// 设计约束（对应迁移方案 V2.2 第 4 章）：
+    /// 1. 无边框 + WindowChrome，靠 app-region: drag 实现标题栏拖动；
+    /// 2. HTML 从内存流直出，零磁盘落盘，避免 ProgramData 被篡改写导致提权；
+    /// 3. WebView2Loader.dll 按进程位数从嵌入资源解压，再用 SetLoaderDllFolderPath 指定；
+    /// 4. 外部导航一律拦截，交由系统浏览器打开；
+    /// 5. 桥接只走 WebMessage（JSON 文本），不注入 HostObject。
+    ///
+    /// 当前阶段（P3 冒烟）：只接通窗口控制与渲染，业务数据推送留到 P4。
+    /// 因此页面会在 800ms 后被自身的 MOCK 看门狗接管，显示演示数据。
+    /// </summary>
+    internal sealed class WebShellWindow : Window
+    {
+        private const string StartUrl = "https://hx.local/index.html";
+        private const string HostOrigin = "https://hx.local";
+
+        private WebView2 _webView;
+        private CoreWebView2Environment _env;
+        private static byte[] _htmlCache;
+
+        public WebShellWindow()
+        {
+            Title = "HX家族多功能工具箱";
+            Width = 1280;
+            Height = 800;
+            MinWidth = 1160;
+            MinHeight = 660;
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.CanResize;
+            AllowsTransparency = false;   // 必须 false：HwndHost 无法在分层窗口里渲染
+            Background = new SolidColorBrush(Color.FromRgb(7, 9, 14));
+
+            WindowChrome chrome = new WindowChrome();
+            chrome.CaptionHeight = 0;
+            chrome.ResizeBorderThickness = new Thickness(6);
+            chrome.GlassFrameThickness = new Thickness(0);
+            chrome.CornerRadius = new CornerRadius(0);
+            chrome.UseAeroCaptionButtons = false;
+            WindowChrome.SetWindowChrome(this, chrome);
+
+            _webView = new WebView2();
+            _webView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 7, 9, 14);
+            _webView.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _webView.VerticalAlignment = VerticalAlignment.Stretch;
+            Content = _webView;
+
+            Loaded += OnWindowLoaded;
+            Closed += OnWindowClosed;
+        }
+
+        private async void OnWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await StartAsync();
+            }
+            catch (Exception ex)
+            {
+                LogCrash("WebShell 启动失败", ex);
+                ModernMessageBox.Show(
+                    "新界面启动失败，将返回旧界面。\n\n原因：" + ex.Message +
+                    "\n\n如需排查，请查看日志目录下的 crash.log。",
+                    "HX Studio 6.x", MessageBoxButton.OK, MessageBoxImage.Warning);
+                try { Close(); } catch { }
+            }
+        }
+
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_webView != null) _webView.Dispose();
+            }
+            catch { }
+        }
+
+        private async Task StartAsync()
+        {
+            // 1. 加载器必须在任何 CoreWebView2Environment API 之前指定
+            string loaderDir = ExtractLoader();
+            CoreWebView2Environment.SetLoaderDllFolderPath(loaderDir);
+
+            // 2. 运行时探测（缺失会在这里抛）
+            string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
+            LogInfo("WebView2 Runtime: " + runtimeVersion);
+
+            // 3. 环境（独立用户数据目录，避免污染系统盘默认位置）
+            string udf = Path.Combine(NativeCore.GetDataDirectory(), "webview2_udf");
+            if (!Directory.Exists(udf)) Directory.CreateDirectory(udf);
+            CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions();
+            _env = await CoreWebView2Environment.CreateAsync(null, udf, options);
+
+            // 4. 控件初始化
+            await _webView.EnsureCoreWebView2Async(_env);
+            CoreWebView2 core = _webView.CoreWebView2;
+
+            // 5. 安全基线（全部关闭）
+            CoreWebView2Settings st = core.Settings;
+            st.AreDevToolsEnabled = false;
+            st.AreDefaultContextMenusEnabled = false;
+            st.AreBrowserAcceleratorKeysEnabled = false;
+            st.IsStatusBarEnabled = false;
+            st.IsZoomControlEnabled = false;
+            st.IsPasswordAutosaveEnabled = false;
+            st.IsGeneralAutofillEnabled = false;
+            try { st.IsNonClientRegionSupportEnabled = true; } catch { }
+
+            // 6. 事件
+            core.WebMessageReceived += OnWebMessageReceived;
+            core.NavigationStarting += OnNavigationStarting;
+            core.NewWindowRequested += OnNewWindowRequested;
+            core.ProcessFailed += OnProcessFailed;
+
+            // 7. 资源路由：只放行 hx.local，其余一律 403
+            core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
+            core.WebResourceRequested += OnWebResourceRequested;
+
+            core.Navigate(StartUrl);
+            LogInfo("已导航到 " + StartUrl);
+        }
+
+        // ---------- 资源 ----------
+
+        private static byte[] GetHtmlBytes()
+        {
+            if (_htmlCache != null) return _htmlCache;
+            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("index.html"))
+            {
+                if (s == null) throw new FileNotFoundException("内置资源 index.html 缺失，程序包不完整。");
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    s.CopyTo(ms);
+                    _htmlCache = ms.ToArray();
+                }
+            }
+            return _htmlCache;
+        }
+
+        private static string ExtractLoader()
+        {
+            string arch = IntPtr.Size == 8 ? "x64" : "x86";
+            string resName = IntPtr.Size == 8 ? "wv2loader64.dll" : "wv2loader32.dll";
+            string dir = Path.Combine(NativeCore.GetDataDirectory(), "webview2loader", arch);
+            string file = Path.Combine(dir, "WebView2Loader.dll");
+
+            if (File.Exists(file) && new FileInfo(file).Length > 0) return dir;
+
+            Directory.CreateDirectory(dir);
+            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream(resName))
+            {
+                if (s == null) throw new FileNotFoundException("内置 WebView2Loader 资源缺失：" + resName);
+                using (FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    s.CopyTo(fs);
+                }
+            }
+            LogInfo("已解压 WebView2Loader -> " + file);
+            return dir;
+        }
+
+        private void OnWebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
+        {
+            try
+            {
+                if (e.Request.Uri.StartsWith(StartUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    MemoryStream ms = new MemoryStream(GetHtmlBytes(), false);
+                    e.Response = _env.CreateWebResourceResponse(
+                        ms, 200, "OK",
+                        "Content-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff");
+                    return;
+                }
+
+                // 任何其他请求（含外链、子资源）一律阻断——本界面是单文件，不该有别的请求
+                e.Response = _env.CreateWebResourceResponse(
+                    null, 403, "Forbidden", "Content-Type: text/plain; charset=utf-8");
+            }
+            catch { }
+        }
+
+        // ---------- 导航守卫 ----------
+
+        private void OnNavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
+        {
+            if (e.Uri != null && e.Uri.StartsWith(HostOrigin, StringComparison.OrdinalIgnoreCase)) return;
+
+            e.Cancel = true;
+            try
+            {
+                if (e.Uri != null && (e.Uri.StartsWith("http://") || e.Uri.StartsWith("https://")))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = e.Uri,
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch { }
+        }
+
+        private void OnNewWindowRequested(object sender, CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            e.Handled = true;
+            try
+            {
+                if (e.Uri != null && (e.Uri.StartsWith("http://") || e.Uri.StartsWith("https://")))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = e.Uri,
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch { }
+        }
+
+        private void OnProcessFailed(object sender, CoreWebView2ProcessFailedEventArgs e)
+        {
+            LogInfo("WebView2 进程异常: " + e.ProcessFailedKind);
+            if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+            {
+                try
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        try { _webView.CoreWebView2.Reload(); } catch { }
+                    }));
+                }
+                catch { }
+            }
+        }
+
+        // ---------- 消息桥接 ----------
+
+        private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                if (!string.Equals(e.Source, StartUrl, StringComparison.OrdinalIgnoreCase)) return;
+
+                string json = e.WebMessageAsJson;
+                if (string.IsNullOrEmpty(json)) return;
+
+                // P3 阶段只处理窗口控制；业务 action 留到 P4 的 ActionRouter
+                if (json.IndexOf("\"action\":\"window.min\"", StringComparison.Ordinal) >= 0)
+                {
+                    WindowState = WindowState.Minimized;
+                }
+                else if (json.IndexOf("\"action\":\"window.max\"", StringComparison.Ordinal) >= 0)
+                {
+                    WindowState = (WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
+                }
+                else if (json.IndexOf("\"action\":\"window.close\"", StringComparison.Ordinal) >= 0)
+                {
+                    Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogCrash("处理网页消息失败", ex);
+            }
+        }
+
+        // ---------- 日志 ----------
+
+        private static void LogInfo(string msg)
+        {
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(NativeCore.GetLogsDirectory(), "webshell.log"),
+                    "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + "] " + msg + Environment.NewLine,
+                    Encoding.UTF8);
+            }
+            catch { }
+        }
+
+        private static void LogCrash(string title, Exception ex)
+        {
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(NativeCore.GetLogsDirectory(), "crash.log"),
+                    "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] " + title + ": " + ex + Environment.NewLine,
+                    Encoding.UTF8);
+            }
+            catch { }
+        }
+    }
+}
