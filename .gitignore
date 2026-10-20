@@ -3,6 +3,9 @@
 *.exe.bak*
 *.exe.old-*
 *.dll
+# 例外：WebView2 SDK 引用程序集必须入库，否则换机器无法复现构建
+!build_source/lib/webview2/*.dll
+!build_source/lib/webview2/*/*.dll
 *.pkg
 *.zip
 

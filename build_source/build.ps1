@@ -37,6 +37,8 @@ $argsList = @(
     ("/r:" + $gacPath + "\System.Xaml\v4.0_4.0.0.0__b77a5c561934e089\System.Xaml.dll"),
     ("/r:" + $gacPath + "\UIAutomationClient\v4.0_4.0.0.0__31bf3856ad364e35\UIAutomationClient.dll"),
     ("/r:" + $gacPath + "\UIAutomationTypes\v4.0_4.0.0.0__31bf3856ad364e35\UIAutomationTypes.dll"),
+    "/r:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Core.dll",
+    "/r:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Wpf.dll",
     "D:\app\build_source\src\SystemDetector.cs",
     "D:\app\build_source\src\GpuHardwareManager.cs",
     "D:\app\build_source\src\PcieUnlockManager.cs",
