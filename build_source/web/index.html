@@ -3579,7 +3579,7 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
                   </div>
                   <div>
-                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="hasVirtualGpu">虚拟显示</div>
+                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="boundApps">已绑定游戏</div>
                     <div style="font-size:12.5px;font-weight:800;color:var(--text-main);" id="dualCardTextVirtual">未知</div>
                     <div style="font-size:11.5px;color:var(--text-sub);" id="dualCardSubVirtual">--</div>
                   </div>
@@ -3947,23 +3947,23 @@
                 <table class="data-table">
                   <tbody>
                     <tr>
-                      <td title="currentVersion">当前版本</td>
+                      <td title="currentVersion" style="white-space:nowrap;width:88px;color:var(--text-sub);">当前版本</td>
                       <td id="updateCurrentVerText">--</td>
                     </tr>
                     <tr>
-                      <td title="latestVersion">最新版本</td>
+                      <td title="latestVersion" style="white-space:nowrap;width:88px;color:var(--text-sub);">最新版本</td>
                       <td id="updateLatestVerText" style="color:var(--accent);font-weight:800;">--</td>
                     </tr>
                     <tr>
-                      <td title="assetName">安装包</td>
-                      <td id="updateAssetNameText">--</td>
+                      <td title="assetName" style="white-space:nowrap;width:88px;color:var(--text-sub);">安装包</td>
+                      <td id="updateAssetNameText" style="word-break:break-all;">--</td>
                     </tr>
                     <tr>
-                      <td title="sha256">哈希值</td>
-                      <td id="updateSha256Text" style="word-break:break-all;">--</td>
+                      <td title="sha256" style="white-space:nowrap;width:88px;color:var(--text-sub);">哈希值</td>
+                      <td id="updateSha256Text" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;font-family:ui-monospace,monospace;font-size:11.5px;">--</td>
                     </tr>
                     <tr>
-                      <td title="verified">校验状态</td>
+                      <td title="verified" style="white-space:nowrap;width:88px;color:var(--text-sub);">校验状态</td>
                       <td id="updateVerifiedText">--</td>
                     </tr>
                   </tbody>
@@ -5176,17 +5176,24 @@
             { title: 'Alt+R 性能浮层', sub: ov.altRReady ? '可用' : '未解锁', tone: ov.altRReady ? 'pass' : 'warn' },
             { title: 'Alt+Z 覆盖面板', sub: ov.altZReady ? '可用' : '未解锁', tone: ov.altZReady ? 'pass' : 'warn' }
           ];
-          grid.innerHTML = items.map(c =>
-            '<div class="matrix-item">' +
+          grid.innerHTML = items.map(c => {
+            // 图标必须跟随状态：通过=对勾，未完成=横杠，异常=叉。
+            // 原来无论状态一律画对勾，「未注入」配绿勾会自相矛盾。
+            const glyph = c.tone === 'pass'
+              ? '<path d="M5.5 12.5l4.5 4.5L19 7.5"/>'
+              : (c.tone === 'danger'
+                  ? '<path d="M8.5 8.7l6.8 6.8M15.3 8.7l-6.8 6.8"/>'
+                  : '<path d="M8 12h8"/>');
+            return '<div class="matrix-item">' +
               '<div class="matrix-icon-box ' + c.tone + '">' +
-                '<svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M5.5 12.5l4.5 4.5L19 7.5"/></svg>' +
+                '<svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/>' + glyph + '</svg>' +
               '</div>' +
               '<div>' +
                 '<div class="matrix-title">' + escapeHtml(c.title) + '</div>' +
                 '<div class="matrix-sub">' + escapeHtml(c.sub) + '</div>' +
               '</div>' +
-            '</div>'
-          ).join('');
+            '</div>';
+          }).join('');
         }
       }
 
@@ -5224,9 +5231,11 @@
         if (icHags) icHags.className = 'matrix-icon-box ' + (dl.hagsActive ? 'pass' : 'warn');
         if (txHags) txHags.textContent = dl.hagsActive ? '已开启' : '未开启';
 
-        if (icVirt) icVirt.className = 'matrix-icon-box ' + (dl.hasVirtualGpu ? 'pass' : '');
-        if (txVirt) txVirt.textContent = dl.hasVirtualGpu ? valOrUnknown(dl.virtualGpuName) : '未挂载';
-        if (sbVirt) sbVirt.textContent = '已绑定 ' + valOrUnknown(dl.boundGamesCount, ' 款');
+        // 第 4 张卡：已绑定游戏数（原为「虚拟显示」，与副标题的绑定数互相矛盾，已统一为绑定语义）
+        const boundCount = Number(dl.boundGamesCount) || 0;
+        if (icVirt) icVirt.className = 'matrix-icon-box ' + (boundCount > 0 ? 'pass' : '');
+        if (txVirt) txVirt.textContent = boundCount > 0 ? (boundCount + ' 款') : '未绑定';
+        if (sbVirt) sbVirt.textContent = boundCount > 0 ? '已指定到渲染卡' : '尚未绑定任何程序';
 
         const hagsBadge = document.getElementById('dualHagsBadge');
         const rName = document.getElementById('dualRenderGpuName');
@@ -5425,7 +5434,12 @@
         if (curVer) curVer.textContent = valOrUnknown(u.currentVersion);
         if (latVer) latVer.textContent = valOrUnknown(u.latestVersion);
         if (assetTxt) assetTxt.textContent = valOrUnknown(u.assetName);
-        if (shaTxt) shaTxt.textContent = valOrUnknown(u.sha256);
+        if (shaTxt) {
+          // 完整 SHA-256 是 64 位，直接铺开会折行破版；显示前 20 位，完整值放 title
+          const sha = valOrUnknown(u.sha256);
+          shaTxt.textContent = sha.length > 20 ? (sha.slice(0, 20) + '…') : sha;
+          shaTxt.title = sha;
+        }
 
         // HARD SECURITY GATE: verified === false MUST disable apply button
         if (applyBtn) {
