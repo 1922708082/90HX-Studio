@@ -327,6 +327,9 @@
       display: flex;
       width: 100%;
       height: 100vh;
+      /* 留出外圈：让应用框从窗口边缘浮起来，看起来像一个窗口而不是一张网页 */
+      padding: 10px 12px 12px;
+      box-sizing: border-box;
       position: relative;
       z-index: 1;
     }
@@ -338,6 +341,11 @@
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: var(--frame-border);
+      border-radius: 14px;
+      box-shadow:
+        0 26px 64px rgba(0, 0, 0, 0.52),
+        0 2px 10px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -898,8 +906,8 @@
       transition: width var(--dur-slow) var(--ease-std), height var(--dur-slow) var(--ease-std);
     }
     .gpu-3d-stage.is-exploded {
-      width: 520px;
-      height: 184px;
+      width: 560px;
+      height: 268px;
     }
     .gpu-3d-stage::before {
       content: "";
@@ -947,11 +955,25 @@
       position: relative;
       transform-style: preserve-3d;
       transform: rotateY(-14deg) rotateX(8deg);
+      /* 常驻缓慢自转：让模型看起来是"立起来"的，而不是一张贴图 */
+      animation: gpuIdleSpin 18s ease-in-out infinite alternate;
+      will-change: transform;
       transition: transform var(--dur-slow) var(--ease-std);
       z-index: 2;
     }
+    /* 自转：幅度收窄，拆解态与常态的角度区间重叠，切换时几乎看不出跳变 */
+    @keyframes gpuIdleSpin {
+      from { transform: rotateY(-20deg) rotateX(10deg) rotateZ(-1deg); }
+      to   { transform: rotateY(-8deg)  rotateX(4deg)  rotateZ(1deg); }
+    }
     .gpu-3d-card.exploded {
       transform: rotateY(-18deg) rotateX(14deg) rotateZ(-2deg);
+      /* 拆解态继续自转，只是倾角更大，整体向左下敞开 */
+      animation: gpuExplodedSpin 18s ease-in-out infinite alternate;
+    }
+    @keyframes gpuExplodedSpin {
+      from { transform: rotateY(-22deg) rotateX(16deg) rotateZ(-4deg); }
+      to   { transform: rotateY(-10deg) rotateX(8deg)  rotateZ(-1deg); }
     }
 
     /* Exploded layer callout badge */
@@ -996,7 +1018,7 @@
       padding: 0 16px;
     }
     .gpu-3d-card.exploded .gpu-3d-back {
-      transform: translate3d(-168px, -36px, -76px) scale(0.82);
+      transform: translate3d(-52px, -44px, -84px) scale(0.80);
       border-color: var(--accent);
       transition-delay: 0ms;
     }
@@ -1066,7 +1088,7 @@
       padding: 0 12px;
     }
     .gpu-3d-card.exploded .gpu-3d-pcb {
-      transform: translate3d(-88px, -18px, -40px) scale(0.84);
+      transform: translate3d(-66px, -30px, -60px) scale(0.82);
       transition-delay: 40ms;
     }
     .gpu-vrm-bank {
@@ -1145,7 +1167,7 @@
       pointer-events: none;
     }
     .gpu-3d-card.exploded .gpu-3d-heatpipes {
-      transform: translate3d(-4px, 0px, 0px) scale(0.84);
+      transform: translate3d(-90px, 2px, -12px) scale(0.86);
       background: rgba(15, 23, 42, 0.72);
       border: 1px dashed var(--warning);
       border-radius: 8px;
@@ -1194,7 +1216,7 @@
       transition: transform var(--dur-slow) var(--ease-std) 80ms, border-color var(--dur-mid) var(--ease-std);
     }
     .gpu-3d-card.exploded .gpu-3d-heatsink {
-      transform: translate3d(80px, 16px, 36px) scale(0.84);
+      transform: translate3d(-102px, 18px, 12px) scale(0.86);
       border-color: var(--warning);
       transition-delay: 120ms;
     }
@@ -1217,7 +1239,7 @@
       padding: 0 8px;
     }
     .gpu-3d-card.exploded .gpu-3d-edge-top {
-      transform: translate3d(4px, -44px, 16px) rotateX(68deg) scale(0.86);
+      transform: translate3d(-112px, 34px, 34px) rotateX(62deg) scale(0.86);
       border-color: var(--accent);
       transition-delay: 140ms;
     }
@@ -1283,7 +1305,7 @@
       display: block;
     }
     .gpu-3d-card.exploded .gpu-3d-io-bracket {
-      transform: translate3d(-96px, -12px, -28px) rotateY(-28deg) scale(0.86);
+      transform: translate3d(-124px, 50px, 58px) rotateY(-24deg) scale(0.88);
       transition-delay: 140ms;
     }
 
@@ -1299,7 +1321,7 @@
       border-radius: 0 0 4px 4px;
     }
     .gpu-3d-card.exploded .gpu-3d-pins {
-      transform: translate3d(-76px, 24px, -36px) scale(0.86);
+      transform: translate3d(-78px, -14px, -36px) scale(0.84);
       transition-delay: 40ms;
     }
 
@@ -1338,7 +1360,7 @@
       z-index: 3;
     }
     .gpu-3d-card.exploded .gpu-3d-front {
-      transform: translate3d(164px, 34px, 76px) scale(0.84);
+      transform: translate3d(-136px, 66px, 82px) scale(0.90);
       transition-delay: 160ms;
     }
 
@@ -1476,6 +1498,33 @@
       display: flex;
       gap: 4px;
       align-items: center;
+      position: relative;
+      overflow: hidden;
+      padding: 2px 1px;
+    }
+    /* 连续扫光：一条高光从左到右贯穿整排引脚，弥补逐针脉冲之间的视觉空隙 */
+    .pcie-lanes-grid::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg,
+                  transparent 0%,
+                  rgba(56, 189, 248, 0.10) 30%,
+                  rgba(56, 189, 248, 0.55) 50%,
+                  rgba(56, 189, 248, 0.10) 70%,
+                  transparent 100%);
+      width: 46%;
+      left: -46%;
+      opacity: 0;
+    }
+    .view-panel.active .pcie-lanes-grid::after {
+      opacity: 1;
+      animation: laneSweep 1.6s linear infinite;
+    }
+    @keyframes laneSweep {
+      0%   { left: -46%; }
+      100% { left: 100%; }
     }
     .lane-pin {
       width: 5px;
@@ -1485,38 +1534,47 @@
       opacity: 0.72;
       transition: transform var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std);
     }
+    /* 延迟按引脚序号线性递增，首尾在 1.6s 周期内无缝衔接，
+       取代原先把 16 针拆成 4 组同相位脉冲的写法（那会看成 4 团光块） */
     .view-panel.active .lane-pin:not(.inactive) {
       animation: laneFlow 1.6s var(--ease-std) infinite;
     }
-    .lane-pin:nth-child(4n+1) { animation-delay: 0ms; }
-    .lane-pin:nth-child(4n+2) { animation-delay: 120ms; }
-    .lane-pin:nth-child(4n+3) { animation-delay: 240ms; }
-    .lane-pin:nth-child(4n+4) { animation-delay: 360ms; }
+    .lane-pin:nth-child(1)  { animation-delay: 0ms; }
+    .lane-pin:nth-child(2)  { animation-delay: 100ms; }
+    .lane-pin:nth-child(3)  { animation-delay: 200ms; }
+    .lane-pin:nth-child(4)  { animation-delay: 300ms; }
+    .lane-pin:nth-child(5)  { animation-delay: 400ms; }
+    .lane-pin:nth-child(6)  { animation-delay: 500ms; }
+    .lane-pin:nth-child(7)  { animation-delay: 600ms; }
+    .lane-pin:nth-child(8)  { animation-delay: 700ms; }
+    .lane-pin:nth-child(9)  { animation-delay: 800ms; }
+    .lane-pin:nth-child(10) { animation-delay: 900ms; }
+    .lane-pin:nth-child(11) { animation-delay: 1000ms; }
+    .lane-pin:nth-child(12) { animation-delay: 1100ms; }
+    .lane-pin:nth-child(13) { animation-delay: 1200ms; }
+    .lane-pin:nth-child(14) { animation-delay: 1300ms; }
+    .lane-pin:nth-child(15) { animation-delay: 1400ms; }
+    .lane-pin:nth-child(16) { animation-delay: 1500ms; }
     .lane-pin.inactive {
       animation: none !important;
       opacity: 0.18;
       background: var(--text-muted);
     }
     @keyframes laneFlow {
-      0%, 100% { opacity: 0.42; transform: scaleY(0.76); }
-      50% { opacity: 1; transform: scaleY(1.16); }
+      0%, 100% { opacity: 0.34; transform: scaleY(0.72); }
+      45%      { opacity: 1;    transform: scaleY(1.22); }
     }
 
     /* =========================================================================
-       4 TELEMETRY GAUGES (NO OVERLAP: FLOW EXPANSION + LOWER WINDOW SHIFT)
+       4 TELEMETRY GAUGES
+       明细行常驻占位、仅悬停自身卡片时才显示，
+       不再使用 max-height 展开 + 下移邻近卡片的做法（那会顶开下方内容造成遮挡）
        ========================================================================= */
     .telemetry-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       align-items: start;
-      transition: margin-bottom var(--dur-mid) var(--ease-std);
-    }
-    #telemetryGaugesGrid ~ .card {
-      transition: transform var(--dur-mid) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
-    }
-    #telemetryGaugesGrid:hover ~ .card {
-      transform: translateY(4px);
     }
     .gauge-card {
       background: var(--card-bg);
@@ -1606,24 +1664,27 @@
       font-family: ui-monospace, monospace;
       text-align: center;
       width: 100%;
-      max-height: 0;
-      opacity: 0;
-      overflow: hidden;
-      margin-top: 0;
+      min-height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 0 8px;
-      background: var(--card-sub-bg);
-      border: 0px solid transparent;
       border-radius: 8px;
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      opacity: 0;
+      transform: translateY(-3px);
       pointer-events: none;
-      transition: max-height var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std), margin-top var(--dur-mid) var(--ease-std), padding var(--dur-mid) var(--ease-std);
+      transition: opacity var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std),
+                  background-color var(--dur-fast) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
     }
+    /* 只显示当前悬停这一张卡片的明细，同一时刻最多一条 */
     .gauge-card:hover .gauge-sub,
-    #telemetryGaugesGrid:hover .gauge-sub {
-      max-height: 32px;
-      opacity: 0.98;
-      margin-top: 4px;
-      padding: 4px 8px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+    .gauge-card:focus-within .gauge-sub {
+      opacity: 1;
+      transform: none;
+      background: var(--card-sub-bg);
+      border-color: rgba(255, 255, 255, 0.06);
     }
 
     .matrix-grid {
@@ -1918,6 +1979,17 @@
       80% { opacity: 1; }
       100% { left: 92%; opacity: 0; }
     }
+
+    /* 3D 拆解错位节奏：由背板到装甲每层延后 45ms，
+       形成"一层层推开"的空间层次，而不是整体平移 */
+    .gpu-3d-back       { transition-delay: 0ms; }
+    .gpu-3d-pcb        { transition-delay: 45ms; }
+    .gpu-3d-pins       { transition-delay: 90ms; }
+    .gpu-3d-heatpipes  { transition-delay: 135ms; }
+    .gpu-3d-heatsink   { transition-delay: 180ms; }
+    .gpu-3d-edge-top   { transition-delay: 225ms; }
+    .gpu-3d-io-bracket { transition-delay: 270ms; }
+    .gpu-3d-front      { transition-delay: 315ms; }
 
     .two-col-grid {
       display: grid;
@@ -2402,7 +2474,7 @@
   </style>
 </head>
 
-<body class="theme-dark">
+<body class="theme-light">
 
   <!-- GLOBAL SVG GRADIENT DEFS -->
   <svg viewBox="0 0 24 24" width="0" height="0" style="position:absolute">
@@ -4056,7 +4128,7 @@
       // Application Reactive State (Zero hardcoded hardware values)
       const state = {
         currentPage: 'device',
-        theme: 'dark',
+        theme: 'light',
         safetyCoverOpen: false,
         selectedUnlockCard: '90HX',
         selectedUnlockChannel: 'A',
@@ -6324,7 +6396,7 @@
          =======================================================================
          ======================================================================= */
       var MOCK = {
-        theme: 'dark',
+        theme: 'light',
         deviceSnapshot: {
           gpu: {
             name: 'NVIDIA CMP 90HX',
