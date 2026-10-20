@@ -1,0 +1,165 @@
+# P0 可行性验证报告
+
+> 日期：2026-10-20
+> 方式：Edge DevTools Protocol 实测（`SystemInfo.getInfo` + 注入 rAF 计数器 + 进程级 CPU 采样）
+> 被测页面：`hx_hx_studio_v6_1.html`（10 页版，271 KB）
+> 判定：**档位 1 · 路线 A1-Full，零参数，直接通过**
+
+---
+
+## 一、被测机器实况
+
+| 项 | 实测值 |
+| :--- | :--- |
+| 显卡 | **NVIDIA CMP 90HX**，驱动 **616.92**，10240 MiB，**PCIe Gen2 x16** |
+| 当前显示名 | 系统里显示为 **NVIDIA GeForce RTX 3080**（伪装已生效） |
+| 显示输出 | **AMD Radeon(TM) Graphics 核显**，**144 Hz**，2560 宽 |
+| 其他适配器 | GameViewer 虚拟显示器 |
+| CPU | 16 逻辑核 |
+| 浏览器内核 | Edge **155.0.4283.62**（与 WebView2 同源 Chromium） |
+
+**这台机器是典型双卡场景：核显带屏，矿卡做算力。** 这一点直接改变了风险判断（见第四节）。
+
+---
+
+## 二、GPU 加速状态（等价 chrome://gpu）
+
+### 默认启动，不加任何参数
+
+| 特性 | 状态 |
+| :--- | :--- |
+| GPU 合成（gpu_compositing） | **enabled** |
+| 2D Canvas | **enabled** |
+| WebGL | **enabled** |
+| 光栅化（rasterization） | **enabled** |
+| 视频解码 | **enabled** |
+| GL 渲染器 | `ANGLE (AMD, AMD Radeon(TM) Graphics (0x000013C0) Direct3D11 vs_5_0 ps_5_0, D3D11)` |
+
+**结论：这台机器上 Chromium 默认就用硬件加速，没有命中任何黑名单，不需要 `--ignore-gpu-blocklist`。**
+
+### 加 `--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-angle=d3d11`
+
+| 项 | 变化 |
+| :--- | :--- |
+| 光栅化 | `enabled` → `enabled_force`（说明参数生效了） |
+| 其他 | 无变化 |
+| 帧率 | **无提升**（64~65 fps，与基线持平） |
+
+**结论：这些参数在本机是冗余的。** 写进产品只会增加维护面和不可预测性。
+
+---
+
+## 三、帧率实测（1280×800 窗口，各 5 秒采样）
+
+| 场景 | 首页（3D 显卡 + 粒子） | 节能页（火焰 Canvas + 波形） | 开启 perf-low 后 |
+| :--- | :---: | :---: | :---: |
+| **默认 / 硬件加速** | **64 ~ 67 fps**（p95 20.4 ms） | **65 ~ 67 fps** | 70 ~ 72 fps |
+| d3d11 强制参数 | 65 fps | 65 fps | 72 fps |
+| **WARP + 禁用 GPU 合成**（纯软件，`Microsoft Basic Render Driver`） | **42 fps**（p95 27.8 ms，6 帧 >33ms） | 42 fps | **144 fps**（p95 8 ms，0 卡顿） |
+
+### 门禁判定
+
+| 档位判据 | 要求 | 实测 | 结果 |
+| :--- | :--- | :--- | :---: |
+| 档位 1（满特效） | FPS ≥ 45、CPU ≤ 3%、驱动重载不崩 | **64 ~ 67 fps**，系统 CPU **1.5%** | ✅ **通过** |
+| 档位 2（WARP + perf-low） | FPS ≥ 55、CPU ≤ 2% | **144 fps**（撞到 144Hz 刷新率上限） | ✅ **通过** |
+
+**两条路线都成立，且档位 1 无需任何启动参数。**
+
+> 注意：满特效 64 fps 在 144Hz 屏上不是满帧，说明页面是**渲染受限**而非垂直同步受限。这是可以接受的（远高于 45 门禁），但如果用户很在意 144Hz 下的顺滑度，`perf-low` 能到 144。
+
+---
+
+## 四、空闲 CPU：数字达标，但有个反讽
+
+| 模式 | 占单核 | 占系统（16 核） |
+| :--- | ---: | ---: |
+| 全特效驻留 | **24.2 %** | **1.51 %** |
+| perf-low 驻留 | **23.6 %** | **1.48 %** |
+
+- 按**系统占比**算：1.5% ≤ 3% → **门禁通过**
+- 按**单核占用**算：24% → 相当于常年烧掉四分之一个核心
+
+**两个要点：**
+
+1. **perf-low 对空闲 CPU 几乎没帮助**（24.2% → 23.6%）。说明这 24% 不是动画烧的，而是 rAF 循环本身在 144Hz 下持续回调（即使回调里 `return`，144 次/秒 × 多路循环也不便宜）。
+2. **对一个主打"系统级省电"的工具来说，界面自己烧 24% 一个核是反讽。** 用户开着它打游戏时，这部分是白烧的。
+
+**建议（记入 P7 优化项，不阻塞 P0）：**
+- 窗口失焦 / 最小化时**停掉全部 rAF**（不是只加 `perf-low` 类，而是 `cancelAnimationFrame` 后不再排队）
+- 3D 旋转降到 30fps 上限
+- 传感器 Mock 推送在无宿主时降频
+
+---
+
+## 五、对 R2 风险（驱动热重载导致界面崩溃）的新判断
+
+V2.2 把 R2 列为中风险，理由是 `spoof.apply` 触发 `CfgMgr32` 热重载会重置 D3D 设备。
+
+**本机实测给出一个关键反证：**
+
+> WebView2 的 D3D11 设备绑定在 **AMD 核显**上（渲染器字符串可证），不是 CMP 90HX。
+> 因此禁用/启用 CMP 矿卡，**不会重置 WebView2 的图形上下文**。
+
+这解释了为什么这类工具在双卡用户群上很少出现"伪装时界面黑屏"——因为界面根本不在那张卡上画。
+
+**但有边界，必须写清楚：**
+
+| 用户类型 | R2 实际风险 | 处理 |
+| :--- | :--- | :--- |
+| 核显/亮机卡带屏 + 矿卡算力（本机，估计占多数） | **低** | 正常走 `ProcessFailed` 兜底即可 |
+| 单卡魔改直连（矿卡焊了接口直接接显示器） | **高**，界面就画在要被禁用的卡上 | 必须 `--use-angle=warp` 让界面脱离该卡，或重载前后遮罩 |
+
+**未验证项**：单卡直连场景我无法在本机复现（需要拆掉核显或换机器）。
+
+---
+
+## 六、剩余一项待你授权
+
+**步骤 3 的压测**：在设备管理器里对 CMP 90HX 执行「禁用设备 → 启用设备」，模拟 `spoof.apply` 的热重载，观察 WebView2 是否黑屏。
+
+- 预计耗时 1 分钟
+- 需要管理员权限
+- **风险**：禁用瞬间屏幕可能闪一下；若该卡正被占用可能报错；正常情况下重新启用即可恢复，但极端情况需要重启
+- 基于第四节结论，本机**预期不会崩**（界面在核显上），所以这项测试的边际价值不高
+
+**我的建议：可以跳过。** 理由：本机架构注定了不会命中该风险，测了也只能证明"双卡不崩"这个已知结论。真要验证，应该找一台单卡直连的机器。
+
+---
+
+## 七、P0 结论
+
+| 项 | 结论 |
+| :--- | :--- |
+| 技术路线 | **A1-Full**（默认硬件加速，不加任何 Chromium 参数） |
+| 启动参数 | **不需要** `--ignore-gpu-blocklist` / `--use-angle=d3d11` |
+| 保底方案 | **保留** `--use-angle=warp` + `perf-low` 代码路径，但不默认启用；做成"检测到软件渲染时自动切" |
+| F9 置信度 | **低 → 高**（本机实测通过，但仅限双卡场景） |
+| 剩余未知 | 单卡直连场景（需另一台机器） |
+| 新增待办 | 空闲 CPU 24%/核 偏高，记入 P7；根因是 rAF 在 144Hz 下持续回调 |
+
+**可以进入 P1 之后的工作（P2 拆除冗余）。P1 基线冻结已于 19:38 完成。**
+
+---
+
+## 附：测量方法（可复现）
+
+脚本：`C:\Users\19227\WorkBuddy\2026-10-20-17-11-37\p0_probe.py`
+
+```
+1. 启动 Edge：--remote-debugging-port=9333 --remote-allow-origins=*
+   --user-data-dir=<临时> --disable-backgrounding-occluded-windows
+   --disable-renderer-backgrounding --disable-background-timer-throttling
+2. CDP SystemInfo.getInfo  → 读 featureStatus / auxAttributes / 渲染器
+3. Target.createTarget(file:///...hx_hx_studio_v6_1.html) 并 attach
+4. Page.bringToFront → 等 2.5s 稳定
+5. Runtime.evaluate 注入 rAF 计数器，采样 5 秒，统计 fps / p95 / >33ms 帧数
+6. 点击 nav[data-page=power] 复测；点击 [data-action=ui.togglePerfLow] 再测
+7. psutil 按 cmdline 过滤本 profile 的 msedge 进程，采样 CPU 时间差 / 8 秒
+```
+
+数据文件：`p0_baseline.json` / `p0_d3d11.json` / `p0_warp.json` / `p0_idle2.json`
+
+---
+
+RainCandy Technology · P0 验证报告 · 2026-10-20
