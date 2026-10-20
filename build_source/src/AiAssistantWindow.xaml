@@ -12,6 +12,78 @@
         UseLayoutRounding="True">
 
     <Window.Resources>
+        <!-- 扁平细腻滚动条：4px 细轨道、悬停加宽、无箭头，滚动更顺滑 -->
+        <Style x:Key="SlimScrollThumb" TargetType="Thumb">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="thumbBd" CornerRadius="3" Background="#C9CCD3" Width="4" HorizontalAlignment="Center" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="thumbBd" Property="Background" Value="#9AA0A8" />
+                                <Setter TargetName="thumbBd" Property="Width" Value="6" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="thumbBd" Property="Background" Value="#6F7680" />
+                                <Setter TargetName="thumbBd" Property="Width" Value="6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SlimScrollBar" TargetType="ScrollBar">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Width" Value="10" />
+            <Setter Property="MinWidth" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource SlimScrollThumb}" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+                                </Track.DecreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SmoothChatScroll" TargetType="ScrollViewer">
+            <Setter Property="PanningMode" Value="VerticalOnly" />
+            <Setter Property="PanningDeceleration" Value="0.0008" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ScrollContentPresenter Grid.Column="0" CanContentScroll="{TemplateBinding CanContentScroll}" Margin="{TemplateBinding Padding}" />
+                            <ScrollBar Grid.Column="1" Name="PART_VerticalScrollBar" Style="{StaticResource SlimScrollBar}"
+                                       Orientation="Vertical" Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Value="{TemplateBinding VerticalOffset}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- 基础色彩系统 (Apple Studio 风格) -->
         <SolidColorBrush x:Key="StudioBg" Color="#FBFBFD" />
         <SolidColorBrush x:Key="StudioWhite" Color="#FFFFFF" />
@@ -210,18 +282,19 @@
         
         <!-- 模式 1：圆形萌宠微标模式 (Mini Pet Mode，收起态)                -->
         
+        <!-- 模式 1：圆形萌宠徽标模式 (Mini Pet Mode，80x80 标准极客机械卡通徽标) -->
         <Border Name="MiniPetHost"
-                Width="92" Height="92"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Bottom"
-                Margin="0,0,14,14"
+                Width="80" Height="80"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="0"
                 Background="Transparent"
                 Cursor="Hand"
                 ToolTip="HX 智能硬件助手 (双击展开对话，右键更多选项，按住可任意拖动)">
 
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                <!-- 底部毛玻璃发光底盘与精致光圈 -->
-                <Ellipse Width="82" Height="82" Effect="{StaticResource PetBadgeShadow}">
+                <!-- 底部毛玻璃发光底盘与精致光圈 (标准 80x80 悬浮圆形徽标) -->
+                <Ellipse Width="80" Height="80" Effect="{StaticResource PetBadgeShadow}">
                     <Ellipse.Fill>
                         <RadialGradientBrush Center="0.5,0.4" GradientOrigin="0.5,0.4" RadiusX="0.6" RadiusY="0.6">
                             <GradientStop Color="#FFFFFF" Offset="0" />
@@ -230,13 +303,13 @@
                         </RadialGradientBrush>
                     </Ellipse.Fill>
                 </Ellipse>
-                <Ellipse Width="82" Height="82" Stroke="#FFFFFF" StrokeThickness="1.8" Opacity="0.9" />
-                <Ellipse Width="80" Height="80" Stroke="#E2E8F0" StrokeThickness="1" />
+                <Ellipse Width="80" Height="80" Stroke="#FFFFFF" StrokeThickness="1.5" Opacity="0.95" />
+                <Ellipse Width="78" Height="78" Stroke="#E2E8F0" StrokeThickness="1" />
 
                 <!-- 极客机械萌宠主体 (纯矢量 XAML 绘制，带 ScaleY 呼吸动效) -->
-                <Grid Name="PetCharacterHost" Width="72" Height="72" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Name="PetCharacterHost" Width="68" Height="68" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Grid.RenderTransform>
-                        <ScaleTransform x:Name="PetBodyScale" ScaleX="1.0" ScaleY="1.0" CenterX="36" CenterY="54" />
+                        <ScaleTransform x:Name="PetBodyScale" ScaleX="1.0" ScaleY="1.0" CenterX="34" CenterY="50" />
                     </Grid.RenderTransform>
 
                     <!-- 1. 发光微弯天线 -->
@@ -468,7 +541,7 @@
                                            FontSize="13.5"
                                            Foreground="{StaticResource StudioTextDark}" />
                                 <Border Background="#EEF2F6" CornerRadius="4" Padding="4,1,4,1" Margin="6,0,0,0">
-                                    <TextBlock Text="AI 伴侣" FontSize="10" FontWeight="SemiBold" Foreground="#475569" />
+                                    <TextBlock Text="硬件 Agent" FontSize="10" FontWeight="SemiBold" Foreground="#475569" />
                                 </Border>
                             </StackPanel>
 
@@ -480,10 +553,10 @@
 
                         <!-- 右侧操作按钮组 (设置、重置位置、最小化、关闭) -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <!-- API 配置齿轮按钮 -->
-                            <Button Name="BtnToggleSettings" Style="{StaticResource IconActionButton}" Width="28" Height="28" ToolTip="中转站 API 配置">
-                                <Path Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"
-                                      Fill="#555861" Width="15" Height="15" Stretch="Uniform" />
+                            <!-- 清空会话历史按钮 -->
+                            <Button Name="BtnClearChat" Style="{StaticResource IconActionButton}" Width="28" Height="28" ToolTip="清空对话记录">
+                                <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+                                      Fill="#555861" Width="14" Height="14" Stretch="Uniform" />
                             </Button>
 
                             <!-- 重置吸附位置按钮 -->
@@ -560,7 +633,7 @@
                 
                 <!-- 2: 气泡消息流列表 (ScrollViewer + StackPanel)             -->
                 
-                <ScrollViewer Name="ChatScrollViewer" Grid.Row="2"
+                <ScrollViewer Name="ChatScrollViewer" Grid.Row="2" Style="{StaticResource SmoothChatScroll}"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Padding="12,12,12,6"
@@ -663,3 +736,5 @@
 
     </Grid>
 </Window>
+
+

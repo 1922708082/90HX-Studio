@@ -1,3 +1,4 @@
+using System.Net;
 ﻿using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -79,6 +80,7 @@ namespace CMP90HXToolbox
         private TextBlock _txtHwDisk;
         private TextBlock _txtHwAudio;
         private TextBlock _txtHwNetwork;
+        private TextBlock _txtHwUptime;
 
         private ComboBox _cmbSpoofTargetCard;
         private Button _btnSpoofAllGpus;
@@ -205,6 +207,8 @@ namespace CMP90HXToolbox
 
         private TextBlock _txtSidebarVersion;
         private TextBlock _txtAppVerCurrent;
+        private Border _bdAppReleaseNotes;
+        private TextBlock _txtAppReleaseNotes;
         private TextBlock _txtAppVerLatest;
         private Border _bdAppStatus;
         private TextBlock _txtAppStatusBadge;
@@ -432,6 +436,7 @@ namespace CMP90HXToolbox
         [STAThread]
         public static void Main(string[] args)
         {
+            try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls; ServicePointManager.ServerCertificateValidationCallback = delegate { return true; }; } catch { }
             // 后台省电模式判断：支持命令行中任意位置包含 --powersave，不区分大小写，去除引号
             bool isPowerSaveMode = false;
             if (args != null && args.Length > 0)
@@ -604,16 +609,22 @@ namespace CMP90HXToolbox
                     _window = (Window)XamlReader.Load(stream);
                 }
 
+                LogStartup("XAML loaded");
                 BindControls();
+                LogStartup("BindControls done");
                 InitEvents();
+                LogStartup("InitEvents done");
                 InitNavigation();
+                LogStartup("InitNavigation done");
 
                 CheckAdminPrivilege();
                 RefreshSystemStatus();
+                LogStartup("RefreshSystemStatus done");
                 UpdateStatusBar();
                 InitSensorTimer();
 
                 ShowStartupPrank();
+                LogStartup("ShowStartupPrank done");
             }
             catch (Exception ex)
             {
@@ -654,6 +665,16 @@ namespace CMP90HXToolbox
                 }
             };
         }
+        private static void LogStartup(string stage)
+        {
+            try
+            {
+                File.AppendAllText(Path.Combine(NativeCore.GetLogsDirectory(), "startup.log"),
+                    "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] " + stage + Environment.NewLine);
+            }
+            catch { }
+        }
+
         private void ShowStartupPrank()
         {
             try
@@ -684,14 +705,16 @@ namespace CMP90HXToolbox
             }
             catch
             {
-
                 if (_window != null)
                 {
                     MainWindow = _window;
-                    ShutdownMode = ShutdownMode.OnMainWindowClose;
+                    ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                    HookMainWindowLifecycle();
                     _window.Show();
+                    _window.Activate();
                     RefreshSensors();
                     LogAudit("90HX Studio 已就绪。所有底层服务与安全防呆引擎已初始化完成。");
+                    try { AiAssistantController.EnsureInitialized(true); } catch { }
                 }
             }
         }
@@ -773,6 +796,7 @@ namespace CMP90HXToolbox
             _txtHwDisk = (TextBlock)_window.FindName("TxtHwDisk");
             _txtHwAudio = (TextBlock)_window.FindName("TxtHwAudio");
             _txtHwNetwork = (TextBlock)_window.FindName("TxtHwNetwork");
+            _txtHwUptime = (TextBlock)_window.FindName("TxtHwUptime");
 
             _cmbSpoofTargetCard = (ComboBox)_window.FindName("CmbSpoofTargetCard");
             _btnSpoofAllGpus = (Button)_window.FindName("BtnSpoofAllGpus");
@@ -783,8 +807,29 @@ namespace CMP90HXToolbox
             if (_cmbSpoofModel != null)
             {
                 _cmbSpoofModel.Items.Clear();
-                for (int i = 0; i < GpuSpoofManager.SpoofTargetModels.Length; i++)
-                    _cmbSpoofModel.Items.Add(GpuSpoofManager.SpoofTargetModels[i]);
+                // 先放本卡最稳妥的同架构目标，其余型号作为可选高级项
+                List<NativeCore.InstalledMiningGpu> detectedForSpoof = GpuHardwareManager.DetectAllMiningGpus();
+                NativeCore.InstalledMiningGpu firstGpu = detectedForSpoof.Count > 0 ? detectedForSpoof[0] : null;
+                string safeTarget = firstGpu != null
+                    ? NativeCore.GetSafeDefaultSpoofTarget(firstGpu.DetectedModel, firstGpu.ChipArchitecture)
+                    : "";
+                if (!string.IsNullOrEmpty(safeTarget)) _cmbSpoofModel.Items.Add(safeTarget);
+
+                // 只列同架构可用的目标，跨架构伪装会让驱动认不到设备
+                string[] compatible = NativeCore.GetCompatibleSpoofTargets(
+                    firstGpu != null ? firstGpu.DetectedModel : "",
+                    firstGpu != null ? firstGpu.ChipArchitecture : "");
+                for (int i = 0; i < compatible.Length; i++)
+                {
+                    string model = compatible[i];
+                    if (!string.IsNullOrEmpty(safeTarget) && string.Equals(model, safeTarget, StringComparison.OrdinalIgnoreCase)) continue;
+                    bool dup = false;
+                    for (int k = 0; k < _cmbSpoofModel.Items.Count; k++)
+                    {
+                        if (string.Equals(_cmbSpoofModel.Items[k] as string, model, StringComparison.OrdinalIgnoreCase)) { dup = true; break; }
+                    }
+                    if (!dup) _cmbSpoofModel.Items.Add(model);
+                }
                 _cmbSpoofModel.SelectedIndex = 0;
             }
 
@@ -857,19 +902,19 @@ namespace CMP90HXToolbox
 
                         UpdatePowerSaverButtonVisual();
                         RefreshSensors();
-                        ModernMessageBox.Show("系统级省电已彻底关闭，显卡频率限制已完全解除。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                        ModernMessageBox.Show("动态省电已彻底关闭，显卡频率限制已完全解除。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
                         if (ModernMessageBox.Show(
-                            "将注册开机自启的系统级省电服务：\n\n" +
+                            "将注册开机自启的动态省电服务：\n\n" +
                             "· 以管理员最高权限运行（免 UAC 弹窗）\n" +
                             "· 用户登录后在桌面会话中自动启动，确保 GPU 与 NVAPI 正常控制\n" +
                             "· 连续空闲 8 秒 → 自动压到 P8 深度节能\n" +
                             "· 检测到 GPU 占用 (>3%) → 毫秒级恢复全速性能\n" +
                             "· 静默无窗口，不占任务栏\n\n" +
                             "是否继续？",
-                            "系统级省电", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+                            "动态省电", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
                         if (EcoPowerManager.InstallPowerSaverTask(LogCallback))
                         {
@@ -878,7 +923,7 @@ namespace CMP90HXToolbox
                             UpdatePowerSaverButtonVisual();
                             RefreshSensors();
                             ModernMessageBox.Show(
-                                "已成功部署并启动系统级省电！\n\n以后每次开机登录自动生效，空闲时自动降频节能。\n想关闭时再点一次此按钮即可。",
+                                "已成功部署并启动动态省电！\n\n以后每次开机登录自动生效，空闲时自动降频节能。\n想关闭时再点一次此按钮即可。",
                                 "完成", MessageBoxButton.OK, MessageBoxImage.Information);
                         }
                         else
@@ -901,7 +946,7 @@ namespace CMP90HXToolbox
                 };
             }
 
-            // 系统级省电已合并到上面的「🔋 系统级省电」按钮，不再单独占一个入口
+            // 动态省电已合并到上面的「🔋 动态省电」按钮，不再单独占一个入口
 
             _txtNvAppPath = (TextBlock)_window.FindName("TxtNvAppPath");
             _txtOverlayPatchState = (TextBlock)_window.FindName("TxtOverlayPatchState");
@@ -1012,18 +1057,46 @@ namespace CMP90HXToolbox
 
             _txtSidebarVersion = (TextBlock)_window.FindName("TxtSidebarVersion");
 
-            // macOS 风格红黄绿交通灯控制按钮
+            // ===== 标题栏红黄绿交通灯控制按钮绑定 (Apple Studio Traffic Lights) =====
             Button btnWinClose = _window.FindName("BtnWinClose") as Button;
             Button btnWinMin = _window.FindName("BtnWinMin") as Button;
             Button btnWinMax = _window.FindName("BtnWinMax") as Button;
 
-            if (btnWinClose != null) btnWinClose.Click += (s, e) => _window.Close();
-            if (btnWinMin != null) btnWinMin.Click += (s, e) => _window.WindowState = WindowState.Minimized;
-            if (btnWinMax != null) btnWinMax.Click += (s, e) =>
+            if (btnWinClose != null)
             {
-                _window.WindowState = (_window.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
-            };
+                btnWinClose.Click += (s, e) => { try { _window.Close(); } catch { } };
+            }
+            if (btnWinMin != null)
+            {
+                btnWinMin.Click += (s, e) => { try { _window.WindowState = WindowState.Minimized; } catch { } };
+            }
+            if (btnWinMax != null)
+            {
+                btnWinMax.Click += (s, e) =>
+                {
+                    try
+                    {
+                        _window.WindowState = (_window.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
+                    }
+                    catch { }
+                };
+            }
             _txtAppVerCurrent = (TextBlock)_window.FindName("TxtAppVerCurrent");
+            _bdAppReleaseNotes = (Border)_window.FindName("BdAppReleaseNotes");
+            _txtAppReleaseNotes = (TextBlock)_window.FindName("TxtAppReleaseNotes");
+            if (_txtAppVerCurrent != null)
+            {
+                // 版本号统一从这里读，XAML 里不再写死，避免出现 5.0 程序显示 4.6.3 的情况
+                try
+                {
+                    Version ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                    if (ver != null)
+                    {
+                        _txtAppVerCurrent.Text = "v" + ver.Major + "." + ver.Minor + "." + ver.Build;
+                    }
+                }
+                catch { }
+            }
             _txtAppVerLatest = (TextBlock)_window.FindName("TxtAppVerLatest");
             _bdAppStatus = (Border)_window.FindName("BdAppStatus");
             _txtAppStatusBadge = (TextBlock)_window.FindName("TxtAppStatusBadge");
@@ -1052,7 +1125,7 @@ namespace CMP90HXToolbox
             Button btnOpenAi = _window.FindName("BtnOpenAiAssistant") as Button;
             if (btnOpenAi != null)
             {
-                btnOpenAi.Click += (s, e) =>
+                btnOpenAi.Click += delegate(object s, RoutedEventArgs e)
                 {
                     try
                     {
@@ -1060,23 +1133,53 @@ namespace CMP90HXToolbox
                         if (ctrl != null)
                         {
                             ctrl.SwitchMode(true, true);
-                            if (ctrl.Window != null) ctrl.Window.Activate();
+                            if (ctrl.Window != null)
+                            {
+                                if (!ctrl.Window.IsVisible) ctrl.Window.Show();
+                                ctrl.Window.Activate();
+                                ctrl.Window.Topmost = true;
+                            }
                         }
                     }
                     catch { }
                 };
             }
 
-            // ===== 极简无边框/空白处随意拖拽窗口移动 =====
+            // ===== 全局接入窗口鼠标拖动：主窗口与侧边栏接入 MouseLeftButtonDown，按住空白处也可随时自由拖拽窗口 =====
             if (_window != null)
             {
-                _window.MouseLeftButtonDown += (s, e) =>
+                MouseButtonEventHandler handleWindowDrag = (s, e) =>
                 {
                     if (e.ButtonState == MouseButtonState.Pressed)
                     {
+                        // 过滤交互控件，防止拖拽干扰正常点击/交互
+                        var dep = e.OriginalSource as DependencyObject;
+                        while (dep != null && dep != _window)
+                        {
+                            if (dep is Button || dep is TextBox || dep is ComboBox || dep is CheckBox ||
+                                dep is RadioButton || dep is System.Windows.Controls.Primitives.ScrollBar ||
+                                dep is Slider || dep is ListBoxItem || dep is System.Windows.Documents.Hyperlink)
+                            {
+                                return;
+                            }
+                            dep = VisualTreeHelper.GetParent(dep);
+                        }
                         try { _window.DragMove(); } catch { }
                     }
                 };
+
+                _window.MouseLeftButtonDown += handleWindowDrag;
+
+                var sidebarBorder = _window.FindName("SidebarBorder") as FrameworkElement;
+                if (sidebarBorder != null)
+                {
+                    sidebarBorder.MouseLeftButtonDown += handleWindowDrag;
+                }
+                var topDragBar = _window.FindName("TopDragBar") as FrameworkElement;
+                if (topDragBar != null)
+                {
+                    topDragBar.MouseLeftButtonDown += handleWindowDrag;
+                }
             }
 
             WireUnlockPage("Unlock50", "50hx", "50HX", "50HX");
@@ -1216,18 +1319,29 @@ namespace CMP90HXToolbox
 
         private void InitNavigation()
         {
-            if (_navItems == null || _pageHosts == null) return;
+            if (_pageHosts == null) return;
 
-            for (int i = 0; i < _navItems.Length; i++)
+            // 先显示初始页，再挂 Checked 事件，避免初始化时的勾选事件把页面切走
+            SwitchPage(0, false);
+
+            if (_navItems != null)
             {
-                int idx = i;
-                var nav = _navItems[i];
-                if (nav == null) continue;
-                nav.Checked += (s, e) => SwitchPage(idx, true);
-            }
+                for (int i = 0; i < _navItems.Length; i++)
+                {
+                    int idx = i;
+                    var nav = _navItems[i];
+                    if (nav == null) continue;
+                    nav.Checked += (s, e) =>
+                    {
+                        if (nav.IsChecked == true) SwitchPage(idx, true);
+                    };
+                }
 
-            if (_navItems.Length > 0 && _navItems[0] != null) _navItems[0].IsChecked = true;
-            else SwitchPage(0, false);
+                if (_navItems.Length > 0 && _navItems[0] != null)
+                {
+                    _navItems[0].IsChecked = true;
+                }
+            }
 
             _clockTimer = new DispatcherTimer();
             _clockTimer.Interval = TimeSpan.FromSeconds(1);
@@ -1252,17 +1366,28 @@ namespace CMP90HXToolbox
                     page.Visibility = Visibility.Visible;
                     if (animate)
                     {
+                        // 确保所有动画运行在 GPU 合成器上（Opacity 与 TranslateTransform 不触发布局重排）
+                        // 动画时间控制在 140ms~150ms（严格处于 120ms~180ms 黄金区间），轻快干脆，消除操作延迟感
                         page.Opacity = 0.0;
-                        var tt = new TranslateTransform(0, 10);
+                        var tt = new TranslateTransform(0, 6.0);
                         page.RenderTransform = tt;
 
-                        var fadeAnim = new DoubleAnimation(0.0, 1.0, new Duration(TimeSpan.FromMilliseconds(240)))
+                        var fadeAnim = new DoubleAnimation(0.0, 1.0, new Duration(TimeSpan.FromMilliseconds(140)))
                         {
-                            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                            EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
                         };
-                        var slideAnim = new DoubleAnimation(10.0, 0.0, new Duration(TimeSpan.FromMilliseconds(300)))
+                        var slideAnim = new DoubleAnimation(6.0, 0.0, new Duration(TimeSpan.FromMilliseconds(150)))
                         {
-                            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                            EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+                        };
+
+                        slideAnim.Completed += (s, e) =>
+                        {
+                            // 动画完成后固化属性并释放 Clock，避免长时占用合成器资源
+                            page.BeginAnimation(UIElement.OpacityProperty, null);
+                            tt.BeginAnimation(TranslateTransform.YProperty, null);
+                            page.Opacity = 1.0;
+                            tt.Y = 0.0;
                         };
 
                         page.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
@@ -1386,10 +1511,26 @@ namespace CMP90HXToolbox
                         _txtClassSubKey.Text = g.ClassSubKey;
                         _txtCurrentDriverDesc.Text = g.CurrentDesc;
                         _txtCurrentGpuMatchId.Text = g.DevInstanceId;
-                        _txtDirectXDesc.Text = g.TargetGeForceName + " (" + g.ChipArchitecture + ")";
+
+                        // 目标型号按本卡架构实时推算，并在下拉中默认选中
+                        string safe = NativeCore.GetSafeDefaultSpoofTarget(g.DetectedModel, g.ChipArchitecture);
+                        if (string.IsNullOrEmpty(safe)) safe = g.TargetGeForceName;
+                        g.TargetGeForceName = safe;
+                        _txtDirectXDesc.Text = safe + " (" + g.ChipArchitecture + ")";
+
+                        if (_cmbSpoofModel != null && _cmbSpoofModel.Items.Count > 0)
+                        {
+                            int found = -1;
+                            for (int i = 0; i < _cmbSpoofModel.Items.Count; i++)
+                            {
+                                if (string.Equals(Convert.ToString(_cmbSpoofModel.Items[i]), safe, StringComparison.OrdinalIgnoreCase)) { found = i; break; }
+                            }
+                            _cmbSpoofModel.SelectedIndex = found >= 0 ? found : 0;
+                        }
+
                         if (_btnRenameTo3080 != null)
                         {
-                            _btnRenameTo3080.Content = "一键伪装当前卡 ➔ " + g.TargetGeForceName;
+                            _btnRenameTo3080.Content = "一键伪装当前卡 ➔ " + safe;
                         }
                     }
                 };
@@ -1402,10 +1543,29 @@ namespace CMP90HXToolbox
                     if (!EnsureAdminPrivilege()) return;
                     var gpus = GpuHardwareManager.DetectAllMiningGpus();
                     _btnSpoofAllGpus.IsEnabled = false;
-                    bool ok = await PcieUnlockManager.ApplyHybridMultiGpuUnlockAsync(gpus, true, false, LogCallback);
+                    int successCount = 0;
+                    string failedNames = "";
+                    for (int i = 0; i < gpus.Count; i++)
+                    {
+                        var g = gpus[i];
+                        string target = NativeCore.GetSafeDefaultSpoofTarget(g.DetectedModel, g.ChipArchitecture);
+                        if (string.IsNullOrEmpty(target)) target = g.TargetGeForceName;
+                        target = NativeCore.NormalizeGpuDisplayName(target);
+                        bool one = await GpuSpoofManager.ApplyGpuRenameAsync(target, LogCallback);
+                        if (one) successCount++;
+                        else failedNames += (failedNames.Length > 0 ? "、" : "") + g.DetectedModel;
+                    }
+                    await GpuHardwareManager.SoftRestartGpuDriverAsync(LogCallback);
+                    bool ok = successCount > 0;
                     _btnSpoofAllGpus.IsEnabled = true;
                     RefreshSystemStatus();
-                    if (ok) ModernMessageBox.Show("全机所有矿卡已全部完成型号与图形深度伪装！\n设备管理器与图形系统已就绪。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (ok)
+                    {
+                        string msg = "已完成 " + successCount + " / " + gpus.Count + " 张矿卡的安全型号伪装（同架构目标）。";
+                        if (failedNames.Length > 0) msg += "\n未成功: " + failedNames + "\n可回到单卡页单独排查后再试。";
+                        ModernMessageBox.Show(msg, "伪装完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else ModernMessageBox.Show("全机伪装未成功，请查看右侧日志。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 };
             }
 
@@ -1486,22 +1646,31 @@ namespace CMP90HXToolbox
                     ModernMessageBox.Show("未检测到有效矿卡设备！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+                // 使用下拉中选择的目标型号（不再是固定 3080/5090）
+                string chosenTarget = Convert.ToString(_cmbSpoofModel != null ? _cmbSpoofModel.SelectedItem : "");
+                if (string.IsNullOrEmpty(chosenTarget))
+                {
+                    chosenTarget = NativeCore.GetSafeDefaultSpoofTarget(targetGpu.DetectedModel, targetGpu.ChipArchitecture);
+                }
+                if (string.IsNullOrEmpty(chosenTarget)) chosenTarget = targetGpu.TargetGeForceName;
+                chosenTarget = NativeCore.NormalizeGpuDisplayName(chosenTarget);
 
                 _btnRenameTo3080.IsEnabled = false;
-                bool ok = await PcieUnlockManager.ApplySingleGpuGraphicsUnlockAsync(targetGpu, LogCallback);
+                bool ok = await PcieUnlockManager.ApplySingleGpuGraphicsUnlockAsync(targetGpu, LogCallback, chosenTarget);
                 await GpuHardwareManager.SoftRestartGpuDriverAsync(LogCallback);
                 _btnRenameTo3080.IsEnabled = true;
                 RefreshSystemStatus();
-                if (ok) ModernMessageBox.Show(string.Format("已成功将 [{0}] 伪装为 {1}！\n设备管理器与显示服务已即时刷新。", targetGpu.DetectedModel, targetGpu.TargetGeForceName), "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (ok) ModernMessageBox.Show(string.Format("已成功将 [{0}] 伪装为 {1}！设备管理器与显示服务已即时刷新。", targetGpu.DetectedModel, chosenTarget), "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             };
 
             if (_btnRestore90hx != null)
                 _btnRestore90hx.Click += async (s, e) =>
             {
+
                 if (!EnsureAdminPrivilege()) return;
-                int selIdx = _cmbSpoofTargetCard != null ? _cmbSpoofTargetCard.SelectedIndex : 0;
-                var gpus = GpuHardwareManager.DetectAllMiningGpus();
-                var targetGpu = (selIdx >= 0 && selIdx < gpus.Count) ? gpus[selIdx] : (gpus.Count > 0 ? gpus[0] : null);
+                int selIdxRestore = _cmbSpoofTargetCard != null ? _cmbSpoofTargetCard.SelectedIndex : 0;
+                var gpusRestore = GpuHardwareManager.DetectAllMiningGpus();
+                var targetGpu = (selIdxRestore >= 0 && selIdxRestore < gpusRestore.Count) ? gpusRestore[selIdxRestore] : (gpusRestore.Count > 0 ? gpusRestore[0] : null);
 
                 if (targetGpu == null) return;
 
@@ -2512,7 +2681,10 @@ namespace CMP90HXToolbox
                         if (_txtSensTemp != null) _txtSensTemp.Text = snap.Temperature + " ℃";
                         if (_barSensTemp != null) _barSensTemp.Value = snap.Temperature;
 
-                        double tempFrac = Math.Max(0.0, Math.Min(1.0, snap.Temperature / 90.0));
+                        // 温度量程取本卡驱动的关机门限，不同型号门限不同
+                        NativeCore.GpuTempThresholds tempLimit = NativeCore.QueryGpuTempThresholds();
+                        double tempMax = tempLimit.MaxC > 0 ? tempLimit.MaxC : 95.0;
+                        double tempFrac = Math.Max(0.0, Math.Min(1.0, snap.Temperature / tempMax));
                         UpdateRingArc(_ringUnlockTemp, tempFrac);
                         UpdateRingArc(_ringDashTemp, tempFrac);
                         if (_txtRingUnlockTempVal != null) _txtRingUnlockTempVal.Text = snap.Temperature + "°";
@@ -2521,28 +2693,38 @@ namespace CMP90HXToolbox
                         if (_txtSensFan != null) _txtSensFan.Text = snap.FanPercent + " %";
                         if (_barSensFan != null) _barSensFan.Value = snap.FanPercent;
 
-                        if (_txtSensPower != null) _txtSensPower.Text = snap.PowerDraw.ToString("F1") + " W / " + snap.PowerLimit.ToString("F0") + " W";
+                        if (_txtSensPower != null)
+                        {
+                            if (snap.PowerLimit > 0) _txtSensPower.Text = snap.PowerDraw.ToString("F1") + " W / " + snap.PowerLimit.ToString("F0") + " W";
+                            else _txtSensPower.Text = snap.PowerDraw.ToString("F1") + " W";
+                        }
 
-                        double dashPowerMax = snap.PowerLimit > 0 ? snap.PowerLimit : 250.0;
-                        double powerFrac = Math.Max(0.0, Math.Min(1.0, snap.PowerDraw / dashPowerMax));
+                        // 功耗量程优先用当前生效上限，再退到出厂默认/硬件峰值，全部来自驱动
+                        double dashPowerMax = snap.PowerLimit > 0 ? snap.PowerLimit
+                            : (snap.PowerDefaultLimit > 0 ? snap.PowerDefaultLimit
+                            : (snap.PowerMaxLimit > 0 ? snap.PowerMaxLimit : snap.PowerDraw));
+                        double powerFrac = dashPowerMax > 0 ? Math.Max(0.0, Math.Min(1.0, snap.PowerDraw / dashPowerMax)) : 0.0;
                         UpdateRingArc(_ringUnlockPower, powerFrac);
                         UpdateRingArc(_ringDashPower, powerFrac);
                         if (_txtRingUnlockPowerVal != null) _txtRingUnlockPowerVal.Text = ((int)snap.PowerDraw) + "W";
                         if (_txtRingDashPowerVal != null) _txtRingDashPowerVal.Text = ((int)snap.PowerDraw) + "W";
                         if (_barSensPower != null)
                         {
-                            _barSensPower.Maximum = snap.PowerLimit > 0 ? snap.PowerLimit : 250;
+                            _barSensPower.Maximum = dashPowerMax > 0 ? dashPowerMax : 1;
                             _barSensPower.Value = snap.PowerDraw;
                         }
 
-                        if (_txtSensVram != null) _txtSensVram.Text = snap.MemoryUsedMB + " MB / " + snap.MemoryTotalMB + " MB";
+                        if (_txtSensVram != null)
+                        {
+                            _txtSensVram.Text = snap.MemoryTotalMB > 0
+                                ? snap.MemoryUsedMB + " MB / " + snap.MemoryTotalMB + " MB"
+                                : snap.MemoryUsedMB + " MB";
+                        }
                         if (_barSensVram != null)
                         {
-                            _barSensVram.Maximum = snap.MemoryTotalMB > 0 ? snap.MemoryTotalMB : 10240;
+                            _barSensVram.Maximum = snap.MemoryTotalMB > 0 ? snap.MemoryTotalMB : 1;
                             _barSensVram.Value = snap.MemoryUsedMB;
                         }
-
-                        if (_txtSensUtil != null) _txtSensUtil.Text = snap.GpuUtilPercent + " %";
                         if (_barSensUtil != null) _barSensUtil.Value = snap.GpuUtilPercent;
 
                         if (_txtSensClocks != null) _txtSensClocks.Text = snap.GraphicsClockMHz + " MHz / " + snap.MemoryClockMHz + " MHz";
@@ -2605,80 +2787,189 @@ namespace CMP90HXToolbox
             }
             else if (!taskInstalled && isRunning)
             {
-                _btnDashUnlock.Content = "停止后台省电";
-                _btnDashUnlock.ToolTip = "后台省电进程正在运行。点击停止并恢复全速。";
+                _btnDashUnlock.Content = "🔋 停止省电";
+                _btnDashUnlock.ToolTip = "省电正在运行。点击停止并恢复全速。";
             }
             else
             {
-                _btnDashUnlock.Content = "系统级省电";
-                _btnDashUnlock.ToolTip = "点击注册开机自启省电任务：空闲 8 秒压 P8，有负载自动恢复。";
+                _btnDashUnlock.Content = "🔋 动态省电";
+                _btnDashUnlock.ToolTip = "点击注册开机自启：空闲 8 秒压 P8，有负载自动恢复。";
             }
+        }
+
+        /// <summary>
+        /// 把 SystemDetector 通用接口采集到的硬件信息填进「硬件概览」页。
+        /// 这一批 TextBlock 过去只 FindName、从未赋值，界面显示的其实是 XAML 里的示例数据。
+        /// </summary>
+        /// <summary>把 Release 说明显示在「软件更新」页的「本次更新内容」卡片里。</summary>
+        private void ShowReleaseNotes(NativeCore.AppUpdateInfo info)
+        {
+            try
+            {
+                if (info == null || string.IsNullOrEmpty(info.ReleaseNotes))
+                {
+                    if (_bdAppReleaseNotes != null) _bdAppReleaseNotes.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                string notes = info.ReleaseNotes
+                    .Replace("###", "").Replace("##", "").Replace("#", "")
+                    .Replace("**", "").Replace("- ", "· ")
+                    .Replace("\r\n", "\n").Trim();
+
+                if (_txtAppReleaseNotes != null) _txtAppReleaseNotes.Text = notes;
+                if (_bdAppReleaseNotes != null) _bdAppReleaseNotes.Visibility = Visibility.Visible;
+            }
+            catch { }
+        }
+
+        private void FillHardwarePage(SystemStatus status)
+        {
+            try
+            {
+                if (status == null || status.Hardware == null) return;
+                MachineHardwareProfile hw = status.Hardware;
+
+                SetHwText(_txtHwCpuName, hw.CpuName);
+                SetHwText(_txtHwCpuCores, hw.CpuCores);
+                SetHwText(_txtHwCpuClock, hw.CpuClock);
+                SetHwText(_txtHwMotherboard, hw.MotherboardModel);
+                SetHwText(_txtHwBiosVer, hw.BiosVersion);
+                SetHwText(_txtHwUefiState, hw.UefiStatus);
+                SetHwText(_txtHwSecureBoot, hw.SecureBootStatus);
+                SetHwText(_txtHwHags, hw.HagsStatus);
+                SetHwText(_txtHwMemory, hw.TotalMemory);
+                SetHwText(_txtHwOsVer, hw.OsVersion);
+                SetHwText(_txtHwMonitor, hw.DisplayDevices);
+                SetHwText(_txtHwDisk, hw.DiskDevices);
+                SetHwText(_txtHwAudio, hw.AudioDevices);
+                SetHwText(_txtHwNetwork, hw.NetworkDevices);
+                SetHwText(_txtHwUptime, hw.Uptime);
+
+                if (_txtHwGpuCount != null && hw.GpuList != null)
+                {
+                    _txtHwGpuCount.Text = hw.GpuList.Count + " 张";
+                }
+            }
+            catch { }
+        }
+
+        private static void SetHwText(TextBlock tb, string value)
+        {
+            if (tb == null || string.IsNullOrEmpty(value)) return;
+            tb.Text = value;
         }
 
 private void RefreshSystemStatus()
         {
-            var status = SystemDetector.DetectAll();
-            if (_txtDlssLocalVersion != null) _txtDlssLocalVersion.Text = "v" + NativeCore.GetLocalDlssVersion();
-
-            if (status.IsSpoofedTo3080)
+            try
             {
-                _txtTopGpuModel.Text = "RTX 3080 (已伪装)";
-                _txtTopGpuModel.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                var status = SystemDetector.DetectAll();
+                if (status == null) return;
+
+                // 把 SystemDetector 采集的硬件信息填进「硬件概览」页
+                // （此前 _txtHw* 这一批 TextBlock 只 FindName 没赋值，界面一直显示 XAML 里的示例数据）
+                FillHardwarePage(status);
+
+                if (_txtDlssLocalVersion != null) _txtDlssLocalVersion.Text = "v" + NativeCore.GetLocalDlssVersion();
+
+                if (_txtTopGpuModel != null)
+                {
+                    if (status.IsSpoofedTo3080)
+                    {
+                        _txtTopGpuModel.Text = "RTX 3080 (已伪装)";
+                        _txtTopGpuModel.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                    }
+                    else
+                    {
+                        _txtTopGpuModel.Text = status.GpuDesc;
+                        _txtTopGpuModel.Foreground = new SolidColorBrush(Color.FromRgb(217, 119, 6));
+                    }
+                }
+
+                if (_txtTopOverlayStatus != null)
+                {
+                    _txtTopOverlayStatus.Text = status.OverlayPatched ? "已激活 (免检)" : "未激活 / 官方锁定";
+                    _txtTopOverlayStatus.Foreground = status.OverlayPatched ? new SolidColorBrush(Color.FromRgb(22, 163, 74)) : new SolidColorBrush(Color.FromRgb(100, 116, 139));
+                }
+                if (_txtDashOverlay != null) _txtDashOverlay.Text = status.OverlayPatched ? "已激活 · 免白名单" : "未激活 · 官方锁定";
+
+                if (_txtClassSubKey != null) _txtClassSubKey.Text = status.ClassSubKey;
+                if (_txtCurrentDriverDesc != null) _txtCurrentDriverDesc.Text = status.GpuDesc;
+                if (_txtCurrentGpuMatchId != null) _txtCurrentGpuMatchId.Text = status.GpuId;
+                if (_txtDirectXDesc != null) _txtDirectXDesc.Text = status.IsSpoofedTo3080 ? "NVIDIA GeForce RTX 3080 (已同步)" : "NVIDIA CMP 90HX";
+
+                if (_txtNvAppPath != null) _txtNvAppPath.Text = string.IsNullOrEmpty(status.NvAppPath) ? "未安装 NVIDIA App" : status.NvAppPath;
+                if (_txtOverlayPatchState != null)
+                {
+                    _txtOverlayPatchState.Text = status.OverlayPatched ? "已成功注入免检补丁 (ShadowPlay 白名单已解开)" : "未注入补丁 (受官方硬件白名单限制)";
+                    _txtOverlayPatchState.Foreground = status.OverlayPatched ? new SolidColorBrush(Color.FromRgb(22, 163, 74)) : new SolidColorBrush(Color.FromRgb(217, 119, 6));
+                }
+                if (_txtOverlayBakState != null) _txtOverlayBakState.Text = status.OverlayBakExists ? "main.*.js.bak (官方备份存在，随时可一键还原)" : "未检测到备份";
+
+                if (_txtPcieCurrentMode != null)
+                {
+                    _txtPcieCurrentMode.Text = status.PcieModeDesc;
+                    if (status.PcieMode == NativeCore.PcieUnlockMode.Mode1_DirectBoot)
+                    {
+                        _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                    }
+                    else if (status.PcieMode == NativeCore.PcieUnlockMode.Mode2_UefiShell)
+                    {
+                        _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
+                    }
+                    else if (status.PcieMode == NativeCore.PcieUnlockMode.DirtyState)
+                    {
+                        _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                    }
+                    else
+                    {
+                        _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139));
+                    }
+                }
+
+                if (_txtPcieBcdHealth != null)
+                {
+                    if (status.PcieMode == NativeCore.PcieUnlockMode.Mode1_DirectBoot)
+                    {
+                        _txtPcieBcdHealth.Text = "健康 (已配置 Windows Boot Manager 自动兜底)";
+                        _txtPcieBcdHealth.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                    }
+                    else if (status.PcieMode == NativeCore.PcieUnlockMode.Mode2_UefiShell)
+                    {
+                        _txtPcieBcdHealth.Text = "健康 (Shell.efi 引导项活跃)";
+                        _txtPcieBcdHealth.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
+                    }
+                    else if (status.PcieMode == NativeCore.PcieUnlockMode.DirtyState)
+                    {
+                        _txtPcieBcdHealth.Text = "检测到历史残留引导项，建议点击【BCD 引导健康自检与修复】";
+                        _txtPcieBcdHealth.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                    }
+                    else
+                    {
+                        _txtPcieBcdHealth.Text = "官方原生干净状态 (未安装 PCIe 解锁)";
+                        _txtPcieBcdHealth.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139));
+                    }
+                }
+
+                if (_txtSecureBootState != null)
+                {
+                    _txtSecureBootState.Text = status.SecureBootEnabled ? "已开启 (Enabled) - 警告：会导致自定义 EFI 固件无法加载，请进 BIOS 关闭！" : "已关闭 (Disabled) - 正常，允许自定义 EFI 加载";
+                    _txtSecureBootState.Foreground = status.SecureBootEnabled ? new SolidColorBrush(Color.FromRgb(220, 38, 38)) : new SolidColorBrush(Color.FromRgb(22, 163, 74));
+                }
+
+                if (_txtToolHagsStatus != null)
+                {
+                    _txtToolHagsStatus.Text = "状态: " + (status.IsHagsEnabled ? "已开启 (推荐)" : "已关闭");
+                    _txtToolHagsStatus.Foreground = status.IsHagsEnabled ? new SolidColorBrush(Color.FromRgb(22, 163, 74)) : new SolidColorBrush(Color.FromRgb(100, 116, 139));
+                }
+
+                RefreshDualGpuStatus();
+                RefreshMiningGpuList();
+                RefreshFullHardwareDisplay(status);
+                UpdateStatusBar();
             }
-            else
-            {
-                _txtTopGpuModel.Text = status.GpuDesc;
-                _txtTopGpuModel.Foreground = new SolidColorBrush(Color.FromRgb(217, 119, 6));
-            }
-
-            _txtTopOverlayStatus.Text = status.OverlayPatched ? "已激活 (免检)" : "未激活 / 官方锁定";
-            if (_txtDashOverlay != null) _txtDashOverlay.Text = status.OverlayPatched ? "已激活 · 免白名单" : "未激活 · 官方锁定";
-            _txtTopOverlayStatus.Foreground = status.OverlayPatched ? new SolidColorBrush(Color.FromRgb(22, 163, 74)) : new SolidColorBrush(Color.FromRgb(100, 116, 139));
-
-            _txtClassSubKey.Text = status.ClassSubKey;
-            _txtCurrentDriverDesc.Text = status.GpuDesc;
-            _txtCurrentGpuMatchId.Text = status.GpuId;
-            _txtDirectXDesc.Text = status.IsSpoofedTo3080 ? "NVIDIA GeForce RTX 3080 (已同步)" : "NVIDIA CMP 90HX";
-
-            _txtNvAppPath.Text = string.IsNullOrEmpty(status.NvAppPath) ? "未安装 NVIDIA App" : status.NvAppPath;
-            _txtOverlayPatchState.Text = status.OverlayPatched ? "已成功注入免检补丁 (ShadowPlay 白名单已解开)" : "未注入补丁 (受官方硬件白名单限制)";
-            _txtOverlayPatchState.Foreground = status.OverlayPatched ? new SolidColorBrush(Color.FromRgb(22, 163, 74)) : new SolidColorBrush(Color.FromRgb(217, 119, 6));
-            _txtOverlayBakState.Text = status.OverlayBakExists ? "main.*.js.bak (官方备份存在，随时可一键还原)" : "未检测到备份";
-
-            _txtPcieCurrentMode.Text = status.PcieModeDesc;
-            if (status.PcieMode == NativeCore.PcieUnlockMode.Mode1_DirectBoot)
-            {
-                _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
-                _txtPcieBcdHealth.Text = "健康 (已配置 Windows Boot Manager 自动兜底)";
-                _txtPcieBcdHealth.Foreground = new SolidColorBrush(Color.FromRgb(22, 163, 74));
-            }
-            else if (status.PcieMode == NativeCore.PcieUnlockMode.Mode2_UefiShell)
-            {
-                _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(37, 99, 235));
-                _txtPcieBcdHealth.Text = "健康 (Shell.efi 引导项活跃)";
-            }
-            else if (status.PcieMode == NativeCore.PcieUnlockMode.DirtyState)
-            {
-                _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
-                _txtPcieBcdHealth.Text = "检测到历史残留引导项，建议点击【BCD 引导健康自检与修复】";
-                _txtPcieBcdHealth.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
-            }
-            else
-            {
-                _txtPcieCurrentMode.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139));
-                _txtPcieBcdHealth.Text = "官方原生干净状态 (未安装 PCIe 解锁)";
-            }
-
-            _txtSecureBootState.Text = status.SecureBootEnabled ? "已开启 (Enabled) - 警告：会导致自定义 EFI 固件无法加载，请进 BIOS 关闭！" : "已关闭 (Disabled) - 正常，允许自定义 EFI 加载";
-            _txtSecureBootState.Foreground = status.SecureBootEnabled ? new SolidColorBrush(Color.FromRgb(220, 38, 38)) : new SolidColorBrush(Color.FromRgb(22, 163, 74));
-
-            _txtToolHagsStatus.Text = "状态: " + (status.IsHagsEnabled ? "已开启 (推荐)" : "已关闭");
-            _txtToolHagsStatus.Foreground = status.IsHagsEnabled ? new SolidColorBrush(Color.FromRgb(22, 163, 74)) : new SolidColorBrush(Color.FromRgb(100, 116, 139));
-
-            RefreshDualGpuStatus();
-            RefreshMiningGpuList();
-            RefreshFullHardwareDisplay(status);
-            UpdateStatusBar();
+            catch { }
         }
 
         private void RefreshFullHardwareDisplay(SystemStatus status)
@@ -2912,6 +3203,7 @@ private void RefreshSystemStatus()
                 if (info.HasUpdate)
                 {
                     _pendingUpdate = info;
+                    ShowReleaseNotes(info);
                     if (_txtAppUpdateStatus != null)
                     {
                         _txtAppUpdateStatus.Text = "发现新版本 v" + info.LatestVersion + "，点击【立即更新并重启】升级";
@@ -3034,9 +3326,36 @@ private void RefreshSystemStatus()
                     NativeCore.AppUpdateInfo info = await RunAppUpdateCheck(false);
                     if (info != null && info.Success && info.HasUpdate)
                     {
+                        ShowReleaseNotes(info);
+
+                        // 发现新版本时自动跳到「软件更新」页，让用户直接看到版本对比与下载入口
+                        try
+                        {
+                            if (_navItems != null && _navItems.Length > 11 && _navItems[11] != null)
+                            {
+                                _navItems[11].IsChecked = true;
+                            }
+                        }
+                        catch { }
+
+                        // 把 Release 说明整理成可读文本（去掉 markdown 标记，限制长度）
+                        string notes = info.ReleaseNotes;
+                        if (!string.IsNullOrEmpty(notes))
+                        {
+                            notes = notes.Replace("###", "").Replace("##", "").Replace("#", "")
+                                         .Replace("**", "").Replace("- ", "· ")
+                                         .Replace("\r\n", "\n");
+                            if (notes.Length > 600) notes = notes.Substring(0, 600) + "\n...（完整内容见软件更新页）";
+                            notes = "\n\n更新内容：\n" + notes.Trim();
+                        }
+                        else
+                        {
+                            notes = "";
+                        }
+
                         var r = ModernMessageBox.Show(
                             "发现新版本 v" + info.LatestVersion + "\n\n" +
-                            "当前版本: v" + info.CurrentVersion + "\n\n" +
+                            "当前版本: v" + info.CurrentVersion + notes + "\n\n" +
                             "是否现在下载并更新？更新时程序会自动关闭，完成后自动重新打开。",
                             "发现更新", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
@@ -3462,101 +3781,259 @@ private void RefreshSystemStatus()
         {
             MessageBoxResult result = MessageBoxResult.None;
 
+            // ===== 视觉规范：信息、警告、危险确认区分 =====
             string glyph;
-            Color iconColor;
+            Color accentColor;
+            Color badgeBgColor;
+            bool isDestructive = false;
+
             switch (icon)
             {
-                case MessageBoxImage.Warning: glyph = "!"; iconColor = Color.FromRgb(245, 158, 11); break;
-                case MessageBoxImage.Error: glyph = "✕"; iconColor = Color.FromRgb(239, 68, 68); break;
-                case MessageBoxImage.Question: glyph = "?"; iconColor = Color.FromRgb(0, 113, 227); break;
-                default: glyph = "i"; iconColor = Color.FromRgb(0, 113, 227); break;
+                case MessageBoxImage.Warning:
+                    glyph = "!";
+                    accentColor = Color.FromRgb(255, 149, 0); // Apple Amber #FF9500
+                    badgeBgColor = Color.FromRgb(255, 245, 229); // #FFF5E5
+                    break;
+                case MessageBoxImage.Error:
+                    glyph = "✕";
+                    accentColor = Color.FromRgb(255, 59, 48); // Apple Red #FF3B30
+                    badgeBgColor = Color.FromRgb(255, 235, 234); // #FFEBEA
+                    isDestructive = true;
+                    break;
+                case MessageBoxImage.Question:
+                    glyph = "?";
+                    accentColor = Color.FromRgb(0, 113, 227); // Apple Blue #0071E3
+                    badgeBgColor = Color.FromRgb(234, 242, 253); // #EAF2FD
+                    break;
+                default:
+                    glyph = "ℹ";
+                    accentColor = Color.FromRgb(0, 113, 227); // Apple Blue #0071E3
+                    badgeBgColor = Color.FromRgb(234, 242, 253); // #EAF2FD
+                    break;
             }
 
             var win = new Window
             {
                 Title = caption,
-                Width = 448,
+                Width = 460,
                 SizeToContent = SizeToContent.Height,
                 WindowStyle = WindowStyle.None,
                 AllowsTransparency = true,
                 Background = Brushes.Transparent,
                 ResizeMode = ResizeMode.NoResize,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
                 ShowInTaskbar = false
             };
 
+            // 智能设置 Owner，居中依附于主窗口
+            try
+            {
+                Window mainWin = Application.Current != null ? Application.Current.MainWindow : null;
+                if (mainWin != null && mainWin.IsVisible && mainWin != win)
+                {
+                    win.Owner = mainWin;
+                    win.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                }
+                else
+                {
+                    win.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                }
+            }
+            catch
+            {
+                win.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
+
+            // Apple Studio 轻奢极简卡片：白底 #FFFFFF、圆角 16px、细边框 1px solid rgba(0,0,0,0.08)、柔和深邃阴影
             var card = new Border
             {
-                CornerRadius = new CornerRadius(14),
+                CornerRadius = new CornerRadius(16),
                 Background = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(229, 229, 234)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(20, 0, 0, 0)), // 1px solid rgba(0,0,0,0.08)
                 BorderThickness = new Thickness(1),
-                Margin = new Thickness(18),
-                Effect = new DropShadowEffect { BlurRadius = 26, ShadowDepth = 7, Opacity = 0.22, Color = Color.FromRgb(0, 0, 0) }
+                Margin = new Thickness(28),
+                Effect = new DropShadowEffect
+                {
+                    BlurRadius = 36,
+                    ShadowDepth = 8,
+                    Opacity = 0.14,
+                    Color = Color.FromRgb(0, 0, 0),
+                    Direction = 270
+                },
+                RenderTransformOrigin = new Point(0.5, 0.5),
+                Opacity = 0.0
             };
 
-            var root = new StackPanel { Margin = new Thickness(24, 22, 24, 22) };
+            var scaleTransform = new ScaleTransform(0.94, 0.94);
+            card.RenderTransform = scaleTransform;
 
-            var header = new StackPanel { Orientation = Orientation.Horizontal };
+            // 卡片支持拖动
+            card.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ButtonState == MouseButtonState.Pressed)
+                {
+                    try { win.DragMove(); } catch { }
+                }
+            };
+
+            // 大留白内部排版 (Padding: 26, 24, 26, 24)
+            var root = new StackPanel { Margin = new Thickness(26, 24, 26, 24) };
+
+            // 头部：图标徽章与标题
+            var header = new Grid();
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
             var iconBox = new Border
             {
-                Width = 34,
-                Height = 34,
-                CornerRadius = new CornerRadius(9),
-                Background = new SolidColorBrush(Color.FromArgb(24, iconColor.R, iconColor.G, iconColor.B)),
-                Margin = new Thickness(0, 0, 12, 0)
+                Width = 38,
+                Height = 38,
+                CornerRadius = new CornerRadius(11),
+                Background = new SolidColorBrush(badgeBgColor),
+                Margin = new Thickness(0, 0, 14, 0),
+                VerticalAlignment = VerticalAlignment.Center
             };
             iconBox.Child = new TextBlock
             {
                 Text = glyph,
-                Foreground = new SolidColorBrush(iconColor),
+                Foreground = new SolidColorBrush(accentColor),
                 FontWeight = FontWeights.Bold,
-                FontSize = 16,
+                FontSize = 17,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            Grid.SetColumn(iconBox, 0);
             header.Children.Add(iconBox);
-            header.Children.Add(new TextBlock
+
+            var titleText = new TextBlock
             {
                 Text = caption,
-                FontSize = 15,
+                FontSize = 15.5,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(29, 29, 31)),
-                VerticalAlignment = VerticalAlignment.Center
-            });
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(titleText, 1);
+            header.Children.Add(titleText);
 
-            var msg = new TextBlock
+            // 正文：清晰排版，行高 20，字号 13，深灰次级文本色
+            var msgBlock = new TextBlock
             {
                 Text = text,
-                FontSize = 12.5,
+                FontSize = 13,
                 Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 67)),
                 TextWrapping = TextWrapping.Wrap,
-                LineHeight = 19,
-                Margin = new Thickness(0, 14, 0, 18)
+                LineHeight = 20
             };
 
-            var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            if (button == MessageBoxButton.YesNo || button == MessageBoxButton.YesNoCancel)
+            var msgScroll = new ScrollViewer
             {
-                var noBtn = MakeButton("取消", false);
+                Content = msgBlock,
+                MaxHeight = 320,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Margin = new Thickness(0, 16, 0, 22)
+            };
+
+            // 按钮栏：Apple Pill 胶囊圆角，Primary（#0071E3 或危险红 #FF3B30）与 Secondary（#E5E5EA）
+            var btnRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+
+            Button defaultBtn = null;
+            Button cancelBtn = null;
+
+            if (button == MessageBoxButton.YesNo)
+            {
+                var noBtn = MakePillButton("取消", ButtonRole.Secondary);
                 noBtn.Click += (s, e) => { result = MessageBoxResult.No; win.Close(); };
-                var yesBtn = MakeButton("确定", true);
+                var yesBtn = MakePillButton("确定", isDestructive ? ButtonRole.Destructive : ButtonRole.Primary);
                 yesBtn.Click += (s, e) => { result = MessageBoxResult.Yes; win.Close(); };
                 btnRow.Children.Add(noBtn);
                 btnRow.Children.Add(yesBtn);
+                defaultBtn = yesBtn;
+                cancelBtn = noBtn;
+            }
+            else if (button == MessageBoxButton.OKCancel)
+            {
+                var cancel = MakePillButton("取消", ButtonRole.Secondary);
+                cancel.Click += (s, e) => { result = MessageBoxResult.Cancel; win.Close(); };
+                var okBtn = MakePillButton("确定", isDestructive ? ButtonRole.Destructive : ButtonRole.Primary);
+                okBtn.Click += (s, e) => { result = MessageBoxResult.OK; win.Close(); };
+                btnRow.Children.Add(cancel);
+                btnRow.Children.Add(okBtn);
+                defaultBtn = okBtn;
+                cancelBtn = cancel;
+            }
+            else if (button == MessageBoxButton.YesNoCancel)
+            {
+                var cancel = MakePillButton("取消", ButtonRole.Secondary);
+                cancel.Click += (s, e) => { result = MessageBoxResult.Cancel; win.Close(); };
+                var noBtn = MakePillButton("否", ButtonRole.Secondary);
+                noBtn.Click += (s, e) => { result = MessageBoxResult.No; win.Close(); };
+                var yesBtn = MakePillButton("是", isDestructive ? ButtonRole.Destructive : ButtonRole.Primary);
+                yesBtn.Click += (s, e) => { result = MessageBoxResult.Yes; win.Close(); };
+                btnRow.Children.Add(cancel);
+                btnRow.Children.Add(noBtn);
+                btnRow.Children.Add(yesBtn);
+                defaultBtn = yesBtn;
+                cancelBtn = cancel;
             }
             else
             {
-                var okBtn = MakeButton("确定", true);
+                var okBtn = MakePillButton("确定", isDestructive ? ButtonRole.Destructive : ButtonRole.Primary);
                 okBtn.Click += (s, e) => { result = MessageBoxResult.OK; win.Close(); };
                 btnRow.Children.Add(okBtn);
+                defaultBtn = okBtn;
+                cancelBtn = okBtn;
             }
 
+            // 键盘支持：Enter 触发默认按钮，Escape 触发取消
+            win.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape)
+                {
+                    if (cancelBtn != null) cancelBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    else win.Close();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Enter)
+                {
+                    if (defaultBtn != null) defaultBtn.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    e.Handled = true;
+                }
+            };
+
             root.Children.Add(header);
-            root.Children.Add(msg);
+            root.Children.Add(msgScroll);
             root.Children.Add(btnRow);
             card.Child = root;
             win.Content = card;
+
+            // 轻盈的 Apple Spring 弹簧缩放淡入动画 (Scale 0.94 -> 1.0, 160ms，流畅不掉帧)
+            win.Loaded += (s, e) =>
+            {
+                var scaleXAnim = new DoubleAnimation(0.94, 1.0, new Duration(TimeSpan.FromMilliseconds(160)))
+                {
+                    EasingFunction = new BackEase { Amplitude = 0.22, EasingMode = EasingMode.EaseOut }
+                };
+                var scaleYAnim = new DoubleAnimation(0.94, 1.0, new Duration(TimeSpan.FromMilliseconds(160)))
+                {
+                    EasingFunction = new BackEase { Amplitude = 0.22, EasingMode = EasingMode.EaseOut }
+                };
+                var opacityAnim = new DoubleAnimation(0.0, 1.0, new Duration(TimeSpan.FromMilliseconds(140)))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleXAnim);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleYAnim);
+                card.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+
+                if (defaultBtn != null) defaultBtn.Focus();
+            };
 
             try
             {
@@ -3565,36 +4042,71 @@ private void RefreshSystemStatus()
             }
             catch
             {
-
                 return MessageBox.Show(text, caption, button, icon);
             }
         }
 
-        private static Button MakeButton(string text, bool primary)
+        private enum ButtonRole
         {
+            Primary,
+            Secondary,
+            Destructive
+        }
+
+        private static Button MakePillButton(string text, ButtonRole role)
+        {
+            string bgNormal;
+            string bgHover;
+            string bgPressed;
+
+            switch (role)
+            {
+                case ButtonRole.Destructive:
+                    bgNormal = "#FF3B30"; // 苹果红
+                    bgHover = "#FF453A";
+                    bgPressed = "#D70015";
+                    break;
+                case ButtonRole.Secondary:
+                    bgNormal = "#E5E5EA"; // 微灰
+                    bgHover = "#D8D8DC";
+                    bgPressed = "#CACACF";
+                    break;
+                default: // Primary
+                    bgNormal = "#0071E3"; // 苹果蓝
+                    bgHover = "#0077ED";
+                    bgPressed = "#0064C9";
+                    break;
+            }
+
             string template =
                 "<ControlTemplate TargetType='Button' xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>" +
-                "<Border x:Name='bd' Background='" + (primary ? "#0071E3" : "#F2F2F7") + "' CornerRadius='17' Padding='20,0,20,0'>" +
+                "<Border x:Name='bd' Background='" + bgNormal + "' CornerRadius='17' Padding='20,0,20,0'>" +
                 "<ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/>" +
                 "</Border>" +
                 "<ControlTemplate.Triggers>" +
-                "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='bd' Property='Opacity' Value='0.86'/></Trigger>" +
-                "<Trigger Property='IsPressed' Value='True'><Setter TargetName='bd' Property='Opacity' Value='0.72'/></Trigger>" +
+                "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='bd' Property='Background' Value='" + bgHover + "'/></Trigger>" +
+                "<Trigger Property='IsPressed' Value='True'><Setter TargetName='bd' Property='Background' Value='" + bgPressed + "'/></Trigger>" +
                 "</ControlTemplate.Triggers>" +
                 "</ControlTemplate>";
+
             var btn = new Button
             {
                 Template = (ControlTemplate)XamlReader.Parse(template),
                 Content = text,
-                Foreground = primary ? Brushes.White : new SolidColorBrush(Color.FromRgb(29, 29, 31)),
+                Foreground = (role == ButtonRole.Secondary)
+                    ? (Brush)new SolidColorBrush(Color.FromRgb(29, 29, 31))
+                    : Brushes.White,
                 Height = 34,
                 MinWidth = 88,
-                Margin = new Thickness(6, 0, 0, 0),
+                Margin = new Thickness(8, 0, 0, 0),
                 Cursor = Cursors.Hand,
-                FontSize = 12.5,
+                FontSize = 13,
                 FontWeight = FontWeights.SemiBold
             };
             return btn;
         }
     }
 }
+
+
+

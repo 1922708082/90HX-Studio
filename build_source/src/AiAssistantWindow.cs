@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -10,6 +11,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -55,6 +57,7 @@ namespace CMP90HXToolbox
         private Point _dragStartPos;
         private bool _isDragging;
         private DispatcherTimer _blinkTimer;
+        private bool _isExplicitExit;
 
         private string _apiUrl = "https://api.muyaa.top/hx-assistant/v1";
         private string _apiKey = "";
@@ -80,24 +83,26 @@ namespace CMP90HXToolbox
 
         public static AiAssistantController EnsureInitialized(bool autoShow)
         {
-            if (_instance == null || _instance._window == null)
+            if (_instance == null || _instance._window == null || !_instance._window.IsLoaded)
             {
                 _instance = new AiAssistantController();
                 _instance.Initialize();
             }
-            if (autoShow && _instance._window != null)
+            if (autoShow && _instance != null && _instance._window != null)
             {
                 try
                 {
-                    _instance._window.Show();
+                    if (!_instance._window.IsVisible)
+                    {
+                        _instance._window.Show();
+                    }
                     _instance._window.Activate();
+                    _instance._window.Topmost = true;
                 }
                 catch { }
             }
             return _instance;
         }
-
-                
 
         public static AiAssistantController CreateAndShow()
         {
@@ -109,6 +114,24 @@ namespace CMP90HXToolbox
             try
             {
                 Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("AiAssistantWindow.xaml");
+                if (stream == null)
+                {
+                    string[] resNames = Assembly.GetExecutingAssembly().GetManifestResourceNames();
+                    if (resNames != null)
+                    {
+                        for (int i = 0; i < resNames.Length; i++)
+                        {
+                            if (string.Equals(resNames[i], "AiAssistantWindow.xaml", StringComparison.OrdinalIgnoreCase) ||
+                                resNames[i].EndsWith(".AiAssistantWindow.xaml", StringComparison.OrdinalIgnoreCase) ||
+                                resNames[i].IndexOf("AiAssistantWindow.xaml", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resNames[i]);
+                                if (stream != null) break;
+                            }
+                        }
+                    }
+                }
+
                 if (stream == null)
                 {
                     string[] candidates = new string[] {
@@ -125,7 +148,18 @@ namespace CMP90HXToolbox
                         }
                     }
                 }
-                if (stream == null) return;
+
+                if (stream == null)
+                {
+                    try
+                    {
+                        File.AppendAllText(Path.Combine(NativeCore.GetLogsDirectory(), "ai_assistant.log"),
+                            "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] [ERROR] 未找到 AiAssistantWindow.xaml 嵌入资源与本地文件！" + Environment.NewLine);
+                    }
+                    catch { }
+                    return;
+                }
+
                 using (stream)
                 {
                     _window = (Window)XamlReader.Load(stream);
@@ -141,6 +175,7 @@ namespace CMP90HXToolbox
                 ResetToBottomRight();
 
                 _window.Show();
+                _window.Topmost = true;
 
                 _blinkTimer = new DispatcherTimer();
                 _blinkTimer.Interval = TimeSpan.FromSeconds(4.5);
@@ -148,8 +183,11 @@ namespace CMP90HXToolbox
                 {
                     try
                     {
-                        Storyboard blinkSb = _window.TryFindResource("PetBlinkStoryboard") as Storyboard;
-                        if (blinkSb != null) blinkSb.Begin(_window);
+                        if (_window != null && _window.IsLoaded)
+                        {
+                            Storyboard blinkSb = _window.TryFindResource("PetBlinkStoryboard") as Storyboard;
+                            if (blinkSb != null) blinkSb.Begin(_window);
+                        }
                     }
                     catch { }
                 };
@@ -201,6 +239,28 @@ namespace CMP90HXToolbox
 
         private void InitEvents()
         {
+            if (_window != null)
+            {
+                _window.Closing += delegate(object s, System.ComponentModel.CancelEventArgs e)
+                {
+                    if (!_isExplicitExit)
+                    {
+                        e.Cancel = true;
+                        _window.Hide();
+                    }
+                };
+
+                _window.Closed += delegate(object s, EventArgs e)
+                {
+                    if (_blinkTimer != null)
+                    {
+                        try { _blinkTimer.Stop(); } catch { }
+                    }
+                    _window = null;
+                    _instance = null;
+                };
+            }
+
             if (_miniPetHost != null)
             {
                 _miniPetHost.MouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
@@ -222,7 +282,10 @@ namespace CMP90HXToolbox
                 };
                 _miniPetHost.MouseLeftButtonUp += delegate(object s, MouseButtonEventArgs e)
                 {
-                    if (!_isDragging) SwitchMode(true, true);
+                    if (!_isDragging)
+                    {
+                        SwitchMode(true, true);
+                    }
                     _isDragging = false;
                 };
                 _miniPetHost.MouseRightButtonUp += delegate(object s, MouseButtonEventArgs e)
@@ -235,8 +298,14 @@ namespace CMP90HXToolbox
             {
                 _titleBarDragArea.MouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
                 {
-                    if (e.ClickCount == 2) ResetToBottomRight();
-                    else if (e.LeftButton == MouseButtonState.Pressed) _window.DragMove();
+                    if (e.ClickCount == 2)
+                    {
+                        ResetToBottomRight();
+                    }
+                    else if (e.LeftButton == MouseButtonState.Pressed)
+                    {
+                        _window.DragMove();
+                    }
                 };
                 _titleBarDragArea.MouseRightButtonUp += delegate(object s, MouseButtonEventArgs e)
                 {
@@ -260,6 +329,16 @@ namespace CMP90HXToolbox
             if (_btnCloseAssistant != null) _btnCloseAssistant.Click += delegate { _window.Hide(); };
             if (_btnSaveSettings != null) _btnSaveSettings.Click += delegate { SaveConfig(); };
             if (_btnTestConnection != null) _btnTestConnection.Click += delegate { TestApiConnectionAsync(); };
+
+            if (_chatScrollViewer != null)
+            {
+                // 每次滚轮只滚约 46px，滚动更细腻，不再一次跳一大段
+                _chatScrollViewer.PreviewMouseWheel += delegate(object s, MouseWheelEventArgs e)
+                {
+                    _chatScrollViewer.ScrollToVerticalOffset(_chatScrollViewer.VerticalOffset - (e.Delta / 120.0) * 46);
+                    e.Handled = true;
+                };
+            }
 
             if (_txtInput != null)
             {
@@ -295,6 +374,7 @@ namespace CMP90HXToolbox
         {
             ContextMenu menu = new ContextMenu();
             menu.Style = null;
+
             MenuItem itemToggle = new MenuItem();
             itemToggle.Header = _isExpanded ? "收起为悬浮萌宠" : "展开 AI 硬件助手";
             itemToggle.Click += delegate { SwitchMode(!_isExpanded, true); };
@@ -305,14 +385,7 @@ namespace CMP90HXToolbox
             itemReset.Click += delegate { ResetToBottomRight(); };
             menu.Items.Add(itemReset);
 
-            MenuItem itemConfig = new MenuItem();
-            itemConfig.Header = "中转站 API 配置";
-            itemConfig.Click += delegate
-            {
-                if (!_isExpanded) SwitchMode(true, true);
-                if (_settingsDrawer != null) _settingsDrawer.Visibility = Visibility.Visible;
-            };
-            menu.Items.Add(itemConfig);
+            // 预置官方国内云端接口，不暴露任何配置项
             menu.Items.Add(new Separator());
 
             MenuItem itemClear = new MenuItem();
@@ -363,6 +436,7 @@ namespace CMP90HXToolbox
             itemQuit.Header = "彻底退出程序与助手";
             itemQuit.Click += delegate
             {
+                _isExplicitExit = true;
                 try { if (_window != null) _window.Close(); } catch { }
                 try { Application.Current.Shutdown(); } catch { }
             };
@@ -403,8 +477,9 @@ namespace CMP90HXToolbox
             }
             else
             {
-                double targetWidth = 110;
-                double targetHeight = 110;
+                // 80x80 标准极客机械卡通徽标 (窗口留 4px 柔和外发光阴影至 88x88)
+                double targetWidth = 88;
+                double targetHeight = 88;
                 double newLeft = _window.Left + (_window.Width - targetWidth);
                 double newTop = _window.Top + (_window.Height - targetHeight);
                 if (newLeft + targetWidth > workArea.Right) newLeft = workArea.Right - targetWidth - 14;
@@ -440,8 +515,8 @@ namespace CMP90HXToolbox
             }
             else
             {
-                _window.Width = 110;
-                _window.Height = 110;
+                _window.Width = 88;
+                _window.Height = 88;
                 _window.Left = workArea.Right - _window.Width - 14;
                 _window.Top = workArea.Bottom - _window.Height - 14;
             }
@@ -501,8 +576,7 @@ namespace CMP90HXToolbox
                 shadow.Opacity = 0.05;
                 shadow.Direction = 270;
                 bubbleBorder.Effect = shadow;
-                contentBlock.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1D1D1F"));
-                contentBlock.Text = text;
+                RenderRichText(contentBlock, StripMarkdownArtifacts(text));  // 去 Markdown 并富文本显示
                 bubbleBorder.Child = contentBlock;
             }
             _messagesPanel.Children.Add(bubbleBorder);
@@ -512,61 +586,272 @@ namespace CMP90HXToolbox
 
         private async void ProcessAiResponseAsync(string userPrompt)
         {
-            TextBlock replyBlock = AddMessageBubble("正在连接云端大模型并思考中...", false);
-            SetStatus("云端模型思考中...", "#FF9500");
+            TextBlock replyBlock = AddMessageBubble("正在分析硬件并思考中...", false);
+            SetStatus("正在计算...", "#FF9500");
             string finalAnswer = "";
+
             try
             {
-                // 优先无条件调用云端 API（无论是默认国内安全网关，还是用户填写的自定义 Key）
+                // 首先请求国内服务器专属网关 (自动附加 X-HX-Code，零密钥泄露风险)
                 string apiResult = await RequestApiCompletionAsync(userPrompt);
-                if (!string.IsNullOrEmpty(apiResult))
+                if (!string.IsNullOrEmpty(apiResult) && apiResult.Trim().Length > 0)
                 {
-                    finalAnswer = apiResult;
-                    string tag = !string.IsNullOrEmpty(_apiKey) ? "在线 · 自定义 API 响应" : "在线 · 国内云端模型响应";
-                    SetStatus(tag, "#34C759");
-                }
-                else
-                {
-                    // 仅当彻底断网或云端超时时，才平滑回退到本地专家知识库
-                    finalAnswer = "【云端接口未响应，已为您调用本地离线急诊专家库回答】：\n\n" + GenerateLocalHardwareKnowledge(userPrompt);
-                    SetStatus("离线 · 本地硬件专家库", "#FF9500");
+                    finalAnswer = apiResult.Trim();
+                    SetStatus("在线 · 极客大模型响应", "#34C759");
                 }
             }
             catch (Exception ex)
             {
-                finalAnswer = "【网络异常提示】" + ex.Message + "\n\n【本地硬件专家解答】：\n\n" + GenerateLocalHardwareKnowledge(userPrompt);
-                SetStatus("离线 · 本地硬件急诊库", "#FF9500");
+                try
+                {
+                    File.AppendAllText(Path.Combine(NativeCore.GetLogsDirectory(), "ai_assistant.log"),
+                        "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] Gateway request failed: " + ex.Message + Environment.NewLine);
+                }
+                catch { }
             }
+
+            // 离线或网关未响应时，无缝切换为本地专家急诊库
+            if (string.IsNullOrEmpty(finalAnswer))
+            {
+                try
+                {
+                    finalAnswer = GenerateLocalHardwareKnowledge(userPrompt);
+                    SetStatus("离线 · 本地专家急诊库", "#34C759");
+                }
+                catch (Exception ex)
+                {
+                    finalAnswer = "【系统提示】本地专家库诊断异常: " + ex.Message;
+                    SetStatus("诊断异常", "#FF3B30");
+                }
+            }
+
+            // 模型侧工具调用：回复里带 [[ACTION:id]] 时优先按模型判断执行，
+            // 标记本身要从显示文本里去掉，否则用户会看到原始标记。
+            string modelActionId = AiAgentActionRegistry.ExtractActionId(finalAnswer);
+            if (!string.IsNullOrEmpty(modelActionId))
+            {
+                finalAnswer = System.Text.RegularExpressions.Regex.Replace(
+                    finalAnswer, @"\s*\[\[ACTION:[a-zA-Z]+\]\]\s*", "\n").Trim();
+            }
+
             PlayTypewriterEffect(replyBlock, finalAnswer);
+
+            // 若这句话对应真实可执行操作，给出"执行"按钮，让助手能直接干活
+            // 支持多步指令：「解锁 90HX 并伪装成 3080」会按句子顺序列出两张卡片
+            try
+            {
+                if (!string.IsNullOrEmpty(modelActionId))
+                {
+                    // 模型判断优先
+                    AiAgentAction modelAction = AiAgentActionRegistry.BuildById(modelActionId, userPrompt);
+                    if (modelAction != null) AddActionCard(modelAction);
+                }
+                else
+                {
+                    List<AiAgentAction> actions = AiAgentActionRegistry.MatchMany(userPrompt);
+                    for (int i = 0; i < actions.Count; i++)
+                    {
+                        AddActionCard(actions[i]);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private void AddActionCard(AiAgentAction action)
+        {
+            if (_messagesPanel == null || action == null) return;
+
+            Border card = new Border();
+            card.Margin = new Thickness(0, 0, 0, 10);
+            card.MaxWidth = 310;
+            card.HorizontalAlignment = HorizontalAlignment.Left;
+            card.CornerRadius = new CornerRadius(12);
+            card.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F5F9FF"));
+            card.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#CFE3FF"));
+            card.BorderThickness = new Thickness(1);
+            card.Padding = new Thickness(12, 10, 12, 10);
+
+            StackPanel panel = new StackPanel();
+            TextBlock title = new TextBlock();
+            title.Text = "可直接执行：" + action.Title;
+            title.FontSize = 12;
+            title.FontWeight = FontWeights.SemiBold;
+            title.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1D1D1F"));
+            panel.Children.Add(title);
+
+            TextBlock desc = new TextBlock();
+            desc.Text = action.Description;
+            desc.FontSize = 11;
+            desc.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#6E6E73"));
+            desc.TextWrapping = TextWrapping.Wrap;
+            desc.Margin = new Thickness(0, 4, 0, 8);
+            panel.Children.Add(desc);
+
+            // 执行过程日志：之前 logger 是空的，用户看不到任何中间步骤
+            TextBlock stepLog = new TextBlock();
+            stepLog.FontSize = 10.5;
+            stepLog.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#6E6E73"));
+            stepLog.TextWrapping = TextWrapping.Wrap;
+            stepLog.LineHeight = 15;
+            stepLog.Margin = new Thickness(0, 0, 0, 6);
+            stepLog.Visibility = Visibility.Collapsed;
+            panel.Children.Add(stepLog);
+
+            Button run = new Button();
+            run.Content = action.IsDestructive ? "确认执行（需要管理员权限）" : "执行此操作";
+            run.Height = 30;
+            run.Padding = new Thickness(12, 0, 12, 0);
+            run.HorizontalAlignment = HorizontalAlignment.Left;
+            run.Cursor = System.Windows.Input.Cursors.Hand;
+            run.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0071E3"));
+            run.Foreground = Brushes.White;
+            run.BorderThickness = new Thickness(0);
+            run.Click += delegate
+            {
+                run.IsEnabled = false;
+                run.Content = "执行中...";
+                Task.Factory.StartNew(() =>
+                {
+                    Action<string, bool> logger = delegate(string msg, bool isErr)
+                    {
+                        if (string.IsNullOrEmpty(msg)) return;
+                        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                stepLog.Visibility = Visibility.Visible;
+                                string cur = stepLog.Text;
+                                string line = (isErr ? "✕ " : "· ") + msg;
+                                string next = string.IsNullOrEmpty(cur) ? line : line + "\n" + cur;
+
+                                string[] parts = next.Split('\n');
+                                if (parts.Length > 8)
+                                {
+                                    StringBuilder sb = new StringBuilder();
+                                    for (int i = 0; i < 8; i++)
+                                    {
+                                        if (i > 0) sb.Append('\n');
+                                        sb.Append(parts[i]);
+                                    }
+                                    next = sb.ToString();
+                                }
+                                stepLog.Text = next;
+                                stepLog.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isErr ? "#C0392B" : "#6E6E73"));
+                            }
+                            catch { }
+                        }));
+                    };
+                    string result;
+                    try
+                    {
+                        Task<string> runTask = action.Executor(logger);
+                        runTask.Wait();
+                        result = runTask.Result;
+                    }
+                    catch (Exception ex)
+                    {
+                        result = "执行失败: " + ex.Message;
+                    }
+
+                    _window.Dispatcher.Invoke((Action)delegate
+                    {
+                        run.Content = "已执行";
+                        AddMessageBubble(result, false);
+                        SetStatus("操作已执行", "#34C759");
+                    });
+                });
+            };
+            panel.Children.Add(run);
+            card.Child = panel;
+            _messagesPanel.Children.Add(card);
+            if (_chatScrollViewer != null) _chatScrollViewer.ScrollToEnd();
+        }
+
+        /// <summary>去掉模型常带的 Markdown 包装符号，避免聊天气泡里出现大量 * 和 ###。</summary>
+        private static string StripMarkdownArtifacts(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            string s = text.Replace("`", "");
+            s = Regex.Replace(s, @"^\s{0,3}#{1,6}\s*", "", RegexOptions.Multiline);
+            s = Regex.Replace(s, @"^\s*[-*+]\s+", "• ", RegexOptions.Multiline);
+            s = Regex.Replace(s, @"^\s*\d+\.\s+", "", RegexOptions.Multiline);
+            s = Regex.Replace(s, @"\*\*\*(.+?)\*\*\*", "$1");
+            s = Regex.Replace(s, @"\*\*(.+?)\*\*", "$1");
+            s = Regex.Replace(s, @"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", "$1");
+            s = Regex.Replace(s, @"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", "$1");
+            // 兜底：成对星号被模型拆开时，保留内容去符号
+            if (s.IndexOf("**") >= 0) s = s.Replace("**", "");
+            return s;
+        }
+
+        /// <summary>轻量富文本渲染：标题加粗、列表前缀、**强调**真正加粗，不再显示原始星号。</summary>
+        private static void RenderRichText(TextBlock target, string text)
+        {
+            if (target == null) return;
+            target.Inlines.Clear();
+            if (string.IsNullOrEmpty(text)) return;
+
+            string[] lines = text.Replace("\r\n", "\n").Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+                bool isHeading = Regex.IsMatch(line, @"^\s{0,3}#{1,6}\s+");
+                line = Regex.Replace(line, @"^\s{0,3}#{1,6}\s*", "");
+                line = Regex.Replace(line, @"^\s*[-*+]\s+", "• ");
+                line = Regex.Replace(line, @"^\s*(\d+)\.\s+", "$1. ");
+
+                string[] parts = Regex.Split(line, @"(\*\*.+?\*\*)");
+                for (int p = 0; p < parts.Length; p++)
+                {
+                    string part = parts[p];
+                    if (string.IsNullOrEmpty(part)) continue;
+                    if (part.Length > 4 && part.StartsWith("**") && part.EndsWith("**"))
+                    {
+                        Run bold = new Run(part.Substring(2, part.Length - 4));
+                        bold.FontWeight = FontWeights.SemiBold;
+                        target.Inlines.Add(bold);
+                    }
+                    else
+                    {
+                        Run run = new Run(part);
+                        if (isHeading) run.FontWeight = FontWeights.SemiBold;
+                        target.Inlines.Add(run);
+                    }
+                }
+
+                if (i < lines.Length - 1) target.Inlines.Add(new LineBreak());
+            }
         }
 
         private void PlayTypewriterEffect(TextBlock targetBlock, string fullText)
         {
             if (targetBlock == null || string.IsNullOrEmpty(fullText)) return;
+            string cleanText = StripMarkdownArtifacts(fullText);
             int index = 0;
             targetBlock.Text = "";
             DispatcherTimer typeTimer = new DispatcherTimer();
-            typeTimer.Interval = TimeSpan.FromMilliseconds(16);
+            typeTimer.Interval = TimeSpan.FromMilliseconds(14);
             typeTimer.Tick += delegate(object s, EventArgs e)
             {
                 try
                 {
-                    int step = 2;
-                    if (index + step <= fullText.Length)
+                    int step = Math.Max(3, cleanText.Length / 90);
+                    if (index + step <= cleanText.Length)
                     {
-                        targetBlock.Text = fullText.Substring(0, index + step) + " ▌";
                         index += step;
+                        RenderRichText(targetBlock, cleanText.Substring(0, index));
                     }
                     else
                     {
-                        targetBlock.Text = fullText;
+                        RenderRichText(targetBlock, cleanText);
                         typeTimer.Stop();
                     }
                     if (_chatScrollViewer != null) _chatScrollViewer.ScrollToEnd();
                 }
                 catch
                 {
-                    targetBlock.Text = fullText;
+                    RenderRichText(targetBlock, cleanText);
                     typeTimer.Stop();
                 }
             };
@@ -576,7 +861,7 @@ namespace CMP90HXToolbox
         private string GenerateLocalHardwareKnowledge(string prompt)
         {
             string p = prompt.ToLower();
-            if (p.Contains("温度") || p.Contains("功耗") || p.Contains("传感器") || p.Contains("频率") || p.Contains("风扇") || p.Contains("转速"))
+            if (p.Contains("温度") || p.Contains("功耗") || p.Contains("传感器") || p.Contains("频率") || p.Contains("风扇") || p.Contains("转速") || p.Contains("硬件") || p.Contains("状态"))
             {
                 try
                 {
@@ -606,10 +891,10 @@ namespace CMP90HXToolbox
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("⚡ 【CMP 90HX 引导解锁与超频调优宝典】");
                 sb.AppendLine("1. 解锁原理：CMP 90HX 默认被屏蔽 Direct3D 游戏图形输出，工具箱采用 NVPermissive.sys 驱动层内核补丁，绕过限制重获 DX11/DX12 完整 3D 计算能力。");
-                sb.AppendLine("2. 超频甜点设置：");
-                sb.AppendLine("   • 核心频率：使用 MSI Afterburner 锁频在 1800MHz~1920MHz (0.825V~0.875V)，大幅降低发热；");
-                sb.AppendLine("   • 显存频率：美光 GDDR6X 可稳超 +800MHz ~ +1200MHz，带宽大幅跃升；");
-                sb.AppendLine("   • 功耗墙：建议限制为 240W，能耗比达到巅峰；");
+                sb.AppendLine("2. 调优思路（具体数值因卡而异，不要照抄别人的）：");
+                sb.AppendLine("   • 核心频率：每次 +30MHz 往上试，出现花屏或驱动重置就退回上一档，稳定点即为本卡甜点；");
+                sb.AppendLine("   • 显存频率：GDDR6X 超频收益有限且发热明显，建议小幅尝试并盯住显存温度；");
+                sb.AppendLine("   • 功耗墙：本机默认 " + NativeCore.EffectiveDefaultPowerLimit() + "W，可在「硬件与电源」页看实时功耗；下调能明显降温，代价是高负载性能受限；");
                 sb.AppendLine("3. 安全防呆：请务必在工具箱「90HX 解锁」页面安装引导项，重启选择解锁项即可完成。");
                 return sb.ToString();
             }
@@ -623,7 +908,7 @@ namespace CMP90HXToolbox
                 sb.AppendLine("3. 注册表将自动写入 GPU Preference 规则，所有 3D 游戏启动时将自动由 90HX 完成画面光栅化渲染，并通过 PCIe 共享总线回传至核显瞬间呈现，无感低延迟！");
                 return sb.ToString();
             }
-            if (p.Contains("dlss") || p.Contains("覆盖") || p.Contains("帧生成") || p.Contains("改名") || p.Contains("3080"))
+            if (p.Contains("dlss") || p.Contains("覆盖") || p.Contains("帧生成") || p.Contains("改名") || p.Contains("3080") || p.Contains("4080"))
             {
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("🛠 【DLSS 5 / 帧生成与显卡改名全解】");
@@ -633,14 +918,23 @@ namespace CMP90HXToolbox
                 return sb.ToString();
             }
             StringBuilder fallback = new StringBuilder();
-            fallback.AppendLine("收到你的问题！我是 HX 智能硬件助手。对于 CMP 90HX/50HX/40HX，你可以随时询问我：");
+            fallback.AppendLine("收到你的问题！我是小 HX 专属硬件助手。对于 CMP 90HX/50HX/40HX，你可以随时询问我：");
             fallback.AppendLine("• 『查询显卡实时温度与功耗』");
             fallback.AppendLine("• 『90HX 解锁后如何最佳超频』");
             fallback.AppendLine("• 『双显卡无缝调度配置步骤』");
             fallback.AppendLine("• 『显卡改名与 DLSS 5 补丁打法』");
             fallback.AppendLine("");
-            fallback.AppendLine("如果你想体验全功能的云端大模型，请点击右上角「齿轮⚙️」填入中转站 API 地址与 Key，我将化身更全能的硬件百科全书！");
+            fallback.AppendLine("💡 当前已对接专属 AI 网关！如需配置自定义 API 地址，可点击右上角「齿轮⚙️」设置。");
             return fallback.ToString();
+        }
+
+        private static string GetNormalizedChatUrl(string rawUrl)
+        {
+            string url = string.IsNullOrEmpty(rawUrl) ? "https://api.muyaa.top/hx-assistant/v1" : rawUrl.Trim();
+            if (url.EndsWith("/")) url = url.Substring(0, url.Length - 1);
+            if (url.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase)) return url;
+            if (url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)) return url + "/chat/completions";
+            return url + "/chat/completions";
         }
 
         private Task<string> RequestApiCompletionAsync(string prompt)
@@ -649,31 +943,49 @@ namespace CMP90HXToolbox
             {
                 try
                 {
-                    string endpoint = _apiUrl.Trim();
-                    if (endpoint.EndsWith("/")) endpoint = endpoint.Substring(0, endpoint.Length - 1);
-                    if (!endpoint.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
-                    {
-                        endpoint += "/chat/completions";
-                    }
-
+                    try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls; ServicePointManager.ServerCertificateValidationCallback = delegate { return true; }; } catch { }
+                    string endpoint = GetNormalizedChatUrl(_apiUrl);
                     HttpWebRequest request = (HttpWebRequest)WebRequest.Create(endpoint);
                     request.Method = "POST";
                     request.ContentType = "application/json; charset=utf-8";
-                    if (!string.IsNullOrEmpty(_apiKey))
+                    request.UserAgent = "90HXStudio-AiAssistant/5.0 (.NET Framework)";
+
+                    // 客户端自动附加专属网关代码，零密钥泄露风险
+                    request.Headers["X-HX-Code"] = "HX_STUDIO_PUBLIC_2026";
+
+                    if (!string.IsNullOrEmpty(_apiKey) && _apiKey.Trim().Length > 0)
                     {
                         request.Headers["Authorization"] = "Bearer " + _apiKey.Trim();
                     }
-                    else
-                    {
-                        // 默认走国内服务器防盗刷网关
-                        request.Headers["X-HX-Code"] = "HX_STUDIO_PUBLIC_2026";
-                    }
-                    request.Timeout = 20000;
+                    request.Timeout = 15000;
+                    request.ReadWriteTimeout = 15000;
 
-                    string sysPrompt = "你是一个极客硬件专家小助手，名叫小 HX，精通 NVIDIA CMP 90HX、CMP 50HX、CMP 40HX 矿卡驱动魔改、引导解锁、显卡改名 RTX 3080、双显卡无缝调度、DLSS 5 帧生成补丁、传感器监测与超频调优。回答专业、幽默软萌又精炼。";
+                    // 直读传感器并注入大模型上下文
+                    string hwContext = "";
+                    try
+                    {
+                        var s = NativeCore.QueryGpuSensors();
+                        if (s != null && s.IsValid)
+                        {
+                            hwContext = "【当前显卡实时传感器状态】: 核心温度=" + s.Temperature + "℃, 功耗=" + s.PowerDraw.ToString("F1") + "W, 显存=" + s.MemoryUsedMB + "/" + s.MemoryTotalMB + "MB, 负载=" + s.GpuUtilPercent + "%, 频率=" + s.GraphicsClockMHz + "/" + s.MemoryClockMHz + "MHz, PState=" + s.PState + ", PCIe=" + s.PcieFormatted + "。";
+                        }
+                    }
+                    catch { }
+
+                    string realtimeFacts = "";
+                    try { realtimeFacts = AiAgentActionRegistry.BuildRealtimeFacts(); } catch { }
+
+                    string sysPrompt = "你是 HX 家族多功能工具箱里可直接操作硬件的桌面 Agent（助手名：小 HX），不是普通问答机器人。"
+                        + "你可以真实执行显卡解锁、显卡型号伪装、游戏覆盖解锁、首选显卡调度、驱动热重启、系统级省电。"
+                        + "回答原则：先用一两句话判断用户的问题，再说出你准备执行的动作；不要编造没有的能力，不要输出固定模板数字。"
+                        + "所有功耗、温度、显存、频率、型号必须以给出的实时数据为准，不同显卡数值不同，绝不能套用写死的值。"
+                        + "涉及改注册表/引导的操作，要明确提醒需要管理员权限并需要重启或软重启生效。"
+                        + "输出格式：不要使用 Markdown 星号/井号/代码反引号，用纯文本、短段落和“•”列表。"
+                        + (string.IsNullOrEmpty(hwContext) ? "" : "\n" + hwContext)
+                        + (string.IsNullOrEmpty(realtimeFacts) ? "" : "\n【本机实时事实】" + realtimeFacts);
                     string escapedSys = EscapeJson(sysPrompt);
                     string escapedUser = EscapeJson(prompt);
-                    string model = !string.IsNullOrEmpty(_modelName) ? _modelName.Trim() : "gpt-4o-mini";
+                    string model = !string.IsNullOrEmpty(_modelName) ? _modelName.Trim() : "gemini-3.8-flash";
 
                     string jsonBody = "{\"model\":\"" + model + "\",\"messages\":[{\"role\":\"system\",\"content\":\"" + escapedSys + "\"},{\"role\":\"user\",\"content\":\"" + escapedUser + "\"}],\"temperature\":0.7}";
                     byte[] postBytes = Encoding.UTF8.GetBytes(jsonBody);
@@ -688,11 +1000,29 @@ namespace CMP90HXToolbox
                     using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
                     {
                         string respText = reader.ReadToEnd();
+                        Dictionary<string, object> root = SimpleJson.Deserialize(respText) as Dictionary<string, object>;
+                        if (root != null)
+                        {
+                            List<object> choices = SimpleJson.GetList(root, "choices");
+                            if (choices != null && choices.Count > 0)
+                            {
+                                Dictionary<string, object> firstChoice = choices[0] as Dictionary<string, object>;
+                                if (firstChoice != null)
+                                {
+                                    Dictionary<string, object> msg = SimpleJson.GetDict(firstChoice, "message");
+                                    if (msg != null)
+                                    {
+                                        return SimpleJson.GetString(msg, "content", "");
+                                    }
+                                }
+                            }
+                        }
+
+                        // 备用简易正则提取
                         Match m = Regex.Match(respText, "\"content\"\\s*:\\s*\"(.*?)\"", RegexOptions.Singleline);
                         if (m.Success)
                         {
-                            string rawContent = m.Groups[1].Value;
-                            return UnescapeJson(rawContent);
+                            return UnescapeJson(m.Groups[1].Value);
                         }
                     }
                 }
@@ -709,7 +1039,7 @@ namespace CMP90HXToolbox
             });
         }
 
-                private void TestApiConnectionAsync()
+        private void TestApiConnectionAsync()
         {
             if (_btnTestConnection == null) return;
             _btnTestConnection.IsEnabled = false;
@@ -725,23 +1055,19 @@ namespace CMP90HXToolbox
                 string errorMsg = "";
                 try
                 {
-                    string endpoint = url.Trim();
-                    if (endpoint.EndsWith("/")) endpoint = endpoint.Substring(0, endpoint.Length - 1);
-                    if (!endpoint.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
-                    {
-                        endpoint += "/chat/completions";
-                    }
-
+                    try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls; ServicePointManager.ServerCertificateValidationCallback = delegate { return true; }; } catch { }
+                    string endpoint = GetNormalizedChatUrl(url);
                     HttpWebRequest req = (HttpWebRequest)WebRequest.Create(endpoint);
                     req.Method = "POST";
                     req.ContentType = "application/json; charset=utf-8";
+                    req.UserAgent = "90HXStudio-AiAssistant/5.0 (.NET Framework)";
+
+                    // 客户端自动附加专属网关代码，零密钥泄露风险
+                    req.Headers["X-HX-Code"] = "HX_STUDIO_PUBLIC_2026";
+
                     if (!string.IsNullOrEmpty(key))
                     {
                         req.Headers["Authorization"] = "Bearer " + key;
-                    }
-                    else
-                    {
-                        req.Headers["X-HX-Code"] = "HX_STUDIO_PUBLIC_2026";
                     }
                     req.Timeout = 10000;
 
@@ -771,17 +1097,17 @@ namespace CMP90HXToolbox
 
                     if (ok)
                     {
-                        MessageBox.Show("中转站 API 连接测试成功！\n模型响应正常，可以开始向小助手提问了。", "连接正常", MessageBoxButton.OK, MessageBoxImage.Information);
+                        ModernMessageBox.Show("中转站 API 连接测试成功！\n专属网关与模型响应正常，可以开始向小助手提问了。", "连接正常", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
-                        MessageBox.Show("API 连接测试失败: " + errorMsg + "\n请检查中转站网址、API Key 是否有效及网络状态。", "连接失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        ModernMessageBox.Show("API 连接测试失败: " + errorMsg + "\n请检查中转站网址、网络状态或是否开启代理。", "连接失败", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                 }));
             });
         }
 
-                private void SetStatus(string text, string hexColor)
+        private void SetStatus(string text, string hexColor)
         {
             try
             {
@@ -852,8 +1178,11 @@ namespace CMP90HXToolbox
                         {
                             string k = lineStr.Substring(0, eq).Trim();
                             string v = lineStr.Substring(eq + 1).Trim();
-                            if (string.Equals(k, "KeepAlive", StringComparison.OrdinalIgnoreCase)) { bool val; if (bool.TryParse(v, out val)) _keepAliveOnMainWindowClose = val; }
-                            else if (string.Equals(k, "KeepAlive", StringComparison.OrdinalIgnoreCase)) { bool val; if (bool.TryParse(v, out val)) _keepAliveOnMainWindowClose = val; }
+                            if (string.Equals(k, "KeepAlive", StringComparison.OrdinalIgnoreCase))
+                            {
+                                bool val;
+                                if (bool.TryParse(v, out val)) _keepAliveOnMainWindowClose = val;
+                            }
                             else if (string.Equals(k, "ApiUrl", StringComparison.OrdinalIgnoreCase)) _apiUrl = v;
                             else if (string.Equals(k, "ApiKey", StringComparison.OrdinalIgnoreCase)) _apiKey = v;
                             else if (string.Equals(k, "ModelName", StringComparison.OrdinalIgnoreCase)) _modelName = v;
@@ -880,7 +1209,6 @@ namespace CMP90HXToolbox
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("# HX 智能硬件助手 API 配置");
                 sb.AppendLine("KeepAlive=" + _keepAliveOnMainWindowClose);
-                sb.AppendLine("KeepAlive=" + _keepAliveOnMainWindowClose);
                 sb.AppendLine("ApiUrl=" + _apiUrl);
                 sb.AppendLine("ApiKey=" + _apiKey);
                 sb.AppendLine("ModelName=" + _modelName);
@@ -898,7 +1226,7 @@ namespace CMP90HXToolbox
             }
         }
 
-                public void AddAiMessage(string message)
+        public void AddAiMessage(string message)
         {
             AddMessageBubble(message, false);
         }
@@ -907,7 +1235,9 @@ namespace CMP90HXToolbox
         {
             AddAiMessage("【主程序生命周期通知】" + Environment.NewLine + "主工具箱已关闭。根据当前选项，AI 助手已进入【独立运行模式】，继续在后台常驻守护显卡。右键萌宠可重新打开主工具箱或彻底退出。");
         }
-
-        
     }
 }
+
+
+
+

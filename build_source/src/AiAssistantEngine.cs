@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -991,14 +991,16 @@ namespace CMP90HXToolbox
     public static class DefaultPrompts
     {
         public const string DefaultSystemPrompt =
-@"你是由 90HX Studio / HX家族多功能工具箱 开发的【CMP 矿卡硬件急诊专家 AI】。
-你精通 NVIDIA CMP 30HX/40HX/50HX/70HX/90HX/170HX 系列魔改显卡、魔改驱动、NVPermissive EFI 解锁补丁、MS-Hybrid 跨卡渲染、PCIe 拓扑协商、以及老旧至强 X79/X99 主板硬件避坑技术。
+@"你是 HX家族多功能工具箱 内置的桌面硬件 Agent（小 HX），能直接代替用户操作工具箱，而不是只给方案。
+你精通 NVIDIA CMP 30HX/40HX/50HX/70HX/90HX/170HX 的驱动、NVPermissive EFI 解锁、MS-Hybrid 跨卡渲染和 PCIe 拓扑协商。
 
-你的回答准则：
-1. 【直击要害】：先给出最关键的自愈方案与判断依据，拒绝无意义套话。
-2. 【保姆级操作】：提供具体可执行的步骤（如 BIOS 怎么按、命令怎么敲、工具箱哪个按钮点击）。
-3. 【硬件实操诀窍】：例如 Code 43 需优先核验 UEFI 安全启动关闭；PCIe 跑不满 Gen2 优先使用冷重启放电 10 秒法则；双卡黑屏优先将游戏设为无边框窗口化并分配核显大显存等。
-4. 【语气亲切】：技术极客风格，条理分明，用词专业准确。";
+工作准则：
+1. 【先判断再动手】：判断用户要做什么，并说明将执行哪个操作。
+2. 【以实时数据为准】：功耗、温度、显存、频率、型号都必须来自本机实时检测，不允许引用写死的数字或别的显卡的参数。
+3. 【不夸大】：只有工具真实具备的能力才说能做；失败时解释具体错误和下一步。
+4. 【安全提醒】：改注册表、引导、驱动需要管理员权限，并说明何时需要重启。
+5. 【语气简洁】：专业、直接，不堆砌套话。";
+
     }
 
     #endregion
@@ -1218,13 +1220,17 @@ namespace CMP90HXToolbox
 
         private string SendChatCompletionRequest(string userPrompt, AiContextInfo context, List<AiChatMessage> history)
         {
+            try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls; ServicePointManager.ServerCertificateValidationCallback = delegate { return true; }; } catch { }
             string url = Config.GetNormalizedChatUrl();
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "POST";
             request.ContentType = "application/json";
             request.UserAgent = "90HXStudio-AiAssistant/5.0 (.NET Framework)";
 
-            // 认证头
+            // 客户端自动附加专属网关验证头（零密钥泄露风险）
+            request.Headers["X-HX-Code"] = "HX_STUDIO_PUBLIC_2026";
+
+            // 认证头（若用户配置了自定义密钥）
             string key = (Config.ApiKey ?? "").Trim();
             if (!string.IsNullOrEmpty(key))
             {
@@ -1247,6 +1253,14 @@ namespace CMP90HXToolbox
                 sbSystem.AppendLine();
                 sbSystem.AppendLine(context.ToPromptSnippet());
             }
+
+            // 工具清单：模型可用 [[ACTION:id]] 标记触发工具箱的真实动作
+            try
+            {
+                sbSystem.AppendLine();
+                sbSystem.AppendLine(AiAgentActionRegistry.BuildToolCatalogue());
+            }
+            catch { }
 
             Dictionary<string, object> msgSys = new Dictionary<string, object>();
             msgSys["role"] = "system";

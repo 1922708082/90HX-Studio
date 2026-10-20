@@ -4929,6 +4929,8 @@ namespace CMP90HXToolbox
             public string DownloadUrl { get; set; }
             public bool HasUpdate { get; set; }
             public string ErrorMessage { get; set; }
+            /// <summary>Release 说明（更新了什么、修了什么），来自 GitHub API 的 body。</summary>
+            public string ReleaseNotes { get; set; }
 
             public AppUpdateInfo()
             {
@@ -5061,6 +5063,36 @@ namespace CMP90HXToolbox
             return null;
         }
 
+        /// <summary>拉取 GitHub Release 的说明正文（更新日志）。失败返回 null，不影响更新流程。</summary>
+        private static string FetchReleaseNotes(string tag)
+        {
+            string[] urls = new string[]
+            {
+                "https://api.github.com/repos/" + AppRepoOwner + "/" + AppRepoName + "/releases/tags/" + tag,
+                "https://api.github.com/repos/" + AppRepoOwner + "/" + AppRepoName + "/releases/latest"
+            };
+
+            for (int i = 0; i < urls.Length; i++)
+            {
+                try
+                {
+                    byte[] raw = DownloadBytes(urls[i], 15000);
+                    if (raw == null || raw.Length == 0) continue;
+                    string json = DecodeTextSmart(raw);
+
+                    // 只取 body 字段，避免引入 JSON 解析依赖
+                    Match m = Regex.Match(json, "\"body\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+                    if (m.Success)
+                    {
+                        string body = Regex.Unescape(m.Groups[1].Value);
+                        if (!string.IsNullOrEmpty(body)) return body.Trim();
+                    }
+                }
+                catch { }
+            }
+            return null;
+        }
+
         public static Task<AppUpdateInfo> CheckAppUpdateAsync(Action<string, bool> log)
         {
             return Task.Factory.StartNew<AppUpdateInfo>(delegate
@@ -5084,6 +5116,17 @@ namespace CMP90HXToolbox
 
                     if (info.HasUpdate)
                     {
+                        // 拉取更新日志（更新了什么 / 修了什么），失败不影响后续
+                        try
+                        {
+                            info.ReleaseNotes = FetchReleaseNotes(tag);
+                            if (!string.IsNullOrEmpty(info.ReleaseNotes))
+                            {
+                                log("已获取更新说明（" + info.ReleaseNotes.Length + " 字）", false);
+                            }
+                        }
+                        catch { }
+
                         string assetUrl = ResolveReleaseAssetUrl(tag);
                         if (string.IsNullOrEmpty(assetUrl))
                         {
@@ -5513,11 +5556,16 @@ namespace CMP90HXToolbox
             public int FanPercent;
             public double PowerDraw;
             public double PowerLimit;
+            public double PowerDefaultLimit; // 驱动出厂默认功耗墙
+            public double PowerMaxLimit;     // 硬件允许的最高功耗墙
+            public double PowerMinLimit;     // 硬件允许的最低功耗墙
             public long MemoryUsedMB;
             public long MemoryTotalMB;
             public int GpuUtilPercent;
             public int GraphicsClockMHz;
             public int MemoryClockMHz;
+            public int GraphicsClockMaxMHz;
+            public int MemoryClockMaxMHz;
             public string PState = "P0";
             public string PcieGen = "1";
             public string PcieWidth = "16";
@@ -5544,7 +5592,7 @@ namespace CMP90HXToolbox
                 var psi = new ProcessStartInfo
                 {
                     FileName = exe,
-                    Arguments = "--query-gpu=name,temperature.gpu,fan.speed,power.draw,power.limit,memory.used,memory.total,utilization.gpu,clocks.current.graphics,clocks.current.memory,pstate,pcie.link.gen.current,pcie.link.width.current --format=csv,noheader,nounits",
+                    Arguments = "--query-gpu=name,temperature.gpu,fan.speed,power.draw,power.limit,power.min_limit,power.default_limit,power.max_limit,memory.used,memory.total,utilization.gpu,clocks.current.graphics,clocks.max.graphics,clocks.current.memory,clocks.max.memory,pstate,pcie.link.gen.current,pcie.link.width.current --format=csv,noheader,nounits",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     CreateNoWindow = true
@@ -5558,7 +5606,7 @@ namespace CMP90HXToolbox
                     if (!string.IsNullOrEmpty(line))
                     {
                         string[] parts = line.Split(',');
-                        if (parts.Length >= 13)
+                        if (parts.Length >= 18)
                         {
                             snap.IsValid = true;
                             snap.GpuName = parts[0].Trim();
@@ -5566,20 +5614,127 @@ namespace CMP90HXToolbox
                             int.TryParse(parts[2].Trim(), out snap.FanPercent);
                             double.TryParse(parts[3].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out snap.PowerDraw);
                             double.TryParse(parts[4].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out snap.PowerLimit);
-                            long.TryParse(parts[5].Trim(), out snap.MemoryUsedMB);
-                            long.TryParse(parts[6].Trim(), out snap.MemoryTotalMB);
-                            int.TryParse(parts[7].Trim(), out snap.GpuUtilPercent);
-                            int.TryParse(parts[8].Trim(), out snap.GraphicsClockMHz);
-                            int.TryParse(parts[9].Trim(), out snap.MemoryClockMHz);
-                            snap.PState = parts[10].Trim();
-                            snap.PcieGen = parts[11].Trim();
-                            snap.PcieWidth = parts[12].Trim();
+                            double.TryParse(parts[5].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out snap.PowerMinLimit);
+                            double.TryParse(parts[6].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out snap.PowerDefaultLimit);
+                            double.TryParse(parts[7].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out snap.PowerMaxLimit);
+                            long.TryParse(parts[8].Trim(), out snap.MemoryUsedMB);
+                            long.TryParse(parts[9].Trim(), out snap.MemoryTotalMB);
+                            int.TryParse(parts[10].Trim(), out snap.GpuUtilPercent);
+                            int.TryParse(parts[11].Trim(), out snap.GraphicsClockMHz);
+                            int.TryParse(parts[12].Trim(), out snap.GraphicsClockMaxMHz);
+                            int.TryParse(parts[13].Trim(), out snap.MemoryClockMHz);
+                            int.TryParse(parts[14].Trim(), out snap.MemoryClockMaxMHz);
+                            snap.PState = parts[15].Trim();
+                            snap.PcieGen = parts[16].Trim();
+                            snap.PcieWidth = parts[17].Trim();
                         }
                     }
                 }
             }
             catch { }
             return snap;
+        }
+
+        /// <summary>硬件功耗上下限与出厂默认值（来自驱动，非写死）。</summary>
+        public class GpuPowerRange
+        {
+            public bool IsValid;
+            public string GpuName = "";
+            public double CurrentLimit;
+            public double DefaultLimit;
+            public double MinLimit;
+            public double MaxLimit;
+        }
+
+        /// <summary>
+        /// 直接从驱动读取当前卡的功耗上下限。不同卡型（30HX/40HX/50HX/70HX/90HX）差异极大，
+        /// 省电目标必须以本卡真实下限为准，绝不能套用别的卡的数字。
+        /// </summary>
+        public static GpuPowerRange QueryGpuPowerRange()
+        {
+            GpuPowerRange range = new GpuPowerRange();
+            try
+            {
+                string exe = FindNvidiaSmi();
+                if (string.IsNullOrEmpty(exe)) return range;
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exe,
+                    Arguments = "--query-gpu=name,power.limit,power.min_limit,power.default_limit,power.max_limit --format=csv,noheader,nounits",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+                using (var proc = Process.Start(psi))
+                {
+                    string line = proc.StandardOutput.ReadLine();
+                    proc.WaitForExit();
+                    if (string.IsNullOrEmpty(line)) return range;
+
+                    string[] parts = line.Split(',');
+                    if (parts.Length < 5) return range;
+
+                    range.GpuName = parts[0].Trim();
+                    double.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out range.CurrentLimit);
+                    double.TryParse(parts[2].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out range.MinLimit);
+                    double.TryParse(parts[3].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out range.DefaultLimit);
+                    double.TryParse(parts[4].Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out range.MaxLimit);
+                    range.IsValid = range.CurrentLimit > 0 || range.DefaultLimit > 0 || range.MaxLimit > 0;
+                }
+            }
+            catch { }
+            return range;
+        }
+
+        /// <summary>显卡温度门限：优先读驱动/传感器的降频与关机温度，读不到再按 NVIDIA 通用规则推算。</summary>
+        public class GpuTempThresholds
+        {
+            public int SlowdownC;   // 开始降频
+            public int MaxC;        // 关机保护
+            public bool FromDriver;
+        }
+
+        public static GpuTempThresholds QueryGpuTempThresholds()
+        {
+            GpuTempThresholds t = new GpuTempThresholds();
+            t.FromDriver = false;
+            try
+            {
+                string exe = FindNvidiaSmi();
+                if (string.IsNullOrEmpty(exe)) { t.SlowdownC = 85; t.MaxC = 95; return t; }
+
+                // nvidia-smi -q -d TEMPERATURE 会给出 GPU 降频与关机门限（不同卡型不同）
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exe,
+                    Arguments = "-q -d TEMPERATURE",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+                using (var proc = Process.Start(psi))
+                {
+                    string output = proc.StandardOutput.ReadToEnd();
+                    proc.WaitForExit();
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        Match slow = Regex.Match(output, @"GPU Slowdown Temp\s*:\s*(\d+)\s*C");
+                        Match shut = Regex.Match(output, @"GPU Shutdown Temp\s*:\s*(\d+)\s*C");
+                        if (!slow.Success) slow = Regex.Match(output, @"Slowdown\s*:\s*(\d+)\s*C");
+                        if (!shut.Success) shut = Regex.Match(output, @"Shutdown\s*:\s*(\d+)\s*C");
+                        int v;
+                        if (slow.Success && int.TryParse(slow.Groups[1].Value, out v) && v > 0) { t.SlowdownC = v; t.FromDriver = true; }
+                        if (shut.Success && int.TryParse(shut.Groups[1].Value, out v) && v > 0) { t.MaxC = v; t.FromDriver = true; }
+                    }
+                }
+            }
+            catch { }
+
+            // 驱动未暴露门限时才使用通用安全回退
+            if (t.SlowdownC <= 0) t.SlowdownC = 85;
+            if (t.MaxC <= 0) t.MaxC = 95;
+            return t;
         }
 
         private static string FindNvidiaSmi()
@@ -5907,7 +6062,17 @@ namespace CMP90HXToolbox
         /// </summary>
         public static int EffectiveIdlePowerLimit()
         {
-            int target = IdlePowerLimitW; // 45W 目标
+            // 先问驱动本卡允许的最低功耗墙：每张卡的下限都不同，不能拿别的型号的数字顶替
+            GpuPowerRange live = QueryGpuPowerRange();
+            int target = IdlePowerLimitW; // 45W 目标（仅在硬件允许时采用）
+            if (live.IsValid && live.MinLimit > 0)
+            {
+                target = Math.Max(target, (int)Math.Ceiling(live.MinLimit));
+                int liveDefault = live.DefaultLimit > 0 ? (int)Math.Round(live.DefaultLimit) : 0;
+                if (liveDefault > 0 && target >= liveDefault) target = Math.Max(45, liveDefault / 2);
+                return target;
+            }
+
             if (_minPowerLimitW > 0)
             {
                 target = Math.Max(target, _minPowerLimitW);
@@ -7197,6 +7362,53 @@ namespace CMP90HXToolbox
             "NVIDIA TITAN X (Pascal)"
         };
 
+        /// <summary>
+        /// 按本卡架构选择最稳妥的伪装目标：同架构同核心的 GeForce 型号驱动支持最完整，
+        /// 跨代/跨架构改名最容易出现设备消失、Code 43 或 3D 加速失效。
+        /// </summary>
+        /// <summary>
+        /// 按卡型返回可安全伪装的目标（同架构）。跨架构伪装会导致驱动认不到设备，
+        /// 所以下拉里只放同架构型号；未知卡型才退回全量列表。
+        /// </summary>
+        public static string[] GetCompatibleSpoofTargets(string detectedModel, string chipArchitecture)
+        {
+            string key = ((detectedModel ?? "") + " " + (chipArchitecture ?? "")).ToUpperInvariant();
+            if (key.IndexOf("170HX") >= 0 || key.IndexOf("GA100") >= 0)
+                return new string[] { "NVIDIA A100-PCIE-40GB", "NVIDIA A100-SXM4-40GB" };
+            if (key.IndexOf("90HX") >= 0 || key.IndexOf("GA102") >= 0)
+                return new string[] { "NVIDIA GeForce RTX 3080", "NVIDIA GeForce RTX 3080 Ti", "NVIDIA GeForce RTX 3090" };
+            if (key.IndexOf("70HX") >= 0 || key.IndexOf("GA104") >= 0)
+                return new string[] { "NVIDIA GeForce RTX 3070", "NVIDIA GeForce RTX 3070 Ti", "NVIDIA GeForce RTX 3080" };
+            if (key.IndexOf("50HX") >= 0 || key.IndexOf("TU102") >= 0)
+                return new string[] { "NVIDIA GeForce RTX 2080 Ti", "NVIDIA GeForce RTX 2080 SUPER", "NVIDIA GeForce RTX 2080" };
+            if (key.IndexOf("40HX") >= 0 || key.IndexOf("TU106") >= 0)
+                return new string[] { "NVIDIA GeForce RTX 2060 SUPER", "NVIDIA GeForce RTX 2060", "NVIDIA GeForce RTX 2070" };
+            if (key.IndexOf("30HX") >= 0 || key.IndexOf("TU116") >= 0)
+                return new string[] { "NVIDIA GeForce GTX 1660 SUPER", "NVIDIA GeForce GTX 1660 Ti", "NVIDIA GeForce GTX 1660" };
+            return SpoofTargetModels;
+        }
+
+        public static string GetSafeDefaultSpoofTarget(string detectedModel, string chipArchitecture)
+        {
+            string key = ((detectedModel ?? "") + " " + (chipArchitecture ?? "")).ToUpperInvariant();
+            if (key.IndexOf("170HX") >= 0 || key.IndexOf("GA100") >= 0) return "NVIDIA A100-PCIE-40GB";
+            if (key.IndexOf("90HX") >= 0 || key.IndexOf("GA102") >= 0) return "NVIDIA GeForce RTX 3080";
+            if (key.IndexOf("70HX") >= 0 || key.IndexOf("GA104") >= 0) return "NVIDIA GeForce RTX 3070";
+            if (key.IndexOf("50HX") >= 0 || key.IndexOf("TU102") >= 0) return "NVIDIA GeForce RTX 2080 Ti";
+            if (key.IndexOf("40HX") >= 0 || key.IndexOf("TU106") >= 0) return "NVIDIA GeForce RTX 2060 SUPER";
+            if (key.IndexOf("30HX") >= 0 || key.IndexOf("TU116") >= 0) return "NVIDIA GeForce GTX 1660 SUPER";
+            return "";
+        }
+
+        /// <summary>把型号名规整为 NVIDIA 官方写法（RTX 2060 SUPER 等后缀全大写）。</summary>
+        public static string NormalizeGpuDisplayName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            string n = name.Trim();
+            n = Regex.Replace(n, @"\bSuper\b", "SUPER", RegexOptions.IgnoreCase);
+            return n;
+        }
+
         public class InstalledMiningGpu
         {
             public int SlotIndex { get; set; }
@@ -7590,7 +7802,7 @@ namespace CMP90HXToolbox
                     catch { }
 
                     gpu.IsSpoofed = true;
-                    log(string.Format("[{0}] 驱动层与系统底层配置已完整伪装为 {1}！", gpu.DetectedModel, gpu.TargetGeForceName), false);
+                    log(string.Format("[{0}] 驱动层与系统底层配置已完整伪装为 {1}！", gpu.DetectedModel, NormalizeGpuDisplayName(effectiveTarget)), false);
                     return true;
                 }
                 catch (Exception ex)
@@ -7977,3 +8189,5 @@ namespace CMP90HXToolbox
         #endregion
     }
 }
+
+

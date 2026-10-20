@@ -27,6 +27,13 @@ minehub/
 aardio_live_window.png
 render_wpfui_demo.png
 
+# ===== 本地备份与临时对照（勿入库，2026-10-20 补充）=====
+backup/
+test_*.png
+*.studio_base
+build_source/*.tmp
+*_old.txt
+
 # ===== 构建中间产物 / 渲染测试图 =====
 build_source/*.png
 build_source/splash_frame_*.png

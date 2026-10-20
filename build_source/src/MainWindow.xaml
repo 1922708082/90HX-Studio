@@ -1,19 +1,45 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="HX家族多功能工具箱"
-        Width="1200" Height="760" MinWidth="1160" MinHeight="660"
+        Width="1240" Height="780" MinWidth="1160" MinHeight="660"
         WindowStartupLocation="CenterScreen"
-        Background="#FBFBFD" Foreground="#1D1D1F"
-        FontFamily="Microsoft YaHei UI, Microsoft YaHei, Segoe UI"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="#F5F5F7"
+        Foreground="#1D1D1F"
+        FontFamily="Microsoft YaHei UI, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
         FontSize="12"
         TextOptions.TextFormattingMode="Ideal"
         UseLayoutRounding="True">
 
-        <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="46" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="42" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
+
+        <!-- 全局细滚动条：4px 圆角拇指、悬停加深，替换系统自带的老式滚动条 -->
+        <Style x:Key="StudioScrollThumb" TargetType="Thumb">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="thumbBd" CornerRadius="3" Background="#C9CCD3" Width="4" HorizontalAlignment="Center" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="thumbBd" Property="Background" Value="#9AA0A8" />
+                                <Setter TargetName="thumbBd" Property="Width" Value="6" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="thumbBd" Property="Background" Value="#6F7680" />
+                                <Setter TargetName="thumbBd" Property="Width" Value="6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style x:Key="AppFocusVisual">
             <Setter Property="Control.Template">
@@ -778,234 +804,206 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+        <!-- macOS 窗口控制三色 -->
+        <SolidColorBrush x:Key="TrafficClose" Color="#FF5F56" />
+        <SolidColorBrush x:Key="TrafficMin" Color="#FFBD2E" />
+        <SolidColorBrush x:Key="TrafficMax" Color="#27C93F" />
+
+        <!-- AI 助手呼出胶囊按钮样式 -->
+        <Style x:Key="AiCapsuleBtn" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}" />
+            <Setter Property="Background" Value="#1D1D1F" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#0071E3" />
+            <Setter Property="BorderThickness" Value="1.2" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2C2C2E" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#0077ED" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#000000" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Window.Triggers>
-        <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard Storyboard="{StaticResource WindowEntranceStoryboard}" />
-        </EventTrigger>
-    </Window.Triggers>
-
-    <Grid Name="MainRootGrid" Background="{StaticResource BgApp}" RenderTransformOrigin="0.5,0.5">
-        <Grid.RenderTransform>
-            <ScaleTransform x:Name="RootScale" ScaleX="1" ScaleY="1" />
-        </Grid.RenderTransform>
-                <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="46" />
-            <RowDefinition Height="*" />
+    <Grid Name="MainRootGrid" Background="{StaticResource BgApp}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- 管理员横幅 -->
+            <RowDefinition Height="42" />   <!-- macOS 风格极简统合顶栏 -->
+            <RowDefinition Height="*" />    <!-- 主体区域：侧边栏 + 内容区 (彻底去除底部状态栏！) -->
         </Grid.RowDefinitions>
 
-        <!-- 管理员提权提示横幅 (极简微弱黄) -->
-        <Border Name="BannerAdminWarning" Grid.Row="0" Background="#FFFBF0" BorderBrush="#FFE4B5" BorderThickness="0,0,0,1" Padding="14,6" Visibility="Collapsed">
+        <!-- 管理员警告横幅 (未以管理员运行时提示) -->
+        <Border Name="BannerAdminWarning" Grid.Row="0" Background="#FFF9F0" BorderBrush="#40FF9500" BorderThickness="0,0,0,1" Padding="16,8" Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="未以管理员权限运行。修改固件引导与写入驱动注册表需要管理员权限。" Foreground="#B45309" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" />
-                <Button Name="BtnRestartAsAdmin" Grid.Column="1" Content="以管理员权限重启" Style="{StaticResource StandardBtn}" Height="24" Padding="10,0,10,0" WindowChrome.IsHitTestVisibleInChrome="True" />
+                <TextBlock Text="注意：当前未以管理员权限运行。解锁操作、BCD 引导修改及驱动参数写入需要管理员权限。"
+                           Foreground="#B25E00" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" />
+                <Button Name="BtnRestartAsAdmin" Grid.Column="1" Content="以管理员权限重启" Style="{StaticResource StandardBtn}"
+                        Height="26" Padding="14,0" Background="#FF9500" Foreground="#FFFFFF" BorderBrush="#FF9500" FontWeight="SemiBold" />
             </Grid>
         </Border>
 
-        <!-- Apple Studio 统一现代一体化顶栏 (高度 46px，可原生无损随意拖动) -->
-        <Border Grid.Row="1" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1">
-            <Grid Margin="16,0,16,0">
+        <!-- macOS 风格极简统合顶栏 (42px) -->
+        <Border Name="TopDragBar" Grid.Row="1" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" WindowChrome.IsHitTestVisibleInChrome="True">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="208" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" /> <!-- 左侧红黄绿控制按钮与标题 -->
+                    <ColumnDefinition Width="*" />    <!-- 中间空白可拖动区域 -->
+                    <ColumnDefinition Width="Auto" /> <!-- 右侧轻量状态药丸 -->
                 </Grid.ColumnDefinitions>
 
-                <!-- 左侧：macOS 经典红黄绿交通灯 + 品牌标识 -->
-                <Grid Grid.Column="0" VerticalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="14" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- 红黄绿三色控制圆点 -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
-                        <Button Name="BtnWinClose" Width="12" Height="12" Margin="0,0,8,0" ToolTip="关闭窗口" Cursor="Hand">
+                <!-- 左侧：macOS 交通灯控制点 + HX 徽标 + 标题 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <!-- 红黄绿三色控制按钮 -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+                        <!-- 关闭 -->
+                        <Button Name="BtnWinClose" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="关闭窗口" FocusVisualStyle="{x:Null}">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border CornerRadius="6" Background="#FF5F56" BorderBrush="#E0443E" BorderThickness="0.6">
-                                        <TextBlock Text="×" FontSize="9" FontWeight="Bold" Foreground="#4C0002" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" Opacity="0.7" />
+                                    <Border Name="circle" Width="12" Height="12" CornerRadius="6" Background="{StaticResource TrafficClose}">
+                                        <TextBlock Text="✕" FontSize="7.5" FontWeight="Bold" Foreground="#600000" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Margin="0,-0.5,0,0" />
                                     </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="circle" Property="Opacity" Value="0.85" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <Button Name="BtnWinMin" Width="12" Height="12" Margin="0,0,8,0" ToolTip="最小化" Cursor="Hand">
+                        <!-- 最小化 -->
+                        <Button Name="BtnWinMin" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="最小化" FocusVisualStyle="{x:Null}">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border CornerRadius="6" Background="#FFBD2E" BorderBrush="#DEA123" BorderThickness="0.6">
-                                        <TextBlock Text="–" FontSize="9" FontWeight="Bold" Foreground="#5C3B00" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-3,0,0" Opacity="0.7" />
+                                    <Border Name="circle" Width="12" Height="12" CornerRadius="6" Background="{StaticResource TrafficMin}">
+                                        <TextBlock Text="—" FontSize="7" FontWeight="Bold" Foreground="#604000" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Margin="0,-1.5,0,0" />
                                     </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="circle" Property="Opacity" Value="0.85" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <Button Name="BtnWinMax" Width="12" Height="12" ToolTip="最大化 / 还原" Cursor="Hand">
+                        <!-- 最大化/还原 -->
+                        <Button Name="BtnWinMax" Width="12" Height="12" Cursor="Hand" ToolTip="最大化 / 还原" FocusVisualStyle="{x:Null}">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border CornerRadius="6" Background="#27C93F" BorderBrush="#1AAB29" BorderThickness="0.6">
-                                        <TextBlock Text="+" FontSize="9" FontWeight="Bold" Foreground="#024D0F" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" Opacity="0.7" />
+                                    <Border Name="circle" Width="12" Height="12" CornerRadius="6" Background="{StaticResource TrafficMax}">
+                                        <TextBlock Text="+" FontSize="8.5" FontWeight="Bold" Foreground="#004010" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Margin="0,-1,0,0" />
                                     </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="circle" Property="Opacity" Value="0.85" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
                     </StackPanel>
 
-                    <!-- 分割线与 HX 微标 -->
-                    <Border Grid.Column="2" Width="22" Height="22" CornerRadius="6" Background="#1B1C1F" Margin="0,0,8,0" VerticalAlignment="Center">
-                        <TextBlock Text="HX" Foreground="#FFFFFF" FontWeight="Bold" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <TextBlock Grid.Column="3" Text="HX家族多功能工具箱" FontWeight="SemiBold" FontSize="12.5" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                </Grid>
+                    <!-- 分割微细线 -->
+                    <Border Width="1" Height="14" Background="{StaticResource BorderLight}" Margin="0,0,12,0" VerticalAlignment="Center" />
 
-                <!-- 右侧：简洁状态回显 -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Border Background="#FFFFFF" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="10,4" Margin="0,0,10,0">
+                    <!-- HX 徽标 + 标题 -->
+                    <Border Width="22" Height="22" CornerRadius="6" Background="{StaticResource AccentBlue}" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Text="HX" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="HX家族多功能工具箱" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextMain}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <Border Background="#14000000" CornerRadius="4" Padding="5,2" VerticalAlignment="Center">
+                        <TextBlock Text="Pro Studio v5.0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextSub}" />
+                    </Border>
+                </StackPanel>
+
+                <!-- 中间留白 (拖动区域) -->
+
+                <!-- 右侧极简状态药丸 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <Border Background="#EBF4FD" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessGreen}" Margin="0,0,6,0" />
-                            <TextBlock Name="TxtTopSensors" Text="CMP 90HX · 38 ℃ · 28.5 W" FontSize="11" Foreground="{StaticResource TextSub}" />
+                            <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessGreen}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Name="TxtTopSensors" Text="P8 待机省电 · 28.5W" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- 主体区域：侧边栏 + 内容区 (彻底无底部状态栏！) -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="208" />
+                <ColumnDefinition Width="220" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,1,0">
+            <!-- 左侧边栏 -->
+            <Border Name="SidebarBorder" Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />    <!-- 导航菜单 -->
+                        <RowDefinition Height="Auto" /> <!-- 底部呼出 AI 助手 -->
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16,16,16,12" VerticalAlignment="Center">
-                        <Border Width="32" Height="32" CornerRadius="8" Background="#1B1C1F" Margin="0,0,10,0">
-                            <TextBlock Text="HX" Foreground="#FFFFFF" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="HX家族多功能工具箱" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextMain}" />
-                            <TextBlock Text="全系 CMP 硬件调优套件" FontSize="10" Foreground="{StaticResource TextMuted}" Margin="0,1,0,0" />
-                        </StackPanel>
-                    </StackPanel>
-
-                    <Rectangle Grid.Row="0" Height="1" Fill="{StaticResource BorderLight}" VerticalAlignment="Bottom" />
-
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,4,0,4">
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8,8,8">
                         <StackPanel>
-                        <TextBlock Text="设备" Style="{StaticResource NavGroupTitle}" />
-                        <RadioButton Name="NavItemHardware" Style="{StaticResource NavItemBtn}" Content="硬件信息" Tag="M3,4 H21 V15 H3 Z M8,19 H16 M12,15 V19" />
+                            <TextBlock Text="核心工坊" Style="{StaticResource NavGroupTitle}" />
+                            <RadioButton Name="NavItemHardware" Style="{StaticResource NavItemBtn}" Content="硬件概览" IsChecked="True" Tag="M3,4 H21 V15 H3 Z M8,19 H16 M12,15 V19" />
+                            <RadioButton Name="NavItemSpoof" Style="{StaticResource NavItemBtn}" Content="显卡伪装" Tag="M7,7 H17 M14,4 L17,7 L14,10 M17,17 H7 M10,14 L7,17 L10,20" />
+                            <RadioButton Name="NavItemOverlay" Style="{StaticResource NavItemBtn}" Content="游戏覆盖" Tag="M7,10 H17 A4,4 0 0 1 17,18 H7 A4,4 0 0 1 7,10 Z M10,12.5 V15.5 M8.25,14 H11.75 M15.5,13.5 H15.6 M17,15.5 H17.1" />
+                            <TextBlock Text="固件解锁" Style="{StaticResource NavGroupTitle}" Margin="0,10,0,4" />
+                            <RadioButton Name="NavItemMatrix" Style="{StaticResource NavItemBtn}" Content="90HX 解锁" Tag="M13.5,3 L5.5,13.5 H11.5 L10.5,21 L18.5,10.5 H12.5 Z" />
+                            <RadioButton Name="NavItemUnlock50" Style="{StaticResource NavItemBtn}" Content="50HX 解锁" Tag="M8,8 H16 V16 H8 Z M4,10.5 H8 M4,13.5 H8 M16,10.5 H20 M16,13.5 H20 M10.5,4 V8 M13.5,4 V8 M10.5,16 V20 M13.5,16 V20" />
+                            <RadioButton Name="NavItemUnlock40" Style="{StaticResource NavItemBtn}" Content="40HX 解锁" Tag="M8,8 H16 V16 H8 Z M4,10.5 H8 M4,13.5 H8 M16,10.5 H20 M16,13.5 H20 M10.5,4 V8 M13.5,4 V8 M10.5,16 V20 M13.5,16 V20" />
 
-                        <TextBlock Text="显卡工具" Style="{StaticResource NavGroupTitle}" />
-                        <RadioButton Name="NavItemSpoof" Style="{StaticResource NavItemBtn}" Content="显卡型号伪装" Tag="M7,7 H17 M14,4 L17,7 L14,10 M17,17 H7 M10,14 L7,17 L10,20" />
-                        <RadioButton Name="NavItemOverlay" Style="{StaticResource NavItemBtn}" Content="游戏内覆盖" Tag="M7,10 H17 A4,4 0 0 1 17,18 H7 A4,4 0 0 1 7,10 Z M10,12.5 V15.5 M8.25,14 H11.75 M15.5,13.5 H15.6 M17,15.5 H17.1" />
-                        <RadioButton Name="NavItemMatrix" Style="{StaticResource NavItemBtn}" Content="90HX 解锁" Tag="M13.5,3 L5.5,13.5 H11.5 L10.5,21 L18.5,10.5 H12.5 Z" />
-                        <RadioButton Name="NavItemUnlock50" Style="{StaticResource NavItemBtn}" Content="50HX 解锁" Tag="M8,8 H16 V16 H8 Z M4,10.5 H8 M4,13.5 H8 M16,10.5 H20 M16,13.5 H20 M10.5,4 V8 M13.5,4 V8 M10.5,16 V20 M13.5,16 V20" />
-                        <RadioButton Name="NavItemUnlock40" Style="{StaticResource NavItemBtn}" Content="40HX 解锁" Tag="M8,8 H16 V16 H8 Z M4,10.5 H8 M4,13.5 H8 M16,10.5 H20 M16,13.5 H20 M10.5,4 V8 M13.5,4 V8 M10.5,16 V20 M13.5,16 V20" />
+                            <TextBlock Text="进阶协同" Style="{StaticResource NavGroupTitle}" Margin="0,10,0,4" />
+                            <RadioButton Name="NavItemDualGpu" Style="{StaticResource NavItemBtn}" Content="双卡协同" Tag="M3,6 H12 V13 H3 Z M13.5,9 H21 V16 H13.5 Z M7.5,13 V16 M4.5,16 H10.5 M17.25,16 V18.5 M15,18.5 H19.5" />
+                            <RadioButton Name="NavItemDlss" Style="{StaticResource NavItemBtn}" Content="DLSS 5 帧生成" Tag="M3.5,17 A9,9 0 0 1 20.5,17 M12,17 L16.8,11.2 M12,13.5 V13.6" />
+                            <RadioButton Name="NavItemPower" Style="{StaticResource NavItemBtn}" Content="硬件与电源" Tag="M4,7 H20 M4,12 H20 M4,17 H20 M9,4.5 V9.5 M16,9.5 V14.5 M7,14.5 V19.5" />
+                            <RadioButton Name="NavItemLogs" Style="{StaticResource NavItemBtn}" Content="故障诊断" Tag="M6,3.5 H14 L18.5,8 V20.5 H6 Z M14,3.5 V8 H18.5 M9.5,12 H15 M9.5,15.5 H15 M9.5,19 H13" />
 
-                        <TextBlock Text="性能优化" Style="{StaticResource NavGroupTitle}" />
-                        <RadioButton Name="NavItemDualGpu" Style="{StaticResource NavItemBtn}" Content="双卡调度" Tag="M3,6 H12 V13 H3 Z M13.5,9 H21 V16 H13.5 Z M7.5,13 V16 M4.5,16 H10.5 M17.25,16 V18.5 M15,18.5 H19.5" />
-                        <RadioButton Name="NavItemDlss" Style="{StaticResource NavItemBtn}" Content="DLSS 5 / 帧生成" Tag="M3.5,17 A9,9 0 0 1 20.5,17 M12,17 L16.8,11.2 M12,13.5 V13.6" />
-                        <RadioButton Name="NavItemPower" Style="{StaticResource NavItemBtn}" Content="硬件与电源" Tag="M4,7 H20 M4,12 H20 M4,17 H20 M9,4.5 V9.5 M16,9.5 V14.5 M7,14.5 V19.5" />
-
-                        <TextBlock Text="系统" Style="{StaticResource NavGroupTitle}" />
-                        <RadioButton Name="NavItemLogs" Style="{StaticResource NavItemBtn}" Content="审计日志" Tag="M6,3.5 H14 L18.5,8 V20.5 H6 Z M14,3.5 V8 H18.5 M9.5,12 H15 M9.5,15.5 H15 M9.5,19 H13" />
-                        <RadioButton Name="NavItemSponsor" Style="{StaticResource NavItemBtn}" Content="开发者支持" Tag="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,10.5 V16.5 M12,7.2 V7.4" />
-                        <RadioButton Name="NavItemUpdate" Style="{StaticResource NavItemBtn}" Content="软件更新" Tag="M12,4 V15 M7.5,10.5 L12,15 L16.5,10.5 M5,18.5 H19" />
-
+                            <TextBlock Text="关于支持" Style="{StaticResource NavGroupTitle}" Margin="0,10,0,4" />
+                            <RadioButton Name="NavItemSponsor" Style="{StaticResource NavItemBtn}" Content="开发者支持" Tag="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,10.5 V16.5 M12,7.2 V7.4" />
+                            <RadioButton Name="NavItemUpdate" Style="{StaticResource NavItemBtn}" Content="软件更新" Tag="M12,4 V15 M7.5,10.5 L12,15 L16.5,10.5 M5,18.5 H19" />
                         </StackPanel>
                     </ScrollViewer>
 
-                    <StackPanel Grid.Row="2" Margin="12,8,12,10">
-                        <Button Name="BtnOpenAiAssistant" Style="{StaticResource PrimaryBtn}" Height="34" Margin="0,0,0,8" ToolTip="呼出悬浮极客 AI 硬件急诊助手">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="AI 硬件急诊助手" FontSize="12" FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Button>
-                        <Rectangle Height="1" Fill="{StaticResource BorderLight}" Margin="0,0,0,6" />
-                        <TextBlock Name="TxtSidebarVersion" Text="v5.0.0" Style="{StaticResource SidebarFooter}" HorizontalAlignment="Center" Margin="0,2,0,2" />
-                    </StackPanel>
+                    <!-- 侧边栏底部：🤖 呼出 AI 硬件助手 胶囊卡片 -->
+                    <Border Grid.Row="1" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,1,0,0" Padding="12,10,12,10">
+                        <StackPanel>
+                            <Button Name="BtnOpenAiAssistant" Style="{StaticResource AiCapsuleBtn}" ToolTip="呼出悬浮极客 AI 硬件急诊助手">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="🤖" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="呼出 AI 硬件助手" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Text="v5.0.0 · Apple Studio" FontSize="10.5" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="18,10,18,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="1" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,18,0">
-                            <TextBlock Name="TxtTopGpuModel" Text="检测中..." FontWeight="Bold" FontSize="14" Foreground="{StaticResource TextMain}" TextTrimming="CharacterEllipsis" MaxWidth="280" />
-                        </StackPanel>
-
-                        <Border Grid.Column="1" Width="1" Background="{StaticResource BorderLight}" Margin="0,5,0,5" />
-
-                        <Grid Grid.Column="2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="18,0,0,0">
-                                <TextBlock Text="PCIe 链路" Foreground="{StaticResource TextMuted}" FontSize="10.5" />
-                                <Grid Margin="0,3,0,0" VerticalAlignment="Center">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBlue}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Name="TxtTopPcieStatus" Text="检测中..." FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="游戏覆盖" Foreground="{StaticResource TextMuted}" FontSize="10.5" />
-                                <Grid Margin="0,3,0,0" VerticalAlignment="Center">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessGreen}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Name="TxtTopOverlayStatus" Text="检测中..." FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                <TextBlock Text="核心温度 / 功耗" Foreground="{StaticResource TextMuted}" FontSize="10.5" />
-                                <Grid Margin="0,3,0,0" VerticalAlignment="Center">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessGreen}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Name="TxtTopSensors" Text="-- ℃ · -- W" FontWeight="SemiBold" Foreground="{StaticResource SuccessGreen}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
-                </Border>
-
-                <Grid Grid.Row="1" Name="PageHost">
-
+            <!-- 右侧主内容区：PageHost (12个页面完整内容) -->
+            <Grid Grid.Column="1" Background="{StaticResource BgApp}">
+                <Grid Name="PageHost">
             <Grid Name="PageHardware" Visibility="Collapsed" Margin="20,16,20,12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -1299,8 +1297,8 @@
                                 <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="14" Effect="{StaticResource ShadowSm}">
                                     <StackPanel>
                                         <TextBlock Text="快捷动作" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" Margin="0,0,0,10" />
-                                        <Button Name="BtnDashRename" Content="🎭 一键伪装 RTX 5090" Style="{StaticResource PrimaryBtn}" Height="34" Margin="0,0,0,8" />
-                                        <Button Name="BtnDashUnlock" Content="🔋 系统级省电" Style="{StaticResource StandardBtn}" Height="34" Margin="0,0,0,8" />
+                                        <Button Name="BtnDashRename" Content="🎭 一键伪装当前卡" Style="{StaticResource PrimaryBtn}" Height="34" Margin="0,0,0,8" />
+                                        <Button Name="BtnDashUnlock" Content="🔋 动态省电" Style="{StaticResource StandardBtn}" Height="34" Margin="0,0,0,8" />
                                         <Button Name="BtnDashRestart" Content="⟳ 软重启显卡驱动" Style="{StaticResource StandardBtn}" Height="34" />
                                     </StackPanel>
                                 </Border>
@@ -1345,7 +1343,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="目标显卡:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,12,10" />
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="显卡:" VerticalAlignment="Center" Foreground="{StaticResource TextSub}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,12,10" />
                                 <ComboBox Grid.Row="0" Grid.Column="1" Name="CmbSpoofTargetCard" Height="34" SelectedIndex="0" Margin="0,0,14,10" />
                                 <Button Grid.Row="0" Grid.Column="2" Name="BtnSpoofAllGpus" Content="⚡ 一键全机伪装" Style="{StaticResource StandardBtn}" Height="34" Padding="16,0,16,0" Margin="0,0,0,10" />
 
@@ -1378,13 +1376,13 @@
                                     <TextBlock Name="TxtClassSubKey" Grid.Row="0" Grid.Column="1" Text="4d36e968-e325-11ce-bfc1-08002be10318" Foreground="{StaticResource TextMain}" Margin="0,0,0,8" />
 
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="当前显示名称:" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8" />
-                                    <TextBlock Name="TxtCurrentDriverDesc" Grid.Row="1" Grid.Column="1" Text="NVIDIA CMP 90HX" FontWeight="SemiBold" Foreground="{StaticResource SuccessGreen}" Margin="0,0,0,8" />
+                                    <TextBlock Name="TxtCurrentDriverDesc" Grid.Row="1" Grid.Column="1" Text="检测中..." FontWeight="SemiBold" Foreground="{StaticResource SuccessGreen}" Margin="0,0,0,8" />
 
                                     <TextBlock Grid.Row="2" Grid.Column="0" Text="匹配硬件 PCI ID:" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8" />
-                                    <TextBlock Name="TxtCurrentGpuMatchId" Grid.Row="2" Grid.Column="1" Text="PCI\VEN_10DE&amp;DEV_220D&amp;SUBSYS_146710DE" Foreground="{StaticResource TextMain}" Margin="0,0,0,8" FontFamily="Consolas, Cascadia Mono" FontSize="11.5" />
+                                    <TextBlock Name="TxtCurrentGpuMatchId" Grid.Row="2" Grid.Column="1" Text="检测中..." Foreground="{StaticResource TextMain}" Margin="0,0,0,8" FontFamily="Consolas, Cascadia Mono" FontSize="11.5" />
 
                                     <TextBlock Grid.Row="3" Grid.Column="0" Text="目标伪装型号 / 架构:" Foreground="{StaticResource TextMuted}" />
-                                    <TextBlock Name="TxtDirectXDesc" Grid.Row="3" Grid.Column="1" Text="NVIDIA GeForce RTX 3080 (GA102 · sm_86)" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" />
+                                    <TextBlock Name="TxtDirectXDesc" Grid.Row="3" Grid.Column="1" Text="检测中..." FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -1531,8 +1529,6 @@
                             </Grid>
                         </Border>
 
-                        
-
                         <Border Name="Card90hxStatusInfo" Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="18,14" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
@@ -1565,8 +1561,6 @@
                                 </Border>
                             </StackPanel>
                         </Border>
-
-                        
 
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <StackPanel>
@@ -1632,8 +1626,6 @@
                             <Button Name="BtnDeploy90hxFull" />
                         </StackPanel>
 
-                        
-
                         <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource BorderLight}" BorderThickness="1" CornerRadius="12" Padding="20,12" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -1669,7 +1661,6 @@
                             </StackPanel>
                         </Border>
 
-                        
                     </StackPanel>
                     </ScrollViewer>
 
@@ -1986,7 +1977,6 @@
                 <StackPanel Grid.Row="0" Margin="0,0,0,12">
                     <StackPanel Orientation="Horizontal">
                         
-
                         <Border Width="4" Height="17" CornerRadius="2" Background="{StaticResource AccentBlue}" Margin="0,0,10,0" VerticalAlignment="Center" />
                         <TextBlock Text="DLSS 5 / 帧生成" Style="{StaticResource PageTitle}" />
                     </StackPanel>
@@ -2439,7 +2429,7 @@
 
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="当前版本" Foreground="{StaticResource TextSub}" FontSize="11.5" />
-                                        <TextBlock Name="TxtAppVerCurrent" Text="v4.6.3" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
+                                        <TextBlock Name="TxtAppVerCurrent" Text="v5.0.0" FontSize="30" FontWeight="Bold" Foreground="{StaticResource TextMain}" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <Border Name="BdAppStatus" Grid.Column="1" Background="#F1F5F9" CornerRadius="14" Padding="12,6" VerticalAlignment="Center">
@@ -2464,6 +2454,15 @@
 
                                 <ProgressBar Name="ProgAppUpdate" Height="4" Margin="0,14,0,8" Visibility="Collapsed" />
                                 <TextBlock Name="TxtAppUpdateStatus" Text="点击检查更新，或等待启动时自动检测" Foreground="{StaticResource TextSub}" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Name="BdAppReleaseNotes" Visibility="Collapsed" Background="{StaticResource BgCard}" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="12" Padding="22,18" Margin="0,0,0,12" Effect="{StaticResource ShadowCard}">
+                            <StackPanel>
+                                <TextBlock Text="本次更新内容" FontWeight="SemiBold" Foreground="{StaticResource TextMain}" FontSize="13.5" Margin="0,0,0,10" />
+                                <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Name="TxtAppReleaseNotes" TextWrapping="Wrap" Foreground="{StaticResource TextSub}" FontSize="11.5" LineHeight="19" />
+                                </ScrollViewer>
                             </StackPanel>
                         </Border>
 
@@ -2554,7 +2553,7 @@
                                     </StackPanel>
 
                                     <!-- 300x300 大尺寸高清无眩光容器，秒扫 -->
-                                    <Border Width="300" Height="300" CornerRadius="14" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="12" Margin="0,0,0,14" Effect="{StaticResource ShadowSm}">
+                                    <Border Width="316" Height="316" CornerRadius="14" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="12" Margin="0,0,0,14" Effect="{StaticResource ShadowSm}">
                                         <Image Name="ImgWechatPay" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
 
@@ -2573,7 +2572,7 @@
                                     </StackPanel>
 
                                     <!-- 300x300 大尺寸高清无眩光容器，秒扫 -->
-                                    <Border Width="300" Height="300" CornerRadius="14" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="12" Margin="0,0,0,14" Effect="{StaticResource ShadowSm}">
+                                    <Border Width="316" Height="316" CornerRadius="14" Background="#FFFFFF" BorderBrush="#E5E5EA" BorderThickness="1" Padding="12" Margin="0,0,0,14" Effect="{StaticResource ShadowSm}">
                                         <Image Name="ImgAlipay" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
 
@@ -2652,16 +2651,14 @@
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
-
                 </Grid>
-
             </Grid>
         </Grid>
 
+        <!-- 兼容性保留隐藏操作按钮 (避免代码查找空引用) -->
         <StackPanel Visibility="Collapsed">
             <Button Name="BtnTopRefresh" />
             <Button Name="BtnTopAutoOptimize" />
         </StackPanel>
-
     </Grid>
 </Window>

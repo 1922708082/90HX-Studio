@@ -40,11 +40,11 @@ namespace CMP90HXToolbox
         public MachineHardwareProfile()
         {
             GpuList = new List<GpuDeviceInfo>();
-            ModelName = "ASUS System Product Name";
-            DisplayDevices = "主屏 [27.0\" 2560 x 1440 144Hz/180Hz]";
-            DiskDevices = "致态 YMTC PC41Q-1TB-B (953.9GB) · 高速 NVMe";
-            AudioDevices = "AMD High Definition Audio / Realtek Audio";
-            NetworkDevices = "Realtek 2.5GbE LAN · MediaTek Wi-Fi 6";
+            ModelName = "检测中...";
+            DisplayDevices = "检测中...";
+            DiskDevices = "检测中...";
+            AudioDevices = "检测中...";
+            NetworkDevices = "检测中...";
         }
     }
 
