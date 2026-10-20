@@ -435,7 +435,16 @@ namespace CMP90HXToolbox
         [STAThread]
         public static void Main(string[] args)
         {
-            try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls; ServicePointManager.ServerCertificateValidationCallback = delegate { return true; }; } catch { }
+            // 只启用 TLS 1.2 / 1.3。
+            // 严禁在这里挂 ServerCertificateValidationCallback = return true：
+            // 本程序以管理员权限运行，且会下载并执行更新包，关闭证书校验等于
+            // 把「中间人替换更新包 → 任意代码以管理员执行」这条链路直接打开。
+            try
+            {
+                ServicePointManager.SecurityProtocol =
+                    (SecurityProtocolType)3072 | (SecurityProtocolType)12288; // Tls12 | Tls13
+            }
+            catch { }
             // 后台省电模式判断：支持命令行中任意位置包含 --powersave，不区分大小写，去除引号
             bool isPowerSaveMode = false;
             if (args != null && args.Length > 0)
