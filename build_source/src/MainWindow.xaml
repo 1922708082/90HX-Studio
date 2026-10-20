@@ -809,35 +809,6 @@
         <SolidColorBrush x:Key="TrafficClose" Color="#FF5F56" />
         <SolidColorBrush x:Key="TrafficMin" Color="#FFBD2E" />
         <SolidColorBrush x:Key="TrafficMax" Color="#27C93F" />
-
-        <!-- AI 助手呼出胶囊按钮样式 -->
-        <Style x:Key="AiCapsuleBtn" TargetType="Button">
-            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}" />
-            <Setter Property="Background" Value="#1D1D1F" />
-            <Setter Property="Foreground" Value="#FFFFFF" />
-            <Setter Property="BorderBrush" Value="#0071E3" />
-            <Setter Property="BorderThickness" Value="1.2" />
-            <Setter Property="Height" Value="38" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2C2C2E" />
-                                <Setter TargetName="bd" Property="BorderBrush" Value="#0077ED" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#000000" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Grid Name="MainRootGrid" Background="{StaticResource BgApp}">
@@ -960,7 +931,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />    <!-- 导航菜单 -->
-                        <RowDefinition Height="Auto" /> <!-- 底部呼出 AI 助手 -->
+                        <RowDefinition Height="Auto" /> <!-- 底部版本标识 -->
                     </Grid.RowDefinitions>
 
                     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8,8,8">
@@ -986,17 +957,9 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- 侧边栏底部：🤖 呼出 AI 硬件助手 胶囊卡片 -->
-                    <Border Grid.Row="1" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,1,0,0" Padding="12,10,12,10">
-                        <StackPanel>
-                            <Button Name="BtnOpenAiAssistant" Style="{StaticResource AiCapsuleBtn}" ToolTip="呼出悬浮极客 AI 硬件急诊助手">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <TextBlock Text="🤖" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="呼出 AI 硬件助手" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <TextBlock Text="v5.0.0 · Apple Studio" FontSize="10.5" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" Margin="0,6,0,0" />
-                        </StackPanel>
+                    <!-- 侧边栏底部：版本标识 -->
+                    <Border Grid.Row="1" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,1,0,0" Padding="12,8,12,8">
+                        <TextBlock Text="v5.0.0 · Apple Studio" FontSize="10.5" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
                     </Border>
                 </Grid>
             </Border>

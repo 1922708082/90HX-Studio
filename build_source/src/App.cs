@@ -25,7 +25,6 @@ namespace CMP90HXToolbox
 {
     public class App : Application
     {
-        public static bool StartWithAi = false;
         private Window _window;
 
         private RadioButton[] _navItems;
@@ -449,12 +448,6 @@ namespace CMP90HXToolbox
                     {
                         isPowerSaveMode = true;
                     }
-                    else if (string.Equals(cleanArg, "--with-ai", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(cleanArg, "--assistant", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(cleanArg, "--ai", StringComparison.OrdinalIgnoreCase))
-                    {
-                        StartWithAi = true;
-                    }
                 }
             }
 
@@ -645,24 +638,7 @@ namespace CMP90HXToolbox
             if (_window == null) return;
             _window.Closed += delegate(object s, EventArgs e)
             {
-                // 调度判断：主程序关闭时悬浮助手的连动退出或独立运行
-                if (AiAssistantController.Instance != null && 
-                    AiAssistantController.KeepAliveOnMainWindowClose && 
-                    AiAssistantController.Instance.Window != null && 
-                    AiAssistantController.Instance.Window.IsVisible)
-                {
-                    LogAudit("主工具箱窗口已关闭。根据独立运行选项，HX 悬浮 AI 助手转入后台独立守护模式。");
-                    try { AiAssistantController.Instance.OnMainWindowClosed(); } catch { }
-                }
-                else
-                {
-                    // 连动退出选项：悬浮助手随主程序连动退出
-                    if (AiAssistantController.Instance != null && AiAssistantController.Instance.Window != null)
-                    {
-                        try { AiAssistantController.Instance.Window.Close(); } catch { }
-                    }
-                    try { Shutdown(); } catch { }
-                }
+                try { Shutdown(); } catch { }
             };
         }
         private static void LogStartup(string stage)
@@ -693,7 +669,6 @@ namespace CMP90HXToolbox
                             _window.Activate();
                             RefreshSensors();
                             LogAudit("启动动画播放完毕。HX家族多功能工具箱 v5.0 已就绪。");
-                            try { AiAssistantController.EnsureInitialized(true); } catch { }
                         }
                     }
                     catch
@@ -714,7 +689,6 @@ namespace CMP90HXToolbox
                     _window.Activate();
                     RefreshSensors();
                     LogAudit("90HX Studio 已就绪。所有底层服务与安全防呆引擎已初始化完成。");
-                    try { AiAssistantController.EnsureInitialized(true); } catch { }
                 }
             }
         }
@@ -1120,30 +1094,6 @@ namespace CMP90HXToolbox
             WireLinkButton("BtnLinkCmp50");
             WireLinkButton("BtnDownloadRtDriver");
             WireLinkButton("BtnOpenDriverFolder");
-
-            // ===== AI 助手唤出按钮 =====
-            Button btnOpenAi = _window.FindName("BtnOpenAiAssistant") as Button;
-            if (btnOpenAi != null)
-            {
-                btnOpenAi.Click += delegate(object s, RoutedEventArgs e)
-                {
-                    try
-                    {
-                        var ctrl = AiAssistantController.EnsureInitialized(true);
-                        if (ctrl != null)
-                        {
-                            ctrl.SwitchMode(true, true);
-                            if (ctrl.Window != null)
-                            {
-                                if (!ctrl.Window.IsVisible) ctrl.Window.Show();
-                                ctrl.Window.Activate();
-                                ctrl.Window.Topmost = true;
-                            }
-                        }
-                    }
-                    catch { }
-                };
-            }
 
             // ===== 全局接入窗口鼠标拖动：主窗口与侧边栏接入 MouseLeftButtonDown，按住空白处也可随时自由拖拽窗口 =====
             if (_window != null)
