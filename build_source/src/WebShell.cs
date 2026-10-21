@@ -820,8 +820,15 @@ namespace CMP90HXToolbox
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        // 老实现的备份名与实际改写文件对不上，先自己兜一层 .hxbak
-                        Diagnostics.BackupOverlayFiles(LogPower);
+                        // 硬性前置：没有备份就不许打补丁。
+                        // 之前就是备份名对不上还照样改，结果改完无法还原。
+                        int backed = Diagnostics.BackupOverlayFiles(LogPower);
+                        if (backed == 0 && !Diagnostics.HasOverlayBackup())
+                        {
+                            LogInfo("未找到可备份的覆盖层文件，已中止解锁");
+                            ReplyFail(rid, action, "FILE_LOCKED", "找不到 NVIDIA App 前端文件，未做任何修改");
+                            return;
+                        }
                         bool ok = false;
                         try { ok = NativeCore.UnlockNvAppOverlayAsync(LogPower).Result; }
                         catch (Exception ex) { LogCrash("解锁覆盖层失败", ex); }
