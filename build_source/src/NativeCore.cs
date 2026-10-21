@@ -5627,6 +5627,15 @@ namespace CMP90HXToolbox
                             snap.PState = parts[15].Trim();
                             snap.PcieGen = parts[16].Trim();
                             snap.PcieWidth = parts[17].Trim();
+
+                            // nvidia-smi 的 fan.speed 只报 primary 风扇。多风扇矿卡上
+                            // primary 常常是 0（实测 CMP 90HX: fan0=0%，fan1=52%），
+                            // 因此这里再用 NVML 取所有风扇的最大值兜底。
+                            if (snap.FanPercent <= 0)
+                            {
+                                int maxFan = NvmlFan.GetMaxFanPercent(0);
+                                if (maxFan >= 0) snap.FanPercent = maxFan;
+                            }
                         }
                     }
                 }

@@ -329,7 +329,8 @@ namespace CMP90HXToolbox
             if (_handshakeSent) return;
             _handshakeSent = true;
             PostToPage(HardwareBridge.ThemeEvt("light"));
-            LogInfo("已发送握手事件 theme.apply");
+            PostToPage(HardwareBridge.VersionEvt());
+            LogInfo("已发送握手事件 theme.apply / app.version");
         }
 
         private void StartSensorTimer()

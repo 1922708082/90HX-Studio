@@ -1396,6 +1396,12 @@
       font-family: ui-monospace, monospace;
       padding: 0 4px;
       border-radius: 4px;
+      /* 型号名再长也不许撑破灯条 */
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
       background: var(--btn-primary-bg);
       white-space: nowrap;
     }
@@ -6955,6 +6961,19 @@
         return String(val) + (suffix || '');
       }
 
+      /* 3D 模型上的字位很窄：伪装后型号名可能变成
+         "NVIDIA GeForce RTX 3080" 这种长串，必须压缩后再放上去 */
+      function shortModelName(raw) {
+        let s = String(raw === undefined || raw === null ? '' : raw).trim();
+        if (!s) return 'CMP';
+        s = s.replace(/^NVIDIA\s+/i, '')
+             .replace(/^GeForce\s+/i, '')
+             .replace(/^Tesla\s+/i, '')
+             .replace(/^Quadro\s+/i, '');
+        if (s.length > 15) s = s.slice(0, 14) + '…';
+        return s;
+      }
+
       function showToast(text, level) {
         const stack = document.getElementById('toastStack');
         if (!stack) return;
@@ -7233,6 +7252,12 @@
               renderLogsPage(true);
             }
             break;
+          case 'app.version': {
+            // 版本号由宿主推送，不在页面里写死
+            const verEl0 = document.getElementById('titlebarVersionBadge');
+            if (verEl0 && payload && payload.version) verEl0.textContent = 'v' + payload.version;
+            break;
+          }
           case 'update.state':
             state.updateState = payload;
             state.updateStatus = 'ready';
@@ -7314,10 +7339,10 @@
         const bChip = document.getElementById('gpu3dBadgeChip');
         const bBack = document.getElementById('gpu3dBackText');
         const bLight = document.getElementById('gpu3dLightbarText');
-        if (bModel) bModel.textContent = gpu && gpu.model ? String(gpu.model).replace(/^CMP\s+/i, '') : '90HX';
+        if (bModel) bModel.textContent = shortModelName(gpu && gpu.model);
         if (bChip) bChip.textContent = gpu && gpu.chip ? gpu.chip : '--';
         if (bBack) bBack.textContent = gpu && gpu.chip ? gpu.chip : 'CMP';
-        if (bLight) bLight.textContent = gpu && gpu.model ? gpu.model : 'CMP 90HX';
+        if (bLight) bLight.textContent = shortModelName(gpu && gpu.model);
 
         // PCIe Lanes
         const pcieTxt = document.getElementById('pcieFormattedText');

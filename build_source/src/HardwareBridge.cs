@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 
 namespace CMP90HXToolbox
@@ -25,6 +26,20 @@ namespace CMP90HXToolbox
         {
             return "{\"kind\":\"evt\",\"action\":\"theme.apply\",\"payload\":{\"theme\":\"" +
                    Esc(string.IsNullOrEmpty(theme) ? "light" : theme) + "\"}}";
+        }
+
+        /// <summary>版本号事件。左上角角标由这里驱动，页面里不再写死。</summary>
+        public static string VersionEvt()
+        {
+            string v = "0.0.0";
+            try
+            {
+                Version ver = Assembly.GetExecutingAssembly().GetName().Version;
+                if (ver != null) v = ver.Major + "." + ver.Minor + "." + ver.Build;
+            }
+            catch { }
+            return "{\"kind\":\"evt\",\"action\":\"app.version\",\"payload\":{\"version\":\"" +
+                   Esc(v) + "\"}}";
         }
 
         /// <summary>设备快照：显卡身份、传感器初值、系统信息、环境标志。</summary>
