@@ -470,9 +470,69 @@ namespace CMP90HXToolbox
             }
         }
 
+        /// <summary>
+        /// 黑窗探针：启动 3 秒后枚举本进程的子进程并写日志。
+        /// 目的不是修，而是拿到证据——之前把闪屏和两处 cmd 都排除了，
+        /// 一直靠猜；有了这份清单就能一眼看出是哪个子进程弹的黑窗。
+        /// </summary>
+        private static void ProbeChildProcessesAsync()
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    System.Threading.Thread.Sleep(3000);
+                    int self = System.Diagnostics.Process.GetCurrentProcess().Id;
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    sb.AppendLine("[探针] 本进程 PID=" + self + " 的子进程：");
+                    using (System.Management.ManagementObjectSearcher searcher =
+                           new System.Management.ManagementObjectSearcher(
+                               "SELECT ProcessId,Name,CommandLine FROM Win32_Process WHERE ParentProcessId=" + self))
+                    {
+                        int n = 0;
+                        foreach (System.Management.ManagementObject mo in searcher.Get())
+                        {
+                            n++;
+                            sb.AppendLine("  - " + mo["Name"] + " pid=" + mo["ProcessId"] +
+                                          " cmd=" + mo["CommandLine"]);
+                        }
+                        if (n == 0) sb.AppendLine("  （无子进程）");
+                    }
+                    try
+                    {
+                        string probeDir = System.IO.Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                            "CMP90HX_Toolbox", "logs");
+                        System.IO.Directory.CreateDirectory(probeDir);
+                        System.IO.File.AppendAllText(
+                            System.IO.Path.Combine(probeDir, "blackwindow-probe.log"),
+                            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + Environment.NewLine + sb.ToString(),
+                            System.Text.Encoding.UTF8);
+                    }
+                    catch { }
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        string probeDir2 = System.IO.Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                            "CMP90HX_Toolbox", "logs");
+                        System.IO.Directory.CreateDirectory(probeDir2);
+                        System.IO.File.AppendAllText(
+                            System.IO.Path.Combine(probeDir2, "blackwindow-probe.log"),
+                            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " [探针失败] " + ex.Message + Environment.NewLine,
+                            System.Text.Encoding.UTF8);
+                    }
+                    catch { }
+                }
+            });
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
+            try { ProbeChildProcessesAsync(); } catch { }
             // 只启用 TLS 1.2 / 1.3。
             // 严禁在这里挂 ServerCertificateValidationCallback = return true：
             // 本程序以管理员权限运行，且会下载并执行更新包，关闭证书校验等于

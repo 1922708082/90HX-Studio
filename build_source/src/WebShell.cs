@@ -406,6 +406,10 @@ namespace CMP90HXToolbox
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
+            // 提到 try 外层：兜底 catch 里也要能拿到 id/action 才能回执，
+            // 否则一条消息处理炸了，前端那个按钮就永久 disabled + is-loading。
+            string id = null;
+            string action = null;
             try
             {
                 if (!string.Equals(e.Source, StartUrl, StringComparison.OrdinalIgnoreCase)) return;
@@ -413,8 +417,8 @@ namespace CMP90HXToolbox
                 string json = e.WebMessageAsJson;
                 if (string.IsNullOrEmpty(json)) return;
 
-                string action = ExtractJsonString(json, "action");
-                string id = ExtractJsonString(json, "id");
+                action = ExtractJsonString(json, "action");
+                id = ExtractJsonString(json, "id");
                 if (string.IsNullOrEmpty(action)) return;
 
                 // P3 阶段只处理窗口控制；业务 action 留到 P4 的 ActionRouter
@@ -1275,6 +1279,11 @@ namespace CMP90HXToolbox
             catch (Exception ex)
             {
                 LogCrash("处理网页消息失败", ex);
+                // 兜底回执：宁可让用户看到一个明确的错误，也不要让按钮静默卡死。
+                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(action))
+                {
+                    try { ReplyFail(id, action, "INTERNAL", ex.Message); } catch { }
+                }
             }
         }
 
