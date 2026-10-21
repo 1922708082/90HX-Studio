@@ -5705,9 +5705,14 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
                     <span>CMP 90HX</span>
                   </button>
-                  <button class="seg-btn" data-action="unlock.selectCard" data-card="50HX" title="TU102">
+                  <button class="seg-btn" data-action="unlock.selectCard" data-card="50HX" title="TU102 · 暂未验证"
+                          style="position:relative;opacity:.55;filter:grayscale(1);cursor:not-allowed;">
                     <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
                     <span>CMP 50HX</span>
+                    <!-- 未验证标记：右上角挂叉 -->
+                    <svg viewBox="0 0 24 24" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#e5484d;border-radius:50%;padding:2px;box-shadow:0 0 0 2px var(--card-bg);">
+                      <path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/>
+                    </svg>
                   </button>
                   <button class="seg-btn" data-action="unlock.selectCard" data-card="40HX" title="TU106">
                     <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
@@ -7156,6 +7161,31 @@
             if (state.lastBrowseTargetId === 'dlssGameDirInput') {
               sendCmd('dlss.preflight', getDlssPreflightPayload());
             }
+          } else if (action === 'dlss.preflight' && Array.isArray(data.items)) {
+            /* 预检结果必须看得见：之前只写日志，用户点完毫无反应 */
+            const box = document.getElementById('dlssStateBanner');
+            if (box) {
+              const rows = data.items.map(function (it) {
+                const cls = it.ok ? 'success' : (it.blocking ? 'danger' : 'warning');
+                const ico = it.ok ? '✓' : '✕';
+                return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-top:1px solid var(--divider-line);">' +
+                  '<span class="tag ' + cls + '" style="flex:0 0 auto;min-width:22px;text-align:center;">' + ico + '</span>' +
+                  '<span style="font-size:12.5px;font-weight:700;min-width:72px;flex:0 0 auto;">' + escapeHtml(it.name) + '</span>' +
+                  '<span style="font-size:12px;color:var(--text-sub);flex:1;word-break:break-all;">' + escapeHtml(it.detail || '') + '</span>' +
+                  '</div>';
+              }).join('');
+              box.innerHTML =
+                '<div class="card" style="margin-bottom:12px;border-left:3px solid ' +
+                  (data.passed ? 'var(--success)' : 'var(--danger)') + ';">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                    '<span style="font-size:13px;font-weight:700;">前置检查 · ' +
+                      (data.passed ? '全部通过' : (data.failedCount + ' 项未通过')) + '</span>' +
+                    '<button class="btn btn-secondary" data-action="dlss.preflight" style="padding:2px 10px;font-size:12px;">重新检查</button>' +
+                  '</div>' + rows +
+                '</div>';
+            }
+            showToast(data.passed ? '前置检查全部通过' : ('有 ' + data.failedCount + ' 项未通过'),
+                      data.passed ? 'success' : 'error');
           } else if (action === 'logs.query' && Array.isArray(data.items)) {
             state.logsList = data.items.concat(state.logsList);
             state.logsStatus = 'ready';
@@ -7705,7 +7735,8 @@
           }).join('');
         }
 
-        const needsUsb = state.selectedUnlockChannel === 'B' || state.selectedUnlockChannel === 'C';
+        // 只有 C（U 盘引导）才需要选盘；B 是 UEFI Shell 链启，不涉及 U 盘
+        const needsUsb = state.selectedUnlockChannel === 'C';
         if (usbRow) {
           usbRow.style.display = needsUsb ? 'flex' : 'none';
         }
@@ -8844,8 +8875,11 @@
             break;
           }
           case 'unlock.selectCard':
-            state.selectedUnlockCard = target.dataset.card || '90HX';
-            renderUnlockPage();
+            if (target.dataset.card === '50HX') {
+              showToast('CMP 50HX 暂未验证解锁，仅 90HX / 40HX 可用', 'error');
+              break;
+            }
+            sendCmd('unlock.selectCard', { card: target.dataset.card }, target);
             break;
           case 'unlock.selectChannel':
             if (target.classList.contains('disabled')) return;

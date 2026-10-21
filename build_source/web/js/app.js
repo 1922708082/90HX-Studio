@@ -847,7 +847,8 @@
           }).join('');
         }
 
-        const needsUsb = state.selectedUnlockChannel === 'B' || state.selectedUnlockChannel === 'C';
+        // 只有 C（U 盘引导）才需要选盘；B 是 UEFI Shell 链启，不涉及 U 盘
+        const needsUsb = state.selectedUnlockChannel === 'C';
         if (usbRow) {
           usbRow.style.display = needsUsb ? 'flex' : 'none';
         }
@@ -1986,8 +1987,11 @@
             break;
           }
           case 'unlock.selectCard':
-            state.selectedUnlockCard = target.dataset.card || '90HX';
-            renderUnlockPage();
+            if (target.dataset.card === '50HX') {
+              showToast('CMP 50HX 暂未验证解锁，仅 90HX / 40HX 可用', 'error');
+              break;
+            }
+            sendCmd('unlock.selectCard', { card: target.dataset.card }, target);
             break;
           case 'unlock.selectChannel':
             if (target.classList.contains('disabled')) return;
