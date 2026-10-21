@@ -1510,13 +1510,44 @@ namespace CMP90HXToolbox
             DirtyState = 3
         }
 
+        /// <summary>
+        /// 是否允许调用 bcdedit 读引导链。
+        /// 原因：bcdedit 是控制台程序，即使 CreateNoWindow=true，
+        /// 启动阶段调用仍会闪一下黑窗（实测子进程清单里能看到 bcdedit）。
+        /// 所以开机检测不读，等用户真正打开引导页/点刷新时再读。
+        /// </summary>
+        public static bool BcdReadAllowed = false;
+
+        private static string _bcdCacheBootMgr;
+        private static string _bcdCacheFw;
+        private static DateTime _bcdCacheAt = DateTime.MinValue;
+
+        /// <summary>带缓存地读 BCD：未授权或缓存新鲜时直接返回旧值，不触碰 bcdedit。</summary>
+        private static void ReadBcdCached(out string bootMgr, out string fw)
+        {
+            bootMgr = _bcdCacheBootMgr ?? "";
+            fw = _bcdCacheFw ?? "";
+            bool fresh = (DateTime.UtcNow - _bcdCacheAt).TotalSeconds < 30;
+            if (!BcdReadAllowed || fresh) return;
+            try
+            {
+                bootMgr = RunCmd("bcdedit", "/enum {bootmgr}") ?? "";
+                fw = RunCmd("bcdedit", "/enum firmware") ?? "";
+                _bcdCacheBootMgr = bootMgr;
+                _bcdCacheFw = fw;
+                _bcdCacheAt = DateTime.UtcNow;
+            }
+            catch { }
+        }
+
         public static PcieUnlockMode DetectCurrentPcieUnlockMode(out string detailMsg)
         {
             detailMsg = "官方原生标准引导 (未解锁)";
             try
             {
-                string bcdBootMgr = RunCmd("bcdedit", "/enum {bootmgr}");
-                string bcdFw = RunCmd("bcdedit", "/enum firmware");
+                // 开机阶段不读（会闪黑窗），改为缓存 + 授权后再读
+                string bcdBootMgr, bcdFw;
+                ReadBcdCached(out bcdBootMgr, out bcdFw);
 
                 bool bootMgrToCompat = bcdBootMgr.IndexOf("NVPermissiveCompat.efi", StringComparison.OrdinalIgnoreCase) >= 0;
                 bool bootMgrToShell = bcdBootMgr.IndexOf("Shell.efi", StringComparison.OrdinalIgnoreCase) >= 0;

@@ -797,6 +797,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.install")
                 {
+                    NativeCore.BcdReadAllowed = true;
                     // channel: A=UEFI 直启(Mode1) / B=UEFI Shell 链启(Mode2)
                     string ch = ExtractPayloadString(json, "channel");
                     string mode = ExtractPayloadString(json, "mode");
@@ -824,6 +825,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.rollback")
                 {
+                    NativeCore.BcdReadAllowed = true;
                     LogInfo("回滚引导与解锁载荷…");
                     string rid = id;
                     Task.Run(new Action(delegate
@@ -1193,6 +1195,8 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.scan")
                 {
+                    // 用户显式重扫时才允许读 BCD（调用 bcdedit 会有控制台闪窗）
+                    NativeCore.BcdReadAllowed = true;
                     LogInfo("重扫引导状态…");
                     Task.Run(new Action(delegate
                     {
