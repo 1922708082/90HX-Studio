@@ -106,6 +106,8 @@ namespace CMP90HXToolbox
             sb.Append("\"updateManifestUrl\":").Append(Quote(AppSettings.UpdateManifestUrl ?? "")).Append(',');
             sb.Append("\"dlssBaseUrl\":").Append(Quote(AppSettings.DlssBaseUrl ?? "")).Append(',');
             sb.Append("\"defaultProxy\":").Append(Quote(DownloadSources[1, 1])).Append(',');
+            sb.Append("\"proxyMode\":").Append(Quote(AppSettings.ProxyMode ?? "system")).Append(',');
+            sb.Append("\"proxyAddress\":").Append(Quote(AppSettings.ProxyAddress ?? "")).Append(',');
             sb.Append("\"sources\":[");
             for (int i = 0; i < DownloadSources.GetLength(0); i++)
             {

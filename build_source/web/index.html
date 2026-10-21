@@ -6062,10 +6062,6 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="14" width="16" height="6" rx="2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 10l4 4 4-4M12 14V4"/></svg>
                     <span>检查更新</span>
                   </button>
-                  <button class="btn btn-secondary" data-action="dlss.import" id="btnDlssImport">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="13" width="16" height="7" rx="2"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 4v9M8 9l4 4 4-4"/></svg>
-                    <span>导入本地包</span>
-                  </button>
                 </div>
               </div>
               <div class="progress-wrap" id="dlssProgressWrap">
@@ -6762,6 +6758,13 @@
                 <input class="text-input" id="cfgDownloadProxy" placeholder="https://ghfast.top/" style="flex:1;min-width:220px;" />
                 <label style="font-size:12.5px;color:var(--text-sub);width:96px;">更新清单地址</label>
                 <input class="text-input" id="cfgUpdateUrl" placeholder="https://muyaa.top/hx/latest.json" style="flex:1;min-width:220px;" />
+                <label style="font-size:12.5px;color:var(--text-sub);width:96px;">代理</label>
+                <select class="select-input" id="cfgProxyMode" style="width:150px;">
+                  <option value="system">跟随系统</option>
+                  <option value="manual">手动指定</option>
+                  <option value="direct">不使用代理</option>
+                </select>
+                <input class="text-input" id="cfgProxyAddress" placeholder="http://127.0.0.1:7890" style="flex:1;min-width:180px;" />
                 <button class="btn btn-secondary" data-action="settings.save" id="btnSaveDownloadCfg">
                   <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="4" width="14" height="16" rx="2"/><path d="M8 4v5h8V4M8 15h8"/></svg>
                   <span>保存</span>
@@ -7346,6 +7349,8 @@
               const g = function (id) { return document.getElementById(id); };
               if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
               if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
+              if (g('cfgProxyMode')) g('cfgProxyMode').value = p.proxyMode || 'system';
+              if (g('cfgProxyAddress')) g('cfgProxyAddress').value = p.proxyAddress || '';
               const ph = document.getElementById('cfgDownloadProxy');
               if (ph && p.defaultProxy) ph.placeholder = p.defaultProxy;
             } catch (e) { }
@@ -8854,13 +8859,12 @@
             const g = function (id) { return document.getElementById(id); };
             sendCmd('settings.save', {
               downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value.trim() : '',
-              updateManifestUrl: g('cfgUpdateUrl') ? g('cfgUpdateUrl').value.trim() : ''
+              updateManifestUrl: g('cfgUpdateUrl') ? g('cfgUpdateUrl').value.trim() : '',
+              proxyMode: g('cfgProxyMode') ? g('cfgProxyMode').value : 'system',
+              proxyAddress: g('cfgProxyAddress') ? g('cfgProxyAddress').value.trim() : ''
             }, target);
             break;
           }
-          case 'dlss.import':
-            sendCmd('dlss.import', {}, target);
-            break;
           case 'device.refresh':
           case 'unlock.scan':
           case 'power.disable':

@@ -263,6 +263,8 @@ namespace CMP90HXToolbox
                 req.AllowAutoRedirect = false;
                 req.UserAgent = "Mozilla/5.0 HX-Studio";
                 req.Timeout = 20000;
+                string proxyDesc;
+                req.Proxy = ResolveProxy(out proxyDesc);
 
                 using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
                 {
@@ -425,6 +427,8 @@ namespace CMP90HXToolbox
             // 原来的 60 秒表现就是「卡住不动」。
             req.ReadWriteTimeout = 15000;
             req.AllowAutoRedirect = true;
+            string proxyDesc;
+            req.Proxy = ResolveProxy(out proxyDesc);
             if (existing > 0) req.AddRange(existing);      // 断点续传
 
             using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
@@ -485,6 +489,52 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>判断文件是不是能打开的 zip（镜像可能返回 HTML 错误页或半截数据）。</summary>
+        /// <summary>
+        /// 取当前该用的代理。
+        /// system = 跟随系统（.NET 默认行为，读 IE/WinINET 设置）；
+        /// manual = 用户填的地址；direct = 完全不走代理。
+        /// 实测很关键：系统代理是 TUN 模式时 .NET 未必识别，需要手动指定。
+        /// </summary>
+        public static IWebProxy ResolveProxy(out string desc)
+        {
+            desc = "直连";
+            try
+            {
+                AppSettings.Load();
+                string mode = (AppSettings.ProxyMode ?? "system").Trim().ToLowerInvariant();
+
+                if (mode == "direct")
+                {
+                    desc = "直连(已禁用代理)";
+                    return null;
+                }
+                if (mode == "manual" && !string.IsNullOrEmpty(AppSettings.ProxyAddress))
+                {
+                    desc = "手动 " + AppSettings.ProxyAddress;
+                    return new WebProxy(AppSettings.ProxyAddress.Trim());
+                }
+
+                IWebProxy sys = WebRequest.DefaultWebProxy;
+                if (sys != null)
+                {
+                    try
+                    {
+                        Uri probe = new Uri("https://github.com");
+                        Uri via = sys.GetProxy(probe);
+                        if (via != null && via.Host != probe.Host)
+                        {
+                            desc = "系统 " + via.Host + ":" + via.Port;
+                            return sys;
+                        }
+                    }
+                    catch { }
+                }
+                desc = "系统(未检测到代理，将直连)";
+                return sys;
+            }
+            catch { return null; }
+        }
+
         /// <summary>下载进度回调：percent(0-100), 已读字节, 总字节。宿主用它向前端推事件。</summary>
         public static Action<int, long, long> OnProgress;
 

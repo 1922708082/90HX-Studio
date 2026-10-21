@@ -27,6 +27,10 @@ namespace CMP90HXToolbox
         public static string UpdateManifestUrl = "";
         /// <summary>全局加速前缀（作用于 GitHub 下载），留空则直连。</summary>
         public static string DownloadProxy = "";
+        /// <summary>代理模式：system=跟随系统 / manual=手动地址 / direct=不使用代理</summary>
+        public static string ProxyMode = "system";
+        /// <summary>手动代理地址，如 http://127.0.0.1:7890</summary>
+        public static string ProxyAddress = "";
 
         private static string Dir
         {
@@ -83,6 +87,8 @@ namespace CMP90HXToolbox
                         else if (string.Equals(k, "dlssBaseUrl", StringComparison.OrdinalIgnoreCase)) DlssBaseUrl = v;
                         else if (string.Equals(k, "updateManifestUrl", StringComparison.OrdinalIgnoreCase)) UpdateManifestUrl = v;
                         else if (string.Equals(k, "downloadProxy", StringComparison.OrdinalIgnoreCase)) DownloadProxy = v;
+                        else if (string.Equals(k, "proxyMode", StringComparison.OrdinalIgnoreCase)) ProxyMode = v;
+                        else if (string.Equals(k, "proxyAddress", StringComparison.OrdinalIgnoreCase)) ProxyAddress = v;
                     }
                 }
                 catch { }
@@ -108,6 +114,8 @@ namespace CMP90HXToolbox
                     sb.AppendLine("dlssBaseUrl=" + (DlssBaseUrl ?? ""));
                     sb.AppendLine("updateManifestUrl=" + (UpdateManifestUrl ?? ""));
                     sb.AppendLine("downloadProxy=" + (DownloadProxy ?? ""));
+                    sb.AppendLine("proxyMode=" + (ProxyMode ?? "system"));
+                    sb.AppendLine("proxyAddress=" + (ProxyAddress ?? ""));
                     File.WriteAllText(p, sb.ToString(), new UTF8Encoding(false));
                 }
                 catch { }

@@ -443,6 +443,8 @@
               const g = function (id) { return document.getElementById(id); };
               if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
               if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
+              if (g('cfgProxyMode')) g('cfgProxyMode').value = p.proxyMode || 'system';
+              if (g('cfgProxyAddress')) g('cfgProxyAddress').value = p.proxyAddress || '';
               const ph = document.getElementById('cfgDownloadProxy');
               if (ph && p.defaultProxy) ph.placeholder = p.defaultProxy;
             } catch (e) { }
@@ -1951,13 +1953,12 @@
             const g = function (id) { return document.getElementById(id); };
             sendCmd('settings.save', {
               downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value.trim() : '',
-              updateManifestUrl: g('cfgUpdateUrl') ? g('cfgUpdateUrl').value.trim() : ''
+              updateManifestUrl: g('cfgUpdateUrl') ? g('cfgUpdateUrl').value.trim() : '',
+              proxyMode: g('cfgProxyMode') ? g('cfgProxyMode').value : 'system',
+              proxyAddress: g('cfgProxyAddress') ? g('cfgProxyAddress').value.trim() : ''
             }, target);
             break;
           }
-          case 'dlss.import':
-            sendCmd('dlss.import', {}, target);
-            break;
           case 'device.refresh':
           case 'unlock.scan':
           case 'power.disable':
