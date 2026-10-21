@@ -875,7 +875,34 @@ namespace CMP90HXToolbox
                     {
                         bool ok = false;
                         try { ok = NativeCore.RemoveDlssG(gd, LogPower); }
-                        catch (Exception ex) { LogCrash("移除补丁失败", ex); }
+                        catch (Exception ex) { LogCrash("移除帧生成失败", ex); }
+
+                        // DLSS5（OptiScaler 那一套）没有内置移除函数，
+                        // 这里按已知文件名把它们改成 .hxbak 备份，避免硬删。
+                        try
+                        {
+                            string[] unlockFiles = new string[] {
+                                "dxgi.dll", "OptiScaler.ini", "nvngx.dll_dlssnr.dll",
+                                "renodx-dlss5.addon64", "nvngx_dlss.dll", "nvngx_dlssg.dll"
+                            };
+                            int moved = 0;
+                            for (int i = 0; i < unlockFiles.Length; i++)
+                            {
+                                string p = Path.Combine(gd, unlockFiles[i]);
+                                if (!File.Exists(p)) continue;
+                                try
+                                {
+                                    string bak = p + ".hxbak";
+                                    if (File.Exists(bak)) File.Delete(bak);
+                                    File.Move(p, bak);
+                                    moved++;
+                                    LogPower("已备份 DLSS5 文件: " + unlockFiles[i] + " → .hxbak", false);
+                                }
+                                catch (Exception ex2) { LogPower("备份 " + unlockFiles[i] + " 失败: " + ex2.Message, true); }
+                            }
+                            if (moved == 0) LogPower("未发现 DLSS5 文件（可能未部署过）", false);
+                        }
+                        catch (Exception ex3) { LogCrash("清理 DLSS5 文件失败", ex3); }
                         PostToPage(HardwareBridge.DlssStateEvt());
                         if (ok) ReplyOk(rid, action);
                         else ReplyFail(rid, action, "FILE_LOCKED", "移除未完成，详见日志");
