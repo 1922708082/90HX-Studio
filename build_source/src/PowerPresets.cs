@@ -6,24 +6,26 @@ namespace CMP90HXToolbox
     /// <summary>
     /// 三档功耗预设。
     ///
-    /// 说明：Windows 下 nvidia-smi 只能设功耗墙（-pl）与锁频区间（-lgc），
-    /// 没有真正的频率偏移（offset）超频接口（那需要 NVAPI 的 Pstates20 写入）。
-    /// 所以「满血狂暴」的自动超频 = 功耗墙抬到 320W + 解除锁频 + 把频率上限
-    /// 抬到本卡支持的最高值，让 Boost 自己跑满。这是本平台能做到的超频形态。
+    /// 实测结论（CMP 90HX / 驱动 616.92）：
+    ///   nvidia-smi -pl 任何值都返回 "Changing power management limit is not
+    ///   supported in current scope" —— 该卡 BIOS 把功耗墙锁死了，管理员也没用。
+    ///   可用的是：-lgc 锁频、-rgc 解锁、NVAPI P-State 上限。
     ///
-    /// 三档：
-    ///   sleep    严格限功耗到十几瓦 + 锁最低核心频率（P8），几乎不发热
-    ///   adaptive 功耗墙 250W；空闲超过 N 秒自动压到十几瓦，有负载立刻恢复
-    ///   turbo    功耗墙 320W + 解除锁频 + 频率上限放开到卡的最大值
+    /// 因此三档改为「以频率和 P-State 为主」，功耗墙只在驱动允许时才用，
+    /// 不允许就完全跳过，绝不因此报错。
+    ///
+    ///   sleep    锁 210MHz + 压 P8        → 实测十几瓦
+    ///   adaptive 解锁频率 + P-State 自动；空闲 N 秒锁 210/P8，有负载立刻解锁
+    ///   turbo    频率区间放开到 0~2100MHz + 解除 P-State 上限
     /// </summary>
     internal static class PowerPresets
     {
-        public const int SleepWatts = 0;          // 功耗墙直接压到 0W（本卡 min_limit = 0）
-        public const int SleepFallbackWatts = 12; // 若驱动拒绝 0W 则回退到 12W
-        public const int AdaptiveWatts = 250;
-        public const int TurboWatts = 320;
         public const int SleepCoreClock = 210;
         public const int TurboClockCeiling = 2100;
+        public const int AdaptiveWatts = 250;   // 仅用于展示，实际受硬件限制
+        public const int TurboWatts = 320;
+        public const int SleepWatts = 12;       // 展示用：锁 210MHz/P8 后的实测功耗区间
+        public const int SleepFallbackWatts = 12;
 
         private static string _current = "none";
         private static Timer _watch;
@@ -33,14 +35,18 @@ namespace CMP90HXToolbox
         private static string _lastSwitch = "";
         private static readonly object _gate = new object();
 
+        /// <summary>功耗墙是否可写。首次探测后缓存，避免每次都白试一遍。</summary>
+        private static bool? _powerLimitWritable;
+
         public static string LastError = "";
 
         public static string Current { get { lock (_gate) return _current; } }
         public static bool WatchdogRunning { get { lock (_gate) return _watch != null; } }
         public static bool Throttled { get { lock (_gate) return _throttled; } }
         public static string LastSwitch { get { lock (_gate) return _lastSwitch; } }
+        public static bool PowerLimitWritable { get { return ProbePowerLimit(); } }
 
-        /// <summary>应用某一档。返回 false 表示关键命令被驱动拒绝。</summary>
+        /// <summary>应用某一档。</summary>
         public static bool Apply(string preset, int idleSeconds, Action<string, bool> log)
         {
             if (string.IsNullOrEmpty(preset)) preset = "adaptive";
@@ -48,25 +54,26 @@ namespace CMP90HXToolbox
 
             StopWatchdog();
             bool ok = true;
+            LastError = "";
 
             if (preset == "sleep")
             {
-                // 功耗墙是硬指标；锁频在矿卡上常被驱动拒绝，只做尽力而为，不参与成败判定
-                ok = SetPowerLimitWithFallback(log);
+                ok = LockCore(SleepCoreClock, log);
                 TryPstate(8, log);
+                TryRelaxPowerLimit(log);
             }
             else if (preset == "turbo")
             {
                 TryPstate(0, log);
-                ok = SetPowerLimit(TurboWatts, log);
-                Smi("-lgc 0," + TurboClockCeiling, log, "频率上限放至 " + TurboClockCeiling + "MHz");
+                ok = Smi("-lgc 0," + TurboClockCeiling, log, "频率区间放开至 0~" + TurboClockCeiling + "MHz");
+                TryRaisePowerLimit(TurboWatts, log);
             }
             else
             {
                 preset = "adaptive";
                 TryPstate(0, log);
                 Smi("-rgc", log, "解除核心锁频");
-                ok = SetPowerLimit(AdaptiveWatts, log);
+                TryRelaxPowerLimit(log);
                 StartWatchdog(idleSeconds, log);
             }
 
@@ -80,79 +87,77 @@ namespace CMP90HXToolbox
             return ok;
         }
 
-        /// <summary>彻底解除所有限制，回到驱动默认功耗墙。</summary>
+        /// <summary>彻底解除所有限制。</summary>
         public static void StopAll(Action<string, bool> log)
         {
             StopWatchdog();
             TryPstate(0, log);
-            Smi("-rac", log, "重置应用时钟");
             Smi("-rgc", log, "解除核心锁频");
             Smi("-rmc", log, "恢复显存调度");
-            int def = 250;
-            try
-            {
-                NativeCore.GpuPowerRange r = NativeCore.QueryGpuPowerRange();
-                if (r != null && r.DefaultLimit > 0) def = (int)Math.Round(r.DefaultLimit);
-            }
-            catch { }
-            SetPowerLimit(def, log);
+            TryRelaxPowerLimit(log);
             lock (_gate)
             {
                 _current = "none";
                 _throttled = false;
                 _lastSwitch = DateTime.Now.ToString("HH:mm:ss");
             }
-            if (log != null) log("已关闭省电守护，恢复默认功耗墙 " + def + "W", false);
+            if (log != null) log("已关闭省电守护，频率与功耗恢复驱动默认", false);
+        }
+
+        /// <summary>
+        /// 探测功耗墙是否可写：拿当前值原样写一次，看驱动是否拒绝。
+        /// 只会执行一次，结果缓存。
+        /// </summary>
+        public static bool ProbePowerLimit()
+        {
+            if (_powerLimitWritable.HasValue) return _powerLimitWritable.Value;
+            try
+            {
+                string outp = NativeCore.RunNvidiaSmiCommand("-pl 250");
+                string t = outp == null ? "" : outp;
+                bool writable = t.IndexOf("not supported", StringComparison.OrdinalIgnoreCase) < 0
+                                && t.IndexOf("insufficient", StringComparison.OrdinalIgnoreCase) < 0
+                                && t.IndexOf("failed", StringComparison.OrdinalIgnoreCase) < 0;
+                _powerLimitWritable = writable;
+                return writable;
+            }
+            catch
+            {
+                _powerLimitWritable = false;
+                return false;
+            }
+        }
+
+        private static void TryRelaxPowerLimit(Action<string, bool> log)
+        {
+            if (!ProbePowerLimit())
+            {
+                if (log != null) log("本卡驱动不支持修改功耗墙，仅使用频率与 P-State 控制", false);
+                return;
+            }
+            SetPowerLimit(SleepFallbackWatts, log);
+        }
+
+        private static void TryRaisePowerLimit(int watts, Action<string, bool> log)
+        {
+            if (!ProbePowerLimit())
+            {
+                if (log != null) log("本卡驱动不支持修改功耗墙，靠放开频率区间来提速", false);
+                return;
+            }
+            SetPowerLimit(watts, log);
         }
 
         // ---------- 内部 ----------
 
-        /// <summary>
-        /// 依次尝试 0W → 12W → 15W。矿卡的 min_limit 常报 0 但实际拒绝 0，
-        /// 所以必须逐级回退，只要有一级设置成功就算达成。
-        /// </summary>
-        private static bool SetPowerLimitWithFallback(Action<string, bool> log)
+        private static bool LockCore(int mhz, Action<string, bool> log)
         {
-            if (SetPowerLimit(SleepWatts, log)) return true;
-            if (log != null) log("驱动拒绝 " + SleepWatts + "W，回退 " + SleepFallbackWatts + "W", true);
-            if (SetPowerLimit(SleepFallbackWatts, log)) return true;
-            if (log != null) log("驱动拒绝 " + SleepFallbackWatts + "W，回退 15W", true);
-            return SetPowerLimit(15, log);
-        }
-
-        private static void ApplySleepLimit(Action<string, bool> log)
-        {
-            SetPowerLimitWithFallback(log);
-            LockCore(SleepCoreClock, log);
-        }
-
-        /// <summary>
-        /// 把「Afterburner 百分比」换算成功率墙瓦数。
-        /// 语义对齐微星小飞机：100% = 出厂默认（本卡 250W），上限 320W（≈128%）。
-        /// </summary>
-        public static int WattsFromPercent(double percent)
-        {
-            int def = 250;
-            try
-            {
-                NativeCore.GpuPowerRange r = NativeCore.QueryGpuPowerRange();
-                if (r != null && r.DefaultLimit > 0) def = (int)Math.Round(r.DefaultLimit);
-            }
-            catch { }
-            int w = (int)Math.Round(def * percent / 100.0);
-            if (w < 0) w = 0;
-            if (w > TurboWatts) w = TurboWatts;
-            return w;
+            return Smi("-lgc " + mhz + "," + mhz, log, "核心锁频 " + mhz + "MHz");
         }
 
         private static bool SetPowerLimit(int watts, Action<string, bool> log)
         {
             return Smi("-pl " + watts, log, "功耗墙 " + watts + "W");
-        }
-
-        private static bool LockCore(int mhz, Action<string, bool> log)
-        {
-            return Smi("-lgc " + mhz + "," + mhz, log, "核心锁频 " + mhz + "MHz");
         }
 
         private static bool Smi(string args, Action<string, bool> log, string desc)
@@ -198,7 +203,7 @@ namespace CMP90HXToolbox
                 _lastBusy = DateTime.Now;
                 _watch = new Timer(WatchTick, log, 2000, 2000);
             }
-            if (log != null) log("省电守护已启动：空闲 " + _idleSeconds + " 秒压到 " + SleepWatts + "W，负载即恢复", false);
+            if (log != null) log("省电守护已启动：空闲 " + _idleSeconds + " 秒压到 210MHz/P8，有负载立即恢复", false);
         }
 
         private static void StopWatchdog()
@@ -228,18 +233,17 @@ namespace CMP90HXToolbox
 
                 if (shouldThrottle && !_throttled)
                 {
-                    ApplySleepLimit(log);
+                    LockCore(SleepCoreClock, log);
                     TryPstate(8, log);
                     lock (_gate) { _throttled = true; _lastSwitch = DateTime.Now.ToString("HH:mm:ss"); }
-                    if (log != null) log("空闲已压到 " + SleepWatts + "W", false);
+                    if (log != null) log("空闲已压到 " + SleepCoreClock + "MHz / P8", false);
                 }
                 else if (!shouldThrottle && _throttled)
                 {
                     TryPstate(0, log);
                     Smi("-rgc", log, "解除锁频");
-                    SetPowerLimit(AdaptiveWatts, log);
                     lock (_gate) { _throttled = false; _lastSwitch = DateTime.Now.ToString("HH:mm:ss"); }
-                    if (log != null) log("检测到负载，恢复 " + AdaptiveWatts + "W", false);
+                    if (log != null) log("检测到负载，频率已放开", false);
                 }
             }
             catch { }
