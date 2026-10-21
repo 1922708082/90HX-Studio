@@ -98,9 +98,17 @@ namespace CMP90HXToolbox
                 sb.Append("{\"label\":").Append(Quote(DownloadSources[i, 0]))
                   .Append(",\"prefix\":").Append(Quote(DownloadSources[i, 1])).Append('}');
             }
-            sb.Append("]}");
-            sb.Append("}}");
-            return sb.ToString();
+            sb.Append("]}}");
+
+            // 自检：拼错的 JSON 会被前端 JSON.parse 丢弃，界面毫无反应且难排查。
+            // 这里校验首尾与 sources 收尾，错了直接抛（上层会写日志）。
+            string json = sb.ToString();
+            if (json.Length < 4 || json[0] != '{' || json[json.Length - 1] != '}')
+                throw new InvalidOperationException("settings.state JSON 组装异常: " + json);
+            if (json.IndexOf("]}") < 0)
+                throw new InvalidOperationException("settings.state 缺少 sources 收尾: " + json);
+
+            return json;
         }
 
         /// <summary>更新状态。latest 为空表示尚未检查，只用当前版本填充。</summary>
