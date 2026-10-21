@@ -6913,6 +6913,8 @@
       let isPageHidden = document.visibilityState === 'hidden';
       let isWindowMinimized = false;
       let isPerfLow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      /* 用户手动点过「低功耗」就尊重其选择，自动恢复不再覆盖 */
+      let perfLowManual = false;
       if (isPerfLow) {
         document.body.classList.add('perf-low');
       }
@@ -8625,6 +8627,7 @@
 
       function togglePerfLowMode() {
         isPerfLow = !isPerfLow;
+        perfLowManual = true;   // 用户主动选择，禁止自动改回去
         document.body.classList.toggle('perf-low', isPerfLow);
         const btn = document.getElementById('btnTogglePerfLow');
         const lbl = document.getElementById('perfLowBtnLabel');
@@ -9277,26 +9280,58 @@
           }
         });
 
+        /* 帧率守卫：每 2 秒统计一次。
+           原实现有个严重缺陷：只要某一个 2 秒窗口平均帧耗时 >22ms，
+           就永久切到 perf-low 且**不会恢复**——启动瞬间、切页、装补丁时的
+           一次卡顿就足以把「自动旋转 + 鼠标跟随」永久关掉，表现出来就是
+           「显卡模型不转了、也不跟随鼠标了，位置还偏了」（perf-low 会压平变换）。
+           现在改成：连续 3 个窗口都差才降级；连续 3 个窗口都恢复到 45fps 以上
+           且是自动降级（非用户手动选择）时自动恢复。 */
         stage.addEventListener('mouseleave', () => {
           isHovering = false;
           const ratio = Math.max(-1, Math.min(1, curRY / 24));
           orbitPhase = Math.asin(ratio);
         });
 
+        let perfBad = 0;
+        let perfGood = 0;
+        let perfLowAuto = false;      // 只有「自动降级」才允许自动恢复
+        let perfWarmup = true;        // 首个窗口不计：页面刚挂载时必然偏慢
+
         function tick3d(now) {
           const rawDt = now - lastTs;
           const dt = Math.min(0.05, Math.max(0.001, rawDt / 1000));
           lastTs = now;
 
-          // 帧率守卫：每 2 秒统计一次，平均帧耗时 >22ms（约 <45fps）自动降级到 perf-low
           perfFrames++;
           perfAccumMs += rawDt;
           if (perfAccumMs > 2000) {
             const avgMs = perfAccumMs / Math.max(1, perfFrames);
-            if (avgMs > 22 && !isPerfLow) {
-              isPerfLow = true;
-              document.body.classList.add('perf-low');
-              try { showToast('检测到渲染压力较大，已自动切换到低功耗动效', 'info'); } catch (e) {}
+            if (perfWarmup) {
+              perfWarmup = false;
+              perfBad = 0;
+              perfGood = 0;
+            } else if (avgMs > 22) {
+              perfBad++;
+              perfGood = 0;
+              if (perfBad >= 3 && !isPerfLow) {
+                isPerfLow = true;
+                perfLowAuto = true;
+                document.body.classList.add('perf-low');
+                try { showToast('持续渲染压力较大，已临时切到低功耗动效', 'info'); } catch (e) {}
+              }
+            } else if (avgMs < 16) {
+              perfGood++;
+              perfBad = 0;
+              if (perfGood >= 3 && isPerfLow && !perfLowManual) {
+                isPerfLow = false;
+                perfLowAuto = false;
+                document.body.classList.remove('perf-low');
+                try { showToast('性能已恢复，动效自动还原', 'info'); } catch (e) {}
+              }
+            } else {
+              perfBad = 0;
+              perfGood = 0;
             }
             perfAccumMs = 0;
             perfFrames = 0;
