@@ -307,29 +307,36 @@ namespace CMP90HXToolbox
                 string tmp = dest + ".part";
                 if (File.Exists(tmp)) File.Delete(tmp);
 
-                // 镜像只是前缀，URL 本身必须是完整的 github 地址。
-                // 前缀取用户在「下载源设置」里配的全局值；留空则直连。
-                AppSettings.Load();
-                string proxy = AppSettings.DownloadProxy;
-                string[] candidates = string.IsNullOrEmpty(proxy)
-                    ? new string[] { url }
-                    : new string[] { proxy + url, url };
-                Exception lastEx = null;
-                for (int ci = 0; ci < candidates.Length; ci++)
+                // 候选源：用户自配前缀（若有）→ 内置几个公共加速 → 直连。
+                // 实测不同机器能通的镜像不一样（本机只有 ghproxy.net 与直连通），
+                // 所以必须逐个试并记录每个的失败原因，而不是写死一个。
+                string[] mirrors = BuildCandidates();
+                bool anyOk = false;
+                string lastErr = "";
+                for (int ci = 0; ci < mirrors.Length; ci++)
                 {
+                    string prefix = mirrors[ci];
+                    string label = string.IsNullOrEmpty(prefix) ? "直连" : prefix.Replace("https://", "").TrimEnd('/');
                     try
                     {
-                        DownloadOnce(candidates[ci], tmp, log);
-                        lastEx = null;
+                        if (log != null) log("尝试 " + label + " …", false);
+                        DownloadOnce(prefix + url, tmp, log);
+                        anyOk = true;
+                        if (log != null) log("下载成功（" + label + "）", false);
                         break;
                     }
                     catch (Exception ex)
                     {
-                        lastEx = ex;
-                        if (log != null) log("通道 " + (ci == 0 ? "镜像" : "直连") + " 失败: " + ex.Message, true);
+                        lastErr = ex.Message;
+                        if (log != null) log(label + " 失败: " + ex.Message, true);
+                        try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
                     }
                 }
-                if (lastEx != null) return false;
+                if (!anyOk)
+                {
+                    if (log != null) log("所有下载源均失败，最后一个错误: " + lastErr, true);
+                    return false;
+                }
                 if (!File.Exists(tmp) || new FileInfo(tmp).Length <= 0) return false;
 
                 if (File.Exists(dest)) File.Delete(dest);
@@ -341,6 +348,36 @@ namespace CMP90HXToolbox
                 if (log != null) log("下载失败: " + ex.Message, true);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 构造下载候选前缀列表。
+        /// 顺序：用户自配 → 内置公共加速 → 直连（空前缀）。
+        /// 内置列表按实测可用性排序，但每台机器网络环境不同，仍逐个尝试。
+        /// </summary>
+        private static string[] BuildCandidates()
+        {
+            System.Collections.Generic.List<string> list = new System.Collections.Generic.List<string>();
+
+            try
+            {
+                AppSettings.Load();
+                if (!string.IsNullOrEmpty(AppSettings.DownloadProxy))
+                    list.Add(AppSettings.DownloadProxy.TrimEnd('/') + "/");
+            }
+            catch { }
+
+            string[] builtin = new string[] {
+                "https://ghproxy.net/",
+                "https://ghfast.top/",
+                "https://gh-proxy.com/",
+                "https://hub.gitmirror.com/"
+            };
+            for (int i = 0; i < builtin.Length; i++)
+                if (!list.Contains(builtin[i])) list.Add(builtin[i]);
+
+            list.Add("");   // 直连垫底
+            return list.ToArray();
         }
 
         /// <summary>单通道下载到临时文件，流式读取以驱动进度。</summary>
