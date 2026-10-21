@@ -68,6 +68,28 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
+        /// <summary>更新状态。latest 为空表示尚未检查，只用当前版本填充。</summary>
+        public static string UpdateStateEvt(string current, string latest, bool hasUpdate)
+        {
+            if (string.IsNullOrEmpty(current)) current = CurrentVersion();
+            if (string.IsNullOrEmpty(latest)) latest = current;
+
+            StringBuilder sb = new StringBuilder(300);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"update.state\",\"payload\":{");
+            sb.Append("\"currentVersion\":").Append(Quote(current)).Append(",");
+            sb.Append("\"latestVersion\":").Append(Quote(latest)).Append(",");
+            sb.Append("\"hasUpdate\":").Append(Bool(hasUpdate)).Append(",");
+            sb.Append("\"verified\":false,\"releaseNotes\":\"\"");
+            sb.Append("}}");
+            return sb.ToString();
+        }
+
+        /// <summary>DLSS 资源包状态（本地数据目录实况）。</summary>
+        public static string DlssStateEvt()
+        {
+            return "{\"kind\":\"evt\",\"action\":\"dlss.state\",\"payload\":" + DlssPack.StateJson() + "}";
+        }
+
         /// <summary>双卡拓扑状态。用真实检测结果，不再占位。</summary>
         public static string DualStateEvt()
         {
@@ -141,12 +163,8 @@ namespace CMP90HXToolbox
             // 覆盖层状态改用 OverlayStateEvt()，解锁/还原后可单独重推
             outList.Add(OverlayStateEvt());
 
-            // DLSS：尚未扫描过游戏目录，给空列表（诚实空态，不编造）
-            sb.Append("{\"kind\":\"evt\",\"action\":\"dlss.state\",\"payload\":{");
-            sb.Append("\"games\":[],\"deployed\":[],\"preflightOk\":").Append(Bool(false));
-            sb.Append("}}");
-            outList.Add(sb.ToString());
-            sb = new StringBuilder(600);
+            // DLSS 状态改由 DlssStateEvt() 提供（含本地资源包实况）
+            outList.Add(DlssStateEvt());
 
             // 双卡拓扑改用 DualStateEvt()，扫描后可单独重推
             outList.Add(DualStateEvt());
@@ -155,13 +173,8 @@ namespace CMP90HXToolbox
             outList.Add(sb.ToString());
             sb = new StringBuilder(400);
 
-            // 更新状态：本机版本，无可用更新（未接更新源前如实报告）
-            sb.Append("{\"kind\":\"evt\",\"action\":\"update.state\",\"payload\":{");
-            sb.Append("\"currentVersion\":").Append(Quote(CurrentVersion())).Append(",");
-            sb.Append("\"latestVersion\":").Append(Quote(CurrentVersion())).Append(",");
-            sb.Append("\"hasUpdate\":false,\"verified\":false,\"releaseNotes\":\"\"");
-            sb.Append("}}");
-            outList.Add(sb.ToString());
+            // 更新状态：开机只报告当前版本，真正检查由 update.check 触发
+            outList.Add(UpdateStateEvt(CurrentVersion(), null, false));
 
             return outList.ToArray();
         }

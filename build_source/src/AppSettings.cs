@@ -21,6 +21,10 @@ namespace CMP90HXToolbox
         public static string Preset = "none";
         public static int IdleSeconds = 8;
         public static string Theme = "light";
+        /// <summary>DLSS 资源包下载基址（留空用官方 raw，可换国内镜像）。</summary>
+        public static string DlssBaseUrl = "";
+        /// <summary>更新清单地址（留空则只提示当前版本，不联网）。</summary>
+        public static string UpdateManifestUrl = "";
 
         private static string Dir
         {
@@ -74,6 +78,8 @@ namespace CMP90HXToolbox
                             if (int.TryParse(v, out n)) IdleSeconds = n < 1 ? 1 : n;
                         }
                         else if (string.Equals(k, "theme", StringComparison.OrdinalIgnoreCase)) Theme = v;
+                        else if (string.Equals(k, "dlssBaseUrl", StringComparison.OrdinalIgnoreCase)) DlssBaseUrl = v;
+                        else if (string.Equals(k, "updateManifestUrl", StringComparison.OrdinalIgnoreCase)) UpdateManifestUrl = v;
                     }
                 }
                 catch { }
@@ -96,6 +102,8 @@ namespace CMP90HXToolbox
                     sb.AppendLine("preset=" + (Preset ?? "none"));
                     sb.AppendLine("idleSeconds=" + IdleSeconds);
                     sb.AppendLine("theme=" + (Theme ?? "light"));
+                    sb.AppendLine("dlssBaseUrl=" + (DlssBaseUrl ?? ""));
+                    sb.AppendLine("updateManifestUrl=" + (UpdateManifestUrl ?? ""));
                     File.WriteAllText(p, sb.ToString(), new UTF8Encoding(false));
                 }
                 catch { }

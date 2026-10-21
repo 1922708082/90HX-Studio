@@ -451,7 +451,7 @@ namespace CMP90HXToolbox
                     if (string.IsNullOrEmpty(targetName)) targetName = "NVIDIA GeForce RTX 3080";
                     string rid = id;
                     string tgt = targetName;
-                    LogInfo("开始应用伪装 → " + tgt);
+                    LogInfo("应用伪装 → " + tgt);
                     Task.Run(new Action(delegate
                     {
                         bool ok = false;
@@ -476,7 +476,7 @@ namespace CMP90HXToolbox
                 else if (action == "spoof.restore")
                 {
                     string rid = id;
-                    LogInfo("开始还原出厂型号名…");
+                    LogInfo("还原型号名…");
                     Task.Run(new Action(delegate
                     {
                         bool ok = false;
@@ -639,11 +639,76 @@ namespace CMP90HXToolbox
                     LogInfo("已删除系统快照: " + snapId);
                     PostToPage(HardwareBridge.SnapshotsEvt());
                 }
+                else if (action == "update.check")
+                {
+                    string cur = HardwareBridge.CurrentVersion();
+                    AppSettings.Load();
+                    string url = AppSettings.UpdateManifestUrl;
+                    if (string.IsNullOrEmpty(url))
+                    {
+                        LogInfo("更新检查: v" + cur + "（未配置更新源）");
+                        ReplyDataJson(id, action, "{\"currentVersion\":" + HardwareBridge.Quote(cur) +
+                            ",\"latestVersion\":" + HardwareBridge.Quote(cur) +
+                            ",\"hasUpdate\":false,\"configured\":false}");
+                        return;
+                    }
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        string latest = UpdateChecker.FetchLatestVersion(url, LogPower);
+                        if (string.IsNullOrEmpty(latest))
+                        {
+                            ReplyFail(rid, action, "NETWORK", "无法获取更新信息");
+                            return;
+                        }
+                        bool hasNew = UpdateChecker.IsNewer(latest, cur);
+                        LogInfo("更新检查: 当前 v" + cur + " / 最新 v" + latest + (hasNew ? "（有更新）" : "（已最新）"));
+                        PostToPage(HardwareBridge.UpdateStateEvt(cur, latest, hasNew));
+                        ReplyDataJson(rid, action, "{\"currentVersion\":" + HardwareBridge.Quote(cur) +
+                            ",\"latestVersion\":" + HardwareBridge.Quote(latest) +
+                            ",\"hasUpdate\":" + (hasNew ? "true" : "false") +
+                            ",\"configured\":true}");
+                    }));
+                    return;
+                }
+                else if (action == "dlss.checkUpdate")
+                {
+                    LogInfo("检查 DLSS 资源…");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        System.Collections.Generic.List<string> report =
+                            DlssPack.CheckAndDownload(LogPower);
+                        for (int i = 0; i < report.Count; i++) LogInfo("  " + report[i]);
+                        PostToPage(HardwareBridge.DlssStateEvt());
+                        ReplyDataJson(rid, action, "{\"messages\":" + JsonArray(report) + "}");
+                    }));
+                    return;
+                }
+                else if (action == "dlss.deploy")
+                {
+                    string gameDir = ExtractPayloadString(json, "gameDir");
+                    if (string.IsNullOrEmpty(gameDir))
+                    {
+                        ReplyFail(id, action, "CHECKSUM_MISMATCH", "请先选择游戏目录");
+                        return;
+                    }
+                    LogInfo("部署 DLSS → " + gameDir);
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        System.Collections.Generic.List<string> report = DlssPack.Deploy(gameDir, LogPower);
+                        for (int i = 0; i < report.Count; i++) LogInfo("  " + report[i]);
+                        PostToPage(HardwareBridge.DlssStateEvt());
+                        ReplyDataJson(rid, action, "{\"messages\":" + JsonArray(report) + "}");
+                    }));
+                    return;
+                }
                 else if (action == "dual.scanGames")
                 {
                     string drive = ExtractPayloadString(json, "drive");
                     string scope = string.IsNullOrEmpty(drive) ? "全部磁盘 + Steam/Epic" : drive;
-                    LogInfo("开始扫描游戏目录（" + scope + "，只读）…");
+                    LogInfo("扫描游戏: " + scope);
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
@@ -655,7 +720,7 @@ namespace CMP90HXToolbox
                         for (int i = 0; i < games.Count && i < 60; i++)
                             LogInfo("  发现 " + games[i].Source + " 游戏: " + games[i].Name + " → " + games[i].Path);
 
-                        LogInfo("游戏扫描完成，共 " + games.Count + " 个（范围: " + scope + "）");
+                        LogInfo("扫描完成: " + games.Count + " 个");
                         PostToPage(HardwareBridge.DualStateEvt());
                         ReplyDataJson(rid, action, "{\"count\":" + games.Count + "}");
                     }));
@@ -663,7 +728,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "overlay.unlock")
                 {
-                    LogInfo("开始解锁 NVIDIA App 覆盖层…");
+                    LogInfo("解锁覆盖层…");
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
@@ -679,7 +744,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "overlay.restore")
                 {
-                    LogInfo("开始还原 NVIDIA App 覆盖层…");
+                    LogInfo("还原覆盖层…");
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
@@ -708,7 +773,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.scan")
                 {
-                    LogInfo("重新扫描引导与固件状态…");
+                    LogInfo("重扫引导状态…");
                     Task.Run(new Action(delegate
                     {
                         PostToPage(HardwareBridge.UnlockStateEvt());
@@ -866,6 +931,20 @@ namespace CMP90HXToolbox
             {
                 LogCrash("回复数据消息出错", ex);
             }
+        }
+
+        /// <summary>把字符串列表拼成 JSON 数组。</summary>
+        private static string JsonArray(System.Collections.Generic.List<string> items)
+        {
+            StringBuilder sb = new StringBuilder(256);
+            sb.Append('[');
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append(HardwareBridge.Quote(items[i]));
+            }
+            sb.Append(']');
+            return sb.ToString();
         }
 
         private string ShowSaveDialog(string defaultName)

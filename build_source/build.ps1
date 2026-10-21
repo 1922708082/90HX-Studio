@@ -82,6 +82,8 @@ $argsList = @(
     "D:\app\build_source\src\SpoofCatalog.cs",
     "D:\app\build_source\src\Diagnostics.cs",
     "D:\app\build_source\src\GameScanner.cs",
+    "D:\app\build_source\src\DlssPack.cs",
+    "D:\app\build_source\src\UpdateChecker.cs",
     "D:\app\build_source\src\NvmlFan.cs",
     "D:\app\build_source\src\PowerPresets.cs",
     "D:\app\build_source\src\HardwareBridge.cs",
