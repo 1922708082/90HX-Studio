@@ -2440,9 +2440,14 @@
             perfFrames = 0;
           }
 
-          // 高刷屏节流：低于 13ms（约 75fps 以上）的帧不重写 transform，
-          // 慢速环绕动画肉眼看不出差别，但合成开销减半
-          if (rawDt < 13) { requestAnimationFrame(tick3d); return; }
+          /* 原此处有一条「高刷节流」：rawDt < 13ms（≈77fps 以上）就直接 return，
+             不重写 transform。注释说「慢速环绕肉眼看不出差别」，但实际是致命的：
+             窗口小时渲染很轻，帧间隔稳定低于 13ms → 每一帧都被跳过 →
+             显卡永远不动、鼠标跟随也无效（跟随同样只在这里写 transform）。
+             全屏后渲染变重、帧间隔超过 13ms，反而正常——这正是
+             「放大就能转」的原因。
+             每帧写一次 transform 的开销可以忽略，正确性优先，直接去掉。
+          */
 
           if (!isPageHidden && !isWindowMinimized && !isPerfLow && !windowBlurred && state.currentPage === 'device') {
             let targetRY, targetRX, targetRZ, targetScale, targetLiftY;
