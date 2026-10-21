@@ -164,6 +164,8 @@ namespace CMP90HXToolbox
             try { list.Add(SpoofStateEvt()); } catch { }
             try { list.Add(PowerStateEvt()); } catch { }
             try { list.Add(UnlockStateEvt()); } catch { }
+            // 型号目录由 C# 单一持有，前端只负责渲染
+            try { list.Add(SpoofCatalog.ToJson()); } catch { }
             try
             {
                 string[] stubs = StubStates();

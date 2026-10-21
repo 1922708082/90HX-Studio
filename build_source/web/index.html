@@ -9666,6 +9666,24 @@
                 'NVIDIA A100-SXM4-80GB', 'NVIDIA A100X', 'NVIDIA A30',
                 'NVIDIA CMP 170HX', 'NVIDIACMP 170HX 8GB', 'NVIDIA HGX A100'
               ]
+            },
+            {
+              chip: 'AD102',
+              label: 'Ada（RTX 40 系 · 10 款）',
+              models: [
+                'NVIDIA GeForce RTX 4090', 'NVIDIA GeForce RTX 4080 SUPER', 'NVIDIA GeForce RTX 4080',
+                'NVIDIA GeForce RTX 4070 Ti SUPER', 'NVIDIA GeForce RTX 4070 Ti', 'NVIDIA GeForce RTX 4070 SUPER',
+                'NVIDIA GeForce RTX 4070', 'NVIDIA GeForce RTX 4060 Ti', 'NVIDIA GeForce RTX 4060 Ti 16GB',
+                'NVIDIA GeForce RTX 4060'
+              ]
+            },
+            {
+              chip: 'GB202',
+              label: 'Blackwell（RTX 50 系 · 6 款）',
+              models: [
+                'NVIDIA GeForce RTX 5090', 'NVIDIA GeForce RTX 5080', 'NVIDIA GeForce RTX 5070 Ti',
+                'NVIDIA GeForce RTX 5070', 'NVIDIA GeForce RTX 5060 Ti', 'NVIDIA GeForce RTX 5060'
+              ]
             }
           ],
           recommended: 'NVIDIA GeForce RTX 3080'
@@ -10116,16 +10134,18 @@
       /* 型号清单是静态能力表（6 大架构 76 款），不属于运行时数据。
          必须放在 MOCK 定义之后执行——首次渲染发生在 MOCK 赋值之前，
          那时引用它还是 undefined，下拉框就会一直停在「等待宿主注入」。 */
+      /* 型号目录由宿主通过 spoof.models 事件下发，前端只负责渲染。
+         这里的 MOCK 兜底**仅用于浏览器直接打开预览**（无宿主时），
+         程序内不会再走这条路，避免出现「前端一份、后端一份」的双份维护。 */
       try {
-        if (!state.spoofModels && typeof MOCK !== 'undefined' && MOCK && MOCK.spoofModels) {
+        if (!hasHost && !state.spoofModels && typeof MOCK !== 'undefined' && MOCK && MOCK.spoofModels) {
           state.spoofModels = MOCK.spoofModels;
+          if (!state.selectedSpoofTarget && state.spoofModels.recommended) {
+            state.selectedSpoofTarget = state.spoofModels.recommended;
+          }
+          renderSpoofModelsDropdown();
+          renderSpoofPage();
         }
-        // 注意：下拉框由 renderSpoofModelsDropdown() 构建，
-        // renderSpoofPage() 只渲染页面其它部分，调错了下拉框就会是空的。
-        if (state.spoofModels) {
-          try { renderSpoofModelsDropdown(); } catch (e2) { }
-        }
-        renderSpoofPage();
         // 诊断：把页面侧看到的真实情况回传宿主，写进日志
         var diagSel = document.getElementById('spoofModelSelect');
         sendCmd('app.diag', {
