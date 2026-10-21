@@ -69,6 +69,10 @@ namespace CMP90HXToolbox
             bool ok = true;
             LastError = "";
 
+            // 后台计划任务会独立锁频，和这里的守护抢控制权（实测：任务一跑，
+            // 有负载也不解锁）。任何一次手动切档都先把它清掉，只保留进程内守护。
+            KillBackgroundTask(log);
+
             if (preset == "sleep")
             {
                 // 顺序很重要：先平滑降核心频率，再把显存压到最低档，最后压 P-State 与功耗墙。
@@ -99,21 +103,6 @@ namespace CMP90HXToolbox
                 Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                 TryRestoreDefaultPowerLimit(log);
                 StartWatchdog(idleSeconds, log);
-                // 计划任务只装一次，用于程序退出后仍能接管省电；未注册时补一次
-                try
-                {
-                    if (!NativeCore.IsPowerSaverTaskInstalled())
-                    {
-                        if (log != null) log("检测到省电计划任务未注册，正在注册…", false);
-                        NativeCore.InstallPowerSaverTask(log);
-                        if (log != null)
-                            log(NativeCore.IsPowerSaverTaskInstalled() ? "省电计划任务注册成功" : "省电计划任务注册失败", false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (log != null) log("注册计划任务异常: " + ex.Message, true);
-                }
             }
 
             lock (_gate)
@@ -141,13 +130,35 @@ namespace CMP90HXToolbox
             return ok;
         }
 
+        /// <summary>
+        /// 停掉并移除后台省电计划任务。
+        /// 该任务会以独立进程锁频，和进程内守护冲突，必须清理掉。
+        /// </summary>
+        private static void KillBackgroundTask(Action<string, bool> log)
+        {
+            try
+            {
+                if (!NativeCore.IsPowerSaverTaskInstalled()) return;
+                if (log != null) log("检测到后台省电计划任务，正在停止并移除…", false);
+                NativeCore.UninstallPowerSaverTask(log);
+                if (log != null)
+                    log(NativeCore.IsPowerSaverTaskInstalled() ? "后台任务仍存在，请手动删除" : "后台省电任务已移除", false);
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log("移除后台任务异常: " + ex.Message, true);
+            }
+        }
+
         /// <summary>彻底解除所有限制。</summary>
         public static void StopAll(Action<string, bool> log)
         {
             StopWatchdog();
+            KillBackgroundTask(log);
             TryPstate(0, log);
             Smi("-rgc", log, "解除核心锁频");
             Smi("-rmc", log, "恢复显存调度");
+            Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
             TryRelaxPowerLimit(log);
             lock (_gate)
             {
@@ -297,11 +308,13 @@ namespace CMP90HXToolbox
         {
             lock (_gate)
             {
-                _idleSeconds = idleSeconds < 5 ? 5 : idleSeconds;
+                // 下限只留 1 秒，不再强制抬到 5 秒——用户设 1 就该是 1
+                _idleSeconds = idleSeconds < 1 ? 1 : idleSeconds;
                 _lastBusy = DateTime.Now;
-                _watch = new Timer(WatchTick, log, 2000, 2000);
+                // 轮询 1 秒，否则设 1~2 秒的阈值根本来不及触发
+                _watch = new Timer(WatchTick, log, 1000, 1000);
             }
-            if (log != null) log("省电守护已启动：空闲 " + _idleSeconds + " 秒压到 210MHz/P8，有负载立即恢复", false);
+            if (log != null) log("省电守护已启动：空闲 " + _idleSeconds + " 秒压到 210MHz/P8/显存405，有负载立即恢复", false);
         }
 
         private static void StopWatchdog()
