@@ -21,10 +21,6 @@
                   <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
                   <span>一键部署</span>
                 </button>
-                  <button class="btn btn-secondary" data-action="dlss.deployUnlocked" id="btnDlssDeployUnlocked" title="需要 dlss-unlocked 资源包（约 600MB）">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
-                    <span>部署 DLSS 解锁（独立）</span>
-                  </button>
               </div>
             </div>
 
@@ -39,24 +35,9 @@
                 <div style="font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;" id="dlssRuntimePathText">
                   --
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);" for="dlssMirrorSelect">镜像源:</label>
-                  <select class="select-input" id="dlssMirrorSelect" style="width:192px;"></select>
-                  <button class="btn btn-secondary" data-action="dlss.checkUpdate" id="btnDlssCheckUpdate">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="14" width="16" height="6" rx="2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 10l4 4 4-4M12 14V4"/></svg>
-                    <span>检查更新</span>
-                  </button>
-                </div>
-              </div>
-              <div class="progress-wrap" id="dlssProgressWrap">
-                <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;">
-                  <span id="dlssProgressStage">处理中...</span>
-                  <span id="dlssProgressPercent">0%</span>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" id="dlssProgressFill" style="width:0%;"></div>
-                </div>
-              </div>
+            </div>
+              <!-- 两个组件分开列，勾选决定部署哪些 -->
+              <div id="dlssComponentList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
             </div>
 
             <div class="two-col-grid">

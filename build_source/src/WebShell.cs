@@ -809,28 +809,6 @@ namespace CMP90HXToolbox
                                   ",\"failedCount\":" + failed + "}");
                     return;
                 }
-                else if (action == "dlss.deployUnlocked")
-                {
-                    // 与帧生成完全独立：这条用的是 dlss-unlocked 那个大包
-                    string gameDir2 = ExtractPayloadString(json, "gameDir");
-                    if (string.IsNullOrEmpty(gameDir2))
-                    {
-                        ReplyFail(id, action, "CHECKSUM_MISMATCH", "请先选择游戏目录");
-                        return;
-                    }
-                    LogInfo("部署 DLSS 解锁包 → " + gameDir2);
-                    string rid2 = id;
-                    Task.Run(new Action(delegate
-                    {
-                        bool ok2 = false;
-                        try { ok2 = NativeCore.DeployDlssUnlockedToGame(gameDir2, LogPower); }
-                        catch (Exception ex) { LogCrash("部署 DLSS 解锁包失败", ex); }
-                        PostToPage(HardwareBridge.DlssStateEvt());
-                        if (ok2) ReplyOk(rid2, action);
-                        else ReplyFail(rid2, action, "FILE_LOCKED", "部署失败，详见日志（需先有资源包）");
-                    }));
-                    return;
-                }
                 else if (action == "dlss.deploy")
                 {
                     string gameDir = ExtractPayloadString(json, "gameDir");
@@ -839,6 +817,15 @@ namespace CMP90HXToolbox
                         ReplyFail(id, action, "CHECKSUM_MISMATCH", "请先选择游戏目录");
                         return;
                     }
+                    // 勾选项决定部署哪些组件；缺省时只装内置帧生成
+                    bool doFrame = json.IndexOf("\"frame\":false") < 0;
+                    bool doUnlock = json.IndexOf("\"unlock\":true") >= 0;
+                    if (!doFrame && !doUnlock)
+                    {
+                        ReplyFail(id, action, "CHECKSUM_MISMATCH", "请至少勾选一个组件");
+                        return;
+                    }
+
                     string proxyName = ExtractPayloadString(json, "proxyName");
                     bool reFw = json.IndexOf("\"injectReFramework\":true") >= 0;
                     string opt = ExtractPayloadString(json, "optLevel");
@@ -846,15 +833,31 @@ namespace CMP90HXToolbox
                     string engine = ExtractPayloadString(json, "engine");
                     string preset = ExtractPayloadString(json, "preset");
                     string srMode = ExtractPayloadString(json, "srMode");
-                    LogInfo("部署 DLSS → " + gameDir);
+
+                    LogInfo("部署 → " + gameDir + "（" +
+                            (doFrame ? "帧生成" : "") + (doFrame && doUnlock ? "+" : "") +
+                            (doUnlock ? "DLSS解锁" : "") + "）");
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        bool ok = NativeCore.InjectDlssG(gameDir, opt, maxFrames, reFw,
-                                                          proxyName, engine, preset, srMode, LogPower);
+                        bool ok = true;
+                        if (doFrame)
+                        {
+                            bool f = false;
+                            try { f = NativeCore.InjectDlssG(gameDir, opt, maxFrames, reFw, proxyName, engine, preset, srMode, LogPower); }
+                            catch (Exception ex) { LogCrash("部署帧生成失败", ex); }
+                            if (!f) ok = false;
+                        }
+                        if (ok && doUnlock)
+                        {
+                            bool u = false;
+                            try { u = NativeCore.DeployDlssUnlockedToGame(gameDir, LogPower); }
+                            catch (Exception ex) { LogCrash("部署 DLSS 解锁失败", ex); }
+                            if (!u) ok = false;
+                        }
                         PostToPage(HardwareBridge.DlssStateEvt());
                         if (ok) ReplyOk(rid, action);
-                        else ReplyFail(rid, action, "FILE_LOCKED", "部署失败，详见日志");
+                        else ReplyFail(rid, action, "FILE_LOCKED", "部署未全部成功，详见日志");
                     }));
                     return;
                 }

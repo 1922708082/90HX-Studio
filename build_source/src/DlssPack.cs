@@ -251,6 +251,20 @@ namespace CMP90HXToolbox
             sb.Append(",\"localVersion\":").Append("\"").Append(tag).Append("\"");
             sb.Append(",\"latestVersion\":").Append("\"").Append(tag).Append("\"");
 
+            // 两个组件分开上报，界面据此渲染勾选项
+            sb.Append(",\"components\":[");
+            sb.Append("{\"key\":\"frame\",\"name\":\"DLSS 帧生成\",\"builtin\":true,\"ready\":")
+              .Append(runtimeOk ? "true" : "false")
+              .Append(",\"detail\":\"内置运行库（nvngx_dlssg / sm86_backend / fg_kernels）\"}");
+            sb.Append(",{\"key\":\"unlock\",\"name\":\"DLSS 解锁（超分/神经渲染）\",\"builtin\":false,\"ready\":")
+              .Append(downloaded ? "true" : "false")
+              .Append(",\"detail\":");
+            if (downloaded)
+                sb.Append("\"资源包 ").Append(tag).Append("\"");
+            else
+                sb.Append("\"未下载（约 600MB，可先用内置帧生成）\"");
+            sb.Append("}]");
+
             sb.Append(",\"mirrors\":").Append(HardwareBridge.DownloadSourcesJson());
             sb.Append('}');
             return sb.ToString();

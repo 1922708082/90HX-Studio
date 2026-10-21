@@ -402,11 +402,6 @@
             state.dlssError = null;
             renderDlssPage();
             break;
-          case 'dlss.deployUnlocked': {
-            const base2 = getDlssPreflightPayload();
-            sendCmd('dlss.deployUnlocked', { gameDir: base2.gameDir }, target);
-            break;
-          }
           case 'dlss.preflight':
             state.dlssPreflight = payload;
             renderDlssPreflightSection();
@@ -1128,6 +1123,29 @@
         if (rtPath) {
           rtPath.textContent = valOrUnknown(d.runtimePath);
         }
+        /* 组件勾选列表：由宿主 dlss.state.components 下发 */
+        try {
+          const listEl = document.getElementById('dlssComponentList');
+          if (listEl && Array.isArray(d.components)) {
+            const keepF = (document.getElementById('dlssCbFrame') || {}).checked;
+            const keepU = (document.getElementById('dlssCbUnlock') || {}).checked;
+            listEl.innerHTML = d.components.map(function (c) {
+              const id = c.key === 'frame' ? 'dlssCbFrame' : 'dlssCbUnlock';
+              const checked = c.key === 'frame'
+                ? (keepF === undefined ? true : keepF)
+                : (keepU === undefined ? false : keepU);
+              const tag = c.ready ? 'success' : 'warning';
+              const txt = c.ready ? '就绪' : (c.builtin ? '缺失' : '未下载');
+              return '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">' +
+                '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' />' +
+                '<span style="font-weight:700;">' + escapeHtml(c.name) + '</span>' +
+                '<span class="tag ' + tag + '">' + txt + '</span>' +
+                '<span style="color:var(--text-sub);font-size:11.5px;">' + escapeHtml(c.detail || '') + '</span>' +
+                '</label>';
+            }).join('');
+          }
+        } catch (e) { }
+
         if (mirrorSelect) {
           /* 下载源目录由宿主 dlss.state.mirrors 下发（单一数据源），
              value 直接用前缀，checkUpdate 原样回传给宿主。 */
@@ -2032,6 +2050,10 @@
                 srMode: (document.getElementById('dlssSrMode') || {}).value || 'quality'
               }
             };
+            const cbF = document.getElementById('dlssCbFrame');
+            const cbU = document.getElementById('dlssCbUnlock');
+            payload.frame = cbF ? cbF.checked : true;
+            payload.unlock = cbU ? cbU.checked : false;
             sendCmd('dlss.deploy', payload, target);
             break;
           }

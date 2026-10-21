@@ -6041,10 +6041,6 @@
                   <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
                   <span>一键部署</span>
                 </button>
-                  <button class="btn btn-secondary" data-action="dlss.deployUnlocked" id="btnDlssDeployUnlocked" title="需要 dlss-unlocked 资源包（约 600MB）">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
-                    <span>部署 DLSS 解锁（独立）</span>
-                  </button>
               </div>
             </div>
 
@@ -6059,24 +6055,9 @@
                 <div style="font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;" id="dlssRuntimePathText">
                   --
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);" for="dlssMirrorSelect">镜像源:</label>
-                  <select class="select-input" id="dlssMirrorSelect" style="width:192px;"></select>
-                  <button class="btn btn-secondary" data-action="dlss.checkUpdate" id="btnDlssCheckUpdate">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="14" width="16" height="6" rx="2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 10l4 4 4-4M12 14V4"/></svg>
-                    <span>检查更新</span>
-                  </button>
-                </div>
-              </div>
-              <div class="progress-wrap" id="dlssProgressWrap">
-                <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;">
-                  <span id="dlssProgressStage">处理中...</span>
-                  <span id="dlssProgressPercent">0%</span>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" id="dlssProgressFill" style="width:0%;"></div>
-                </div>
-              </div>
+            </div>
+              <!-- 两个组件分开列，勾选决定部署哪些 -->
+              <div id="dlssComponentList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
             </div>
 
             <div class="two-col-grid">
@@ -7304,11 +7285,6 @@
             state.dlssError = null;
             renderDlssPage();
             break;
-          case 'dlss.deployUnlocked': {
-            const base2 = getDlssPreflightPayload();
-            sendCmd('dlss.deployUnlocked', { gameDir: base2.gameDir }, target);
-            break;
-          }
           case 'dlss.preflight':
             state.dlssPreflight = payload;
             renderDlssPreflightSection();
@@ -8030,6 +8006,29 @@
         if (rtPath) {
           rtPath.textContent = valOrUnknown(d.runtimePath);
         }
+        /* 组件勾选列表：由宿主 dlss.state.components 下发 */
+        try {
+          const listEl = document.getElementById('dlssComponentList');
+          if (listEl && Array.isArray(d.components)) {
+            const keepF = (document.getElementById('dlssCbFrame') || {}).checked;
+            const keepU = (document.getElementById('dlssCbUnlock') || {}).checked;
+            listEl.innerHTML = d.components.map(function (c) {
+              const id = c.key === 'frame' ? 'dlssCbFrame' : 'dlssCbUnlock';
+              const checked = c.key === 'frame'
+                ? (keepF === undefined ? true : keepF)
+                : (keepU === undefined ? false : keepU);
+              const tag = c.ready ? 'success' : 'warning';
+              const txt = c.ready ? '就绪' : (c.builtin ? '缺失' : '未下载');
+              return '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">' +
+                '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' />' +
+                '<span style="font-weight:700;">' + escapeHtml(c.name) + '</span>' +
+                '<span class="tag ' + tag + '">' + txt + '</span>' +
+                '<span style="color:var(--text-sub);font-size:11.5px;">' + escapeHtml(c.detail || '') + '</span>' +
+                '</label>';
+            }).join('');
+          }
+        } catch (e) { }
+
         if (mirrorSelect) {
           /* 下载源目录由宿主 dlss.state.mirrors 下发（单一数据源），
              value 直接用前缀，checkUpdate 原样回传给宿主。 */
@@ -8934,6 +8933,10 @@
                 srMode: (document.getElementById('dlssSrMode') || {}).value || 'quality'
               }
             };
+            const cbF = document.getElementById('dlssCbFrame');
+            const cbU = document.getElementById('dlssCbUnlock');
+            payload.frame = cbF ? cbF.checked : true;
+            payload.unlock = cbU ? cbU.checked : false;
             sendCmd('dlss.deploy', payload, target);
             break;
           }
