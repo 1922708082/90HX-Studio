@@ -1075,11 +1075,15 @@
         0 0 30px rgba(244, 63, 94, 0.55),
         inset 0 2px 0 rgba(255, 255, 255, 0.32);
     }
-    /* 翻开后盖板停在原位（rotateX 120°），保留半透明可见，和 6.0 完全一致 */
+    /* 翻开后盖板停在原位（rotateX 120°），保留半透明可见。
+       注意：这里原来有 pointer-events: none，导致盖板一旦掀开就再也点不到，
+       用户想「再点一下关回去」完全没反应。现在保持可点，并给出手型光标。 */
     .safety-cover.open {
       transform: rotateX(120deg);
-      opacity: 0.22;
-      pointer-events: none;
+      opacity: 0.34;
+      pointer-events: auto;
+      cursor: pointer;
+      backface-visibility: visible;
     }
     .safety-cover.open::after {
       animation: none;

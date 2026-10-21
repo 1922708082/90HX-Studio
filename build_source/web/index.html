@@ -2055,11 +2055,15 @@
         0 0 30px rgba(244, 63, 94, 0.55),
         inset 0 2px 0 rgba(255, 255, 255, 0.32);
     }
-    /* 翻开后盖板停在原位（rotateX 120°），保留半透明可见，和 6.0 完全一致 */
+    /* 翻开后盖板停在原位（rotateX 120°），保留半透明可见。
+       注意：这里原来有 pointer-events: none，导致盖板一旦掀开就再也点不到，
+       用户想「再点一下关回去」完全没反应。现在保持可点，并给出手型光标。 */
     .safety-cover.open {
       transform: rotateX(120deg);
-      opacity: 0.22;
-      pointer-events: none;
+      opacity: 0.34;
+      pointer-events: auto;
+      cursor: pointer;
+      backface-visibility: visible;
     }
     .safety-cover.open::after {
       animation: none;
@@ -8962,6 +8966,10 @@
               cover.classList.toggle('open', state.safetyCoverOpen);
               const holder = cover.closest('.safety-cover-container');
               if (holder) holder.classList.toggle('armed', state.safetyCoverOpen);
+              // 文案跟着变：掀开后提示可以再点一次合上
+              const lbl = cover.querySelector('.safety-cover-label span');
+              if (lbl) lbl.textContent = state.safetyCoverOpen ? '合上保护盖' : '掀开保护盖';
+              cover.setAttribute('aria-label', state.safetyCoverOpen ? '合上保护盖' : '掀开保护盖');
             }
             showToast(state.safetyCoverOpen ? '机械安全盖已掀开，可执行引导操作' : '机械安全盖已闭合', 'warn');
             break;
@@ -9346,7 +9354,10 @@
              每帧写一次 transform 的开销可以忽略，正确性优先，直接去掉。
           */
 
-          if (!isPageHidden && !isWindowMinimized && !isPerfLow && !windowBlurred && state.currentPage === 'device') {
+          /* 不再因窗口失焦而暂停：用户点了别的窗口后模型会僵在原地，
+             看起来像卡死。浏览器在窗口不可见时会自行降低 rAF 频率，
+             不需要我们再拿 windowBlurred 去挡。 */
+          if (!isPageHidden && !isWindowMinimized && !isPerfLow && state.currentPage === 'device') {
             let targetRY, targetRX, targetRZ, targetScale, targetLiftY;
 
             if (isHovering) {

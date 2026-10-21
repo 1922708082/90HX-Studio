@@ -2065,6 +2065,10 @@
               cover.classList.toggle('open', state.safetyCoverOpen);
               const holder = cover.closest('.safety-cover-container');
               if (holder) holder.classList.toggle('armed', state.safetyCoverOpen);
+              // 文案跟着变：掀开后提示可以再点一次合上
+              const lbl = cover.querySelector('.safety-cover-label span');
+              if (lbl) lbl.textContent = state.safetyCoverOpen ? '合上保护盖' : '掀开保护盖';
+              cover.setAttribute('aria-label', state.safetyCoverOpen ? '合上保护盖' : '掀开保护盖');
             }
             showToast(state.safetyCoverOpen ? '机械安全盖已掀开，可执行引导操作' : '机械安全盖已闭合', 'warn');
             break;
