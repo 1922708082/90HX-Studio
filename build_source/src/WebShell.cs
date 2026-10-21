@@ -789,6 +789,57 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "dlss.import")
+                {
+                    LogInfo("导入本地资源包…");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        string src = null;
+                        Dispatcher.Invoke(new Action(delegate { src = ShowOpenZipDialog(); }));
+                        if (string.IsNullOrEmpty(src))
+                        {
+                            ReplyFail(rid, action, "CANCELLED", "已取消");
+                            return;
+                        }
+
+                        if (!DlssPack.IsValidZip(src))
+                        {
+                            ReplyFail(rid, action, "CHECKSUM_MISMATCH", "该文件不是有效的 zip 压缩包");
+                            return;
+                        }
+
+                        try
+                        {
+                            string dir = NativeCore.GetDlssUnlockedDirectory();
+                            Directory.CreateDirectory(dir);
+
+                            // 必须命名为 dlss-unlocked-standalone-*.zip，老逻辑按这个模式找包
+                            string tag = Path.GetFileNameWithoutExtension(src);
+                            if (tag.IndexOf("dlss-unlocked-standalone-", StringComparison.OrdinalIgnoreCase) < 0)
+                                tag = "local-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                            else
+                                tag = tag.Substring(tag.IndexOf("dlss-unlocked-standalone-",
+                                        StringComparison.OrdinalIgnoreCase) + 26);
+
+                            string dest = Path.Combine(dir, "dlss-unlocked-standalone-" + tag + ".zip");
+                            File.Copy(src, dest, true);
+                            LogInfo("已导入: " + Path.GetFileName(dest) +
+                                    "（" + (new FileInfo(dest).Length / 1048576) + " MB）");
+
+                            string v = NativeCore.ValidateDlssUnlockedPackage(LogPower);
+                            LogInfo("资源包: " + v);
+                            PostToPage(HardwareBridge.DlssStateEvt());
+                            ReplyDataJson(rid, action, "{\"file\":" + HardwareBridge.Quote(Path.GetFileName(dest)) + "}");
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("导入资源包失败", ex);
+                            ReplyFail(rid, action, "INTERNAL", "导入失败: " + ex.Message);
+                        }
+                    }));
+                    return;
+                }
                 else if (action == "dlss.preflight")
                 {
                     string gameDir = ExtractPayloadString(json, "gameDir");
@@ -1090,6 +1141,22 @@ namespace CMP90HXToolbox
             }
             sb.Append(']');
             return sb.ToString();
+        }
+
+        private string ShowOpenZipDialog()
+        {
+            try
+            {
+                using (System.Windows.Forms.OpenFileDialog dlg = new System.Windows.Forms.OpenFileDialog())
+                {
+                    dlg.Title = "选择 DLSS Unlocked 资源包";
+                    dlg.Filter = "压缩包 (*.zip)|*.zip|所有文件 (*.*)|*.*";
+                    dlg.CheckFileExists = true;
+                    if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return null;
+                    return dlg.FileName;
+                }
+            }
+            catch (Exception ex) { LogCrash("打开文件对话框失败", ex); return null; }
         }
 
         private string ShowSaveDialog(string defaultName)

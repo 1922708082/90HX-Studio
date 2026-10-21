@@ -1955,6 +1955,9 @@
             }, target);
             break;
           }
+          case 'dlss.import':
+            sendCmd('dlss.import', {}, target);
+            break;
           case 'device.refresh':
           case 'unlock.scan':
           case 'power.disable':
