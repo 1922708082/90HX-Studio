@@ -7323,7 +7323,6 @@
               const g = function (id) { return document.getElementById(id); };
               if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
               if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
-              fillDlssMirrorSelect(p.sources || null, p.downloadProxy || '');
               const ph = document.getElementById('cfgDownloadProxy');
               if (ph && p.defaultProxy) ph.placeholder = p.defaultProxy;
             } catch (e) { }
@@ -7977,32 +7976,6 @@
       }
 
       // 5. DLSS PAGE RENDERER
-      /* DLSS 页的下载源下拉。
-         源目录**由后端下发**（settings.state 的 sources），前端不再自带默认值——
-         否则会出现「刚打开显示我写的、后端一推又变回空白」的错位。 */
-      let hxDownloadSources = null;
-
-      function fillDlssMirrorSelect(sources, configuredPrefix) {
-        if (Array.isArray(sources)) hxDownloadSources = sources;
-        const sel = document.getElementById('dlssMirrorSelect');
-        if (!sel) return;
-        const keep = sel.value;
-        const list = hxDownloadSources || [];
-        if (list.length === 0) {
-          sel.innerHTML = '<option value="">等待宿主下发下载源…</option>';
-          return;
-        }
-        let html = list.map(function (m) {
-          const mark = (configuredPrefix && m.prefix === configuredPrefix) ? '（已配置）' : '';
-          return '<option value="' + escapeHtml(m.prefix) + '">' + escapeHtml(m.label + mark) + '</option>';
-        }).join('');
-        if (configuredPrefix && !list.some(function (m) { return m.prefix === configuredPrefix; })) {
-          html += '<option value="' + escapeHtml(configuredPrefix) + '">自定义：' + escapeHtml(configuredPrefix) + '</option>';
-        }
-        sel.innerHTML = html;
-        if (keep) sel.value = keep;
-      }
-
       function renderDlssPage() {
         renderStateBanner('dlssStateBanner', state.dlssStatus, state.dlssError, 'dlss.checkUpdate');
 
@@ -8023,12 +7996,19 @@
           rtPath.textContent = valOrUnknown(d.runtimePath);
         }
         if (mirrorSelect) {
+          /* 下载源目录由宿主 dlss.state.mirrors 下发（单一数据源），
+             value 直接用前缀，checkUpdate 原样回传给宿主。 */
           const mirrors = Array.isArray(d.mirrors) ? d.mirrors : [];
+          const prev = mirrorSelect.value;
           mirrorSelect.innerHTML = mirrors.length > 0
-            ? mirrors.map((m, idx) =>
-                '<option value="' + idx + '">' + escapeHtml(m.name) + ' (' + escapeHtml(m.latencyMs) + 'ms)</option>'
+            ? mirrors.map(m =>
+                '<option value="' + escapeHtml(m.prefix || '') + '">' + escapeHtml(m.name) + '</option>'
               ).join('')
-            : '<option value="0">默认镜像</option>';
+            : '<option value="">等待宿主下发下载源…</option>';
+          if (prev) mirrorSelect.value = prev;
+          // 自绘下拉：重建浮层并刷新触发器文字
+          const wrap = mirrorSelect.closest ? mirrorSelect.closest('.hx-select') : null;
+          if (wrap && wrap.__hxMenu) { try { buildHxSelectMenu(wrap); } catch (e) { } }
         }
         if (proxySelect) {
           const cands = Array.isArray(d.proxyCandidates) && d.proxyCandidates.length > 0
@@ -10253,7 +10233,6 @@
           renderSpoofPage();
         }
         // DLSS 下载源下拉：开机先填，宿主 settings.state 到达后再校正
-        try { fillDlssMirrorSelect(null, ''); } catch (e) { }
 
         // 诊断：把页面侧看到的真实情况回传宿主，写进日志
         var diagSel = document.getElementById('spoofModelSelect');
