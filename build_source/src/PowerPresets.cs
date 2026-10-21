@@ -72,10 +72,10 @@ namespace CMP90HXToolbox
             else if (preset == "turbo")
             {
                 TryPstate(0, log);
-                // 关键：必须用 -rgc 解除锁频。
-                // 之前用 -lgc 0,2100 把最小值写成 0，参数非法，驱动保留了旧的 210 锁，
-                // 结果功耗墙到了 320W 但频率仍卡在 210MHz。
-                ok = Smi("-rgc", log, "解除核心锁频");
+                // 实测：-rgc 清不掉锁频；-lgc 0,x 的最小值 0 非法会被忽略。
+                // 唯一被验证能生效的写法是显式给一个合法区间：下限=硬件地板 210，上限=2100。
+                ok = Smi("-lgc " + SleepCoreClock + "," + TurboClockCeiling, log,
+                         "频率区间设为 " + SleepCoreClock + "~" + TurboClockCeiling + "MHz");
                 TryRaisePowerLimit(TurboWatts, log);
             }
             else
@@ -95,6 +95,21 @@ namespace CMP90HXToolbox
                 _throttled = false;
             }
             if (log != null) log("已切换到预设：" + preset, false);
+
+            // 应用后回读一次真实频率，写进日志——不再靠猜
+            System.Threading.Tasks.Task.Run(new Action(delegate
+            {
+                try
+                {
+                    System.Threading.Thread.Sleep(1500);
+                    NativeCore.GpuSensorSnapshot s = NativeCore.QueryGpuSensors();
+                    if (s != null && log != null)
+                        log("回读：频率 " + s.GraphicsClockMHz + "MHz / " + s.PState +
+                            " / 功耗 " + s.PowerDraw.ToString("0.#") + "W", false);
+                }
+                catch { }
+            }));
+
             return ok;
         }
 
