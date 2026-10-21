@@ -76,7 +76,11 @@
 
         updateStatus: 'loading',
         updateError: null,
-        updateState: null
+        updateState: null,
+
+        /* settings.state 原样缓存：事件可能早于用户打开更新页到达，
+           切页时要用它重新填一次下载源下拉，不能只依赖一次性写入。 */
+        settingsState: null
       };
 
       const ERROR_CODE_LABELS = {
@@ -274,6 +278,10 @@
               sendCmd('dlss.preflight', getDlssPreflightPayload());
             }
           } else if (action === 'dlss.preflight' && Array.isArray(data.items)) {
+            /* 宿主只回 res、从不推同 action 的 evt，所以这里必须把结果
+               落到 state 并重渲染，否则「前置检查」区块永远是未执行。 */
+            state.dlssPreflight = data;
+            try { renderDlssPreflightSection(); } catch (e) { }
             /* 预检结果必须看得见：之前只写日志，用户点完毫无反应 */
             const box = document.getElementById('dlssStateBanner');
             if (box) {
@@ -357,6 +365,37 @@
         }
       }
 
+      /* 下载源下拉的**唯一**写入点（settings.state 到达、切到更新页都走这里）。
+         后端 settings.state.sources 的字段名是 label（只有 dlss.state.mirrors 用 name），
+         这里以前照抄了 mirrors 的 m.name，取到 undefined → option 文本全是空串，
+         现象就是「加速前缀下拉框打开是空的」。两个 key 都认，避免再错一次。
+         注意：前端不内置默认源列表（后端 HardwareBridge.DownloadSources 是唯一数据源），
+         所以没收到数据时只显示占位文案，不写死 6 个选项。 */
+      function applySettingsState() {
+        try {
+          const sel = document.getElementById('cfgDownloadProxy');
+          const p = state.settingsState;
+          if (!sel || !p) return;
+          const src = Array.isArray(p.sources) ? p.sources : [];
+          if (src.length === 0) {
+            if (!sel.options.length) sel.innerHTML = '<option value="">正在读取下载源…</option>';
+            return;
+          }
+          const sig = src.map(function (m) { return m ? (m.prefix || '') : ''; }).join('|');
+          // 选项集没变就不重建：否则每次切页都会把用户还没保存的选择冲回已保存值
+          if (sel.dataset.srcSig === sig) return;
+          sel.innerHTML = src.map(function (m) {
+            m = m || {};
+            return '<option value="' + escapeHtml(m.prefix || '') + '">' +
+                   escapeHtml(m.label || m.name || '') + '</option>';
+          }).join('');
+          sel.dataset.srcSig = sig;
+          const keep = p.downloadProxy || '';
+          sel.value = keep;
+          if (sel.value !== keep) sel.value = '';
+        } catch (e) { }
+      }
+
       function handleEvent(action, payload) {
         switch (action) {
           case 'device.snapshot':
@@ -437,12 +476,33 @@
             state.overlayError = null;
             renderOverlayPage();
             break;
-          case 'dual.state':
-            state.dualState = payload;
+          case 'dual.state': {
+            /* 后端发的是嵌套结构 render/display/virtual + boundGames 计数，
+               前端历史代码读的是扁平的 hasRenderGpu/renderGpuName…
+               这里做一次归一化，避免「显示卡/渲染卡永远未检测到」。
+               注意：字段以宿主为准，前端只做映射，不再另存一份数据。 */
+            const d0 = payload || {};
+            const r0 = d0.render || {};
+            const g0 = d0.display || {};
+            const v0 = d0.virtual || {};
+            d0.hasRenderGpu = !!r0.present;
+            d0.renderGpuName = r0.name || '';
+            d0.renderGpuPciId = r0.pciId || '';
+            d0.hasDisplayGpu = !!g0.present;
+            d0.displayGpuName = g0.name || '';
+            d0.displayGpuPciId = g0.pciId || '';
+            d0.hasVirtualGpu = !!v0.present;
+            d0.virtualGpuName = v0.name || '';
+            if (typeof d0.boundGames === 'number') d0.boundGamesCount = d0.boundGames;
+            if (!Array.isArray(d0.boundApps)) {
+              d0.boundApps = Array.isArray(d0.bindings) ? d0.bindings : [];
+            }
+            state.dualState = d0;
             state.dualStatus = 'ready';
             state.dualError = null;
             renderDualPage();
             break;
+          }
           case 'maintenance.snapshots':
             state.snapshots = Array.isArray(payload.items) ? payload.items : [];
             state.maintenanceStatus = state.snapshots.length > 0 ? 'ready' : 'empty';
@@ -463,22 +523,10 @@
             break;
           }
           case 'settings.state':
-            try {
-              const p = payload || {};
-              const g = function (id) { return document.getElementById(id); };
-              if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
-              const sel = g('cfgDownloadProxy');
-              if (sel && Array.isArray(p.sources)) {
-                const keep = p.downloadProxy || '';
-                sel.innerHTML = p.sources.map(function (m) {
-                  return '<option value="' + escapeHtml(m.prefix || '') + '">' + escapeHtml(m.name) + '</option>';
-                }).join('');
-                sel.value = keep;
-                if (sel.value !== keep) sel.value = '';
-              }
-              const ph = document.getElementById('cfgDownloadProxy');
-              if (ph && p.defaultProxy) ph.placeholder = p.defaultProxy;
-            } catch (e) { }
+            /* 只缓存 + 交给唯一写入点 applySettingsState()。
+               事件可能早于用户打开更新页，切页时还会再用缓存填一次。 */
+            state.settingsState = payload || {};
+            applySettingsState();
             break;
           case 'update.state':
             state.updateState = payload;
@@ -1277,7 +1325,7 @@
                 '</svg>' +
               '</div>' +
               '<div style="flex:1;">' +
-                '<div class="matrix-title">' + escapeHtml(item.label) + '</div>' +
+                '<div class="matrix-title">' + escapeHtml(item.name || item.label || '') + '</div>' +
                 '<div class="matrix-sub">' + escapeHtml(valOrUnknown(item.detail)) + '</div>' +
               '</div>' +
             '</div>';
@@ -1660,6 +1708,9 @@
         if (pageId === 'power' && typeof window.__ensurePowerAnimLoop === 'function') {
           window.__ensurePowerAnimLoop();
         }
+        /* 更新页的下载源下拉：用缓存的 settings.state 再兜一次，
+           覆盖「事件早到」「页面重渲染」两种情况，写入逻辑只有 applySettingsState 一处。 */
+        if (pageId === 'update') applySettingsState();
       }
 
       function applyThemeVisual(theme) {

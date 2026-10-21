@@ -140,7 +140,13 @@ namespace CMP90HXToolbox
             sb.Append("\"currentVersion\":").Append(Quote(current)).Append(",");
             sb.Append("\"latestVersion\":").Append(Quote(latest)).Append(",");
             sb.Append("\"hasUpdate\":").Append(Bool(hasUpdate)).Append(",");
-            sb.Append("\"verified\":false,\"releaseNotes\":\"\"");
+            // verified 不再写死 false：已有通过校验的包就点亮「应用更新」，
+            // 否则每次 device.refresh 重推状态都会把按钮打回禁用。
+            bool verifiedNow = false;
+            try { verifiedNow = UpdateInstaller.HasVerifiedPackage; } catch { }
+            sb.Append("\"verified\":").Append(Bool(verifiedNow)).Append(",");
+            sb.Append("\"assetName\":").Append(Quote(UpdateInstaller.VerifiedPackageName)).Append(",");
+            sb.Append("\"releaseNotes\":\"\"");
             sb.Append("}}");
             return sb.ToString();
         }
@@ -230,6 +236,10 @@ namespace CMP90HXToolbox
 
             sb.Append("\"patched\":").Append(Bool(patched)).Append(",");
             sb.Append("\"backupExists\":").Append(Bool(bakExists)).Append(",");
+            // 前端还要读这三个：不补就等于永远显示「未解锁 / —」
+            sb.Append("\"altRReady\":").Append(Bool(patched)).Append(",");
+            sb.Append("\"altZReady\":").Append(Bool(patched)).Append(",");
+            sb.Append("\"cefCacheSize\":\"").Append(patched ? "已清理" : "—").Append("\",");
             sb.Append("\"nvAppInstalled\":").Append(Bool(st.NvAppInstalled)).Append(",");
             sb.Append("\"nvAppPath\":").Append(Quote(st.NvAppPath));
             sb.Append("}}");

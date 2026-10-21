@@ -88,6 +88,7 @@ $argsList = @(
     "$srcRoot\src\GameScanner.cs",
     "$srcRoot\src\DlssPack.cs",
     "$srcRoot\src\UpdateChecker.cs",
+    "$srcRoot\src\UpdateInstaller.cs",
     "$srcRoot\src\NvmlFan.cs",
     "$srcRoot\src\PowerPresets.cs",
     "$srcRoot\src\HardwareBridge.cs",

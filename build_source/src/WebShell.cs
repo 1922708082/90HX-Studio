@@ -695,6 +695,102 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "update.download")
+                {
+                    string rid = id;
+                    LogInfo("开始下载更新包…");
+                    // 安装包动辄上百 MB，下载绝不能占 UI 线程——历史事故里同步执行直接闪退
+                    Task.Run(new Action(delegate
+                    {
+                        UpdateInstaller.UpdateResult r = null;
+                        try
+                        {
+                            r = UpdateInstaller.Download(LogPower, delegate (int pct, long read, long total)
+                            {
+                                // 进度按 prg 推给页面：percent=-1 表示无 Content-Length，显示不确定进度
+                                string detail = total > 0
+                                    ? (read / 1048576) + "/" + (total / 1048576) + " MB"
+                                    : (read / 1048576) + " MB";
+                                PostToPage("{\"kind\":\"prg\",\"id\":\"" + (rid == null ? "" : rid) +
+                                           "\",\"action\":\"update.download\",\"payload\":{\"percent\":" + pct +
+                                           ",\"readBytes\":" + read + ",\"totalBytes\":" + total +
+                                           ",\"stage\":\"正在下载更新包\",\"detail\":" +
+                                           HardwareBridge.Quote(detail) + "}}");
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("下载更新包异常", ex);
+                            ReplyFail(rid, action, "INTERNAL", "下载更新包异常：" + ex.Message);
+                            return;
+                        }
+
+                        if (r == null || !r.Ok)
+                        {
+                            LogInfo("更新包下载失败: " + (r == null ? "未返回结果" : r.Message));
+                            ReplyFail(rid, action, r == null ? "INTERNAL" : r.Code,
+                                      r == null ? "下载更新包未返回结果" : r.Message);
+                            return;
+                        }
+
+                        // 应用按钮受前端 verified 严格门禁：不推这条 evt，按钮会一直是灰的
+                        string cur = HardwareBridge.CurrentVersion();
+                        PostToPage("{\"kind\":\"evt\",\"action\":\"update.state\",\"payload\":{" +
+                                   "\"currentVersion\":" + HardwareBridge.Quote(cur) +
+                                   ",\"latestVersion\":" + HardwareBridge.Quote(r.Version) +
+                                   ",\"hasUpdate\":" + (UpdateChecker.IsNewer(r.Version, cur) ? "true" : "false") +
+                                   ",\"verified\":true" +
+                                   ",\"assetName\":" + HardwareBridge.Quote(r.AssetName) +
+                                   ",\"sha256\":" + HardwareBridge.Quote(r.Sha256) +
+                                   ",\"releaseNotes\":\"\"}}");
+                        ReplyDataJson(rid, action, "{\"version\":" + HardwareBridge.Quote(r.Version) +
+                                      ",\"package\":" + HardwareBridge.Quote(r.PackagePath) +
+                                      ",\"sha256\":" + HardwareBridge.Quote(r.Sha256) + "}");
+                        LogInfo("更新包就绪: " + r.PackagePath);
+                    }));
+                    return;
+                }
+                else if (action == "update.apply")
+                {
+                    string rid = id;
+                    LogInfo("准备应用更新…");
+                    // 备份 exe、写脚本、起 cmd 都不能占 UI 线程
+                    Task.Run(new Action(delegate
+                    {
+                        UpdateInstaller.UpdateResult r = null;
+                        try { r = UpdateInstaller.Apply(LogPower); }
+                        catch (Exception ex)
+                        {
+                            LogCrash("应用更新异常", ex);
+                            ReplyFail(rid, action, "INTERNAL", "应用更新异常：" + ex.Message);
+                            return;
+                        }
+
+                        if (r == null || !r.Ok)
+                        {
+                            LogInfo("应用更新失败: " + (r == null ? "未返回结果" : r.Message));
+                            ReplyFail(rid, action, r == null ? "INTERNAL" : r.Code,
+                                      r == null ? "应用更新未返回结果" : r.Message);
+                            return;
+                        }
+
+                        ReplyDataJson(rid, action, "{\"restarting\":true,\"version\":" +
+                                      HardwareBridge.Quote(r.Version) + "}");
+                        // 回执要先让前端把 loading 放掉再退出；
+                        // 立刻 Shutdown 会把这条消息掐死在 WebView2 的发送队列里。
+                        try { System.Threading.Thread.Sleep(800); } catch { }
+                        try
+                        {
+                            Dispatcher.BeginInvoke(new Action(delegate
+                            {
+                                try { Application.Current.Shutdown(); }
+                                catch (Exception ex) { LogCrash("退出主程序失败", ex); }
+                            }));
+                        }
+                        catch (Exception ex) { LogCrash("调度退出失败", ex); }
+                    }));
+                    return;
+                }
                 else if (action == "unlock.install")
                 {
                     // channel: A=UEFI 直启(Mode1) / B=UEFI Shell 链启(Mode2)
