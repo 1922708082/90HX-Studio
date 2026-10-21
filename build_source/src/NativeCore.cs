@@ -1518,6 +1518,44 @@ namespace CMP90HXToolbox
         /// </summary>
         public static bool BcdReadAllowed = false;
 
+        /// <summary>上次读 BCD 时得到的 PCIe 解锁状态（跨进程保留，避免开机又要调 bcdedit）。</summary>
+        private static string LastPcieStateFile
+        {
+            get
+            {
+                string dir = Path.Combine(GetDataDirectory(), "state");
+                try { Directory.CreateDirectory(dir); } catch { }
+                return Path.Combine(dir, "pcie-unlocked.txt");
+            }
+        }
+
+        /// <summary>读取上次记录 PCIe 解锁状态；文件不存在或异常时返回 false。</summary>
+        public static bool ReadLastPcieUnlocked()
+        {
+            try
+            {
+                string f = LastPcieStateFile;
+                if (!File.Exists(f)) return false;
+                return File.ReadAllText(f).Trim() == "1";
+            }
+            catch { return false; }
+        }
+
+        /// <summary>当前是否已解锁 PCIe：BCD 命中优先，否则用上次记录兜底。</summary>
+        public static bool IsPcieUnlockedNow()
+        {
+            try
+            {
+                string bm, fw;
+                ReadBcdCached(out bm, out fw);
+                if (fw.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    bm.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+                return ReadLastPcieUnlocked();
+            }
+            catch { return false; }
+        }
+
         private static string _bcdCacheBootMgr;
         private static string _bcdCacheFw;
         private static DateTime _bcdCacheAt = DateTime.MinValue;
@@ -1536,6 +1574,15 @@ namespace CMP90HXToolbox
                 _bcdCacheBootMgr = bootMgr;
                 _bcdCacheFw = fw;
                 _bcdCacheAt = DateTime.UtcNow;
+                // 落盘：开机不读 BCD，但 PCIe 解锁状态要能显示出来，
+                // 否则「已经解锁了却显示否」（isPcie 原本只能从 BCD 判断）。
+                try
+                {
+                    bool unlocked = fw.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0
+                                 || bootMgr.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0;
+                    File.WriteAllText(LastPcieStateFile, unlocked ? "1" : "0");
+                }
+                catch { }
             }
             catch { }
         }
@@ -7688,7 +7735,8 @@ namespace CMP90HXToolbox
                                     bool isCompute = (computeThrot == 1) || (pwrMizer == 1);
 
                                     var pcieCheck = RunCmd("bcdedit", "/enum {bootmgr}");
-                                    bool isPcie = pcieCheck.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0;
+                                    bool isPcie = pcieCheck.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0
+                                                  || IsPcieUnlockedNow();
 
                                     var item = new InstalledMiningGpu
                                     {

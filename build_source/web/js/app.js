@@ -2041,6 +2041,10 @@
             sendCmd('theme.set', { theme: t });
             break;
           }
+          case 'nav.sealed':
+            // 封条入口：不进页面，只提示
+            showToast('DLSS 5 / 帧生成 功能还没做好，敬请期待', 'warn');
+            break;
           case 'ui.togglePerfLow':
             togglePerfLowMode();
             break;

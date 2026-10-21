@@ -1973,3 +1973,58 @@
   opacity: 1;
   transform: none;
 }
+
+    /* =========================================================================
+       导航「封条」：功能未完成时盖住入口，但文字仍要能看清
+       ========================================================================= */
+    .nav-item.nav-sealed {
+      position: relative;
+      overflow: hidden;
+      cursor: not-allowed;
+    }
+    /* 斜纹封条：半透明，压住但不遮住文字 */
+    .nav-item.nav-sealed::after {
+      content: "";
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      top: 50%;
+      height: 13px;
+      transform: translateY(-50%) rotate(-6deg);
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(239, 68, 68, 0.34) 0 6px,
+        rgba(239, 68, 68, 0.16) 6px 12px
+      );
+      border-top: 1px solid rgba(239, 68, 68, 0.45);
+      border-bottom: 1px solid rgba(239, 68, 68, 0.45);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .nav-item.nav-sealed .seal-ribbon {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%) rotate(-6deg);
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fff;
+      background: #e5484d;
+      padding: 1px 6px;
+      border-radius: 3px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      z-index: 2;
+    }
+    /* 文字浮在封条之上，保证可读 */
+    .nav-item.nav-sealed > span:not(.seal-ribbon) {
+      position: relative;
+      z-index: 2;
+      opacity: 0.85;
+    }
+    .nav-item.nav-sealed > svg {
+      position: relative;
+      z-index: 2;
+      opacity: 0.55;
+    }
