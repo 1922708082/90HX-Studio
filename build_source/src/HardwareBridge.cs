@@ -183,12 +183,33 @@ namespace CMP90HXToolbox
         /// <summary>伪装页状态：与显卡列表同源，外加当前伪装目标。</summary>
         public static string SpoofStateEvt()
         {
-            string gpuList = GpuListEvt();
-            int a = gpuList.IndexOf("\"gpus\":[", StringComparison.Ordinal);
-            string arr = (a >= 0) ? gpuList.Substring(a + 8) : "[]}}";
-            // arr 形如 [ ... ]}} ，截到匹配的 ]}}
-            arr = arr.Substring(0, arr.Length - 2);
-            return "{\"kind\":\"evt\",\"action\":\"spoof.state\",\"payload\":{\"gpus\":" + arr + "}}";
+            // 直接自建数组，不再从 GpuListEvt 的 JSON 里切字符串
+            // （切错一位整条事件就废，页面会一直停在「等待同步」）
+            StringBuilder sb = new StringBuilder(500);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"spoof.state\",\"payload\":{\"gpus\":[");
+            try
+            {
+                System.Collections.Generic.List<NativeCore.InstalledMiningGpu> gpus =
+                    NativeCore.DetectAllMiningGpus();
+                if (gpus != null)
+                {
+                    for (int i = 0; i < gpus.Count; i++)
+                    {
+                        NativeCore.InstalledMiningGpu g = gpus[i];
+                        if (i > 0) sb.Append(',');
+                        sb.Append("{\"slot\":").Append(g.SlotIndex).Append(',');
+                        sb.Append("\"detectedModel\":\"").Append(Esc(g.DetectedModel)).Append("\",");
+                        sb.Append("\"chip\":\"").Append(Esc(g.ChipArchitecture)).Append("\",");
+                        sb.Append("\"vram\":\"").Append(Esc(g.VramCapacity)).Append("\",");
+                        sb.Append("\"currentDesc\":\"").Append(Esc(g.CurrentDesc)).Append("\",");
+                        sb.Append("\"targetName\":\"").Append(Esc(g.TargetGeForceName)).Append("\",");
+                        sb.Append("\"isSpoofed\":").Append(Bool(g.IsSpoofed)).Append("}");
+                    }
+                }
+            }
+            catch { }
+            sb.Append("]}}");
+            return sb.ToString();
         }
 
         /// <summary>节能页状态：守护进程 / 任务 / 功耗墙，全部取实测值。</summary>

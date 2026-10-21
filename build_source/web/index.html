@@ -10112,6 +10112,16 @@
         window.addEventListener('blur', hideTip);
         document.addEventListener('click', hideTip);
       })();
+
+      /* 型号清单是静态能力表（6 大架构 76 款），不属于运行时数据。
+         必须放在 MOCK 定义之后执行——首次渲染发生在 MOCK 赋值之前，
+         那时引用它还是 undefined，下拉框就会一直停在「等待宿主注入」。 */
+      try {
+        if (!state.spoofModels && typeof MOCK !== 'undefined' && MOCK && MOCK.spoofModels) {
+          state.spoofModels = MOCK.spoofModels;
+          renderSpoofPage();
+        }
+      } catch (e) { }
     })();
   
 
