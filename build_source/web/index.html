@@ -7840,6 +7840,14 @@
         const p = state.powerState;
         if (!p) return;
 
+        /* 把当前档位写到 body，供显卡 3D 风扇等纯 CSS 效果读取：
+           body[data-power-preset="sleep|adaptive|turbo"]
+           特效只读这个标记调速，不在 JS 里写死转速。 */
+        try {
+          const preset = (p.preset === 'sleep' || p.preset === 'turbo') ? p.preset : 'adaptive';
+          document.body.dataset.powerPreset = preset;
+        } catch (e) { }
+
         const daemonTag = document.getElementById('powerDaemonStatusTag');
         const taskTag = document.getElementById('powerTaskStatusTag');
         const lastTrig = document.getElementById('powerLastTriggerTag');
