@@ -273,6 +273,31 @@
             if (state.lastBrowseTargetId === 'dlssGameDirInput') {
               sendCmd('dlss.preflight', getDlssPreflightPayload());
             }
+          } else if (action === 'dlss.preflight' && Array.isArray(data.items)) {
+            /* 预检结果必须看得见：之前只写日志，用户点完毫无反应 */
+            const box = document.getElementById('dlssStateBanner');
+            if (box) {
+              const rows = data.items.map(function (it) {
+                const cls = it.ok ? 'success' : (it.blocking ? 'danger' : 'warning');
+                const ico = it.ok ? '✓' : '✕';
+                return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-top:1px solid var(--divider-line);">' +
+                  '<span class="tag ' + cls + '" style="flex:0 0 auto;min-width:22px;text-align:center;">' + ico + '</span>' +
+                  '<span style="font-size:12.5px;font-weight:700;min-width:72px;flex:0 0 auto;">' + escapeHtml(it.name) + '</span>' +
+                  '<span style="font-size:12px;color:var(--text-sub);flex:1;word-break:break-all;">' + escapeHtml(it.detail || '') + '</span>' +
+                  '</div>';
+              }).join('');
+              box.innerHTML =
+                '<div class="card" style="margin-bottom:12px;border-left:3px solid ' +
+                  (data.passed ? 'var(--success)' : 'var(--danger)') + ';">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                    '<span style="font-size:13px;font-weight:700;">前置检查 · ' +
+                      (data.passed ? '全部通过' : (data.failedCount + ' 项未通过')) + '</span>' +
+                    '<button class="btn btn-secondary" data-action="dlss.preflight" style="padding:2px 10px;font-size:12px;">重新检查</button>' +
+                  '</div>' + rows +
+                '</div>';
+            }
+            showToast(data.passed ? '前置检查全部通过' : ('有 ' + data.failedCount + ' 项未通过'),
+                      data.passed ? 'success' : 'error');
           } else if (action === 'logs.query' && Array.isArray(data.items)) {
             state.logsList = data.items.concat(state.logsList);
             state.logsStatus = 'ready';
