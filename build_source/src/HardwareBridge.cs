@@ -68,6 +68,24 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
+        /// <summary>覆盖层状态（NVIDIA App 补丁）。单独成方法，解锁/还原后可直接重推。</summary>
+        public static string OverlayStateEvt()
+        {
+            SystemStatus st = null;
+            try { st = SystemDetector.DetectAll(); }
+            catch { }
+            if (st == null) st = new SystemStatus();
+
+            StringBuilder sb = new StringBuilder(400);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"overlay.state\",\"payload\":{");
+            sb.Append("\"patched\":").Append(Bool(st.OverlayPatched)).Append(",");
+            sb.Append("\"backupExists\":").Append(Bool(st.OverlayBakExists)).Append(",");
+            sb.Append("\"nvAppInstalled\":").Append(Bool(st.NvAppInstalled)).Append(",");
+            sb.Append("\"nvAppPath\":").Append(Quote(st.NvAppPath));
+            sb.Append("}}");
+            return sb.ToString();
+        }
+
         /// <summary>其余页面：先推可用的真实字段，缺失的留空让页面走空态，
         /// 避免整页停在「等待宿主同步数据」。</summary>
         public static string[] StubStates()
@@ -80,15 +98,8 @@ namespace CMP90HXToolbox
             System.Collections.Generic.List<string> outList = new System.Collections.Generic.List<string>();
             StringBuilder sb = new StringBuilder(1200);
 
-            // 覆盖层（NVIDIA App 覆盖补丁状态）
-            sb.Append("{\"kind\":\"evt\",\"action\":\"overlay.state\",\"payload\":{");
-            sb.Append("\"patched\":").Append(Bool(st.OverlayPatched)).Append(",");
-            sb.Append("\"backupExists\":").Append(Bool(st.OverlayBakExists)).Append(",");
-            sb.Append("\"nvAppInstalled\":").Append(Bool(st.NvAppInstalled)).Append(",");
-            sb.Append("\"nvAppPath\":").Append(Quote(st.NvAppPath));
-            sb.Append("}}");
-            outList.Add(sb.ToString());
-            sb = new StringBuilder(600);
+            // 覆盖层状态改用 OverlayStateEvt()，解锁/还原后可单独重推
+            outList.Add(OverlayStateEvt());
 
             // DLSS：尚未扫描过游戏目录，给空列表（诚实空态，不编造）
             sb.Append("{\"kind\":\"evt\",\"action\":\"dlss.state\",\"payload\":{");

@@ -639,6 +639,51 @@ namespace CMP90HXToolbox
                     LogInfo("已删除系统快照: " + snapId);
                     PostToPage(HardwareBridge.SnapshotsEvt());
                 }
+                else if (action == "overlay.unlock")
+                {
+                    LogInfo("开始解锁 NVIDIA App 覆盖层…");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = false;
+                        try { ok = NativeCore.UnlockNvAppOverlayAsync(LogPower).Result; }
+                        catch (Exception ex) { LogCrash("解锁覆盖层失败", ex); }
+
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "NOT_SUPPORTED", "覆盖层解锁失败，详见日志（可能未安装 NVIDIA App）");
+                        PostToPage(HardwareBridge.OverlayStateEvt()); // overlay.state
+                    }));
+                    return;
+                }
+                else if (action == "overlay.restore")
+                {
+                    LogInfo("开始还原 NVIDIA App 覆盖层…");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = false;
+                        try { ok = NativeCore.RestoreNvAppOverlayAsync(LogPower).Result; }
+                        catch (Exception ex) { LogCrash("还原覆盖层失败", ex); }
+
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "FILE_LOCKED", "还原失败，NVIDIA App 可能正在运行");
+                        PostToPage(HardwareBridge.OverlayStateEvt());
+                    }));
+                    return;
+                }
+                else if (action == "overlay.cleanCache")
+                {
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        long freed = 0;
+                        int count = 0;
+                        string detail = Diagnostics.CleanGpuCache(out freed, out count);
+                        LogInfo("已清理 GPU 缓存: " + count + " 个文件 / " + (freed / 1024.0 / 1024.0).ToString("0.0") + " MB （" + detail + "）");
+                        ReplyDataJson(rid, action, "{\"freedBytes\":" + freed + ",\"fileCount\":" + count + "}");
+                    }));
+                    return;
+                }
                 else if (action == "unlock.scan")
                 {
                     LogInfo("重新扫描引导与固件状态…");

@@ -123,6 +123,59 @@ namespace CMP90HXToolbox
             catch { return false; }
         }
 
+        // ---------- 着色器 / 覆盖层缓存 ----------
+
+        /// <summary>
+        /// 清理 NVIDIA 着色器缓存目录。
+        /// 只处理三个已知缓存路径，**不递归删除父目录**，也不碰用户文档等位置。
+        /// 缓存删掉会自动重建，最多让游戏首次加载稍慢一点。
+        /// </summary>
+        public static string CleanGpuCache(out long freedBytes, out int fileCount)
+        {
+            freedBytes = 0;
+            fileCount = 0;
+            StringBuilder detail = new StringBuilder();
+
+            string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string[] targets = new string[]
+            {
+                Path.Combine(local, "NVIDIA", "DXCache"),
+                Path.Combine(local, "NVIDIA", "GLCache"),
+                Path.Combine(local, "NVIDIA Corporation", "NV_Cache"),
+                Path.Combine(local, "Temp", "NVIDIA Corporation", "NV_Cache")
+            };
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                string dir = targets[i];
+                try
+                {
+                    if (!Directory.Exists(dir)) continue;
+
+                    long before = 0;
+                    int n = 0;
+                    string[] files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
+                    for (int j = 0; j < files.Length; j++)
+                    {
+                        try
+                        {
+                            FileInfo fi = new FileInfo(files[j]);
+                            before += fi.Length;
+                            fi.Delete();
+                            n++;
+                        }
+                        catch { /* 被占用的单个文件跳过，不影响整体 */ }
+                    }
+                    freedBytes += before;
+                    fileCount += n;
+                    detail.Append(Path.GetFileName(dir)).Append('=').Append(n).Append("个 ");
+                }
+                catch { }
+            }
+
+            return detail.ToString().Trim();
+        }
+
         // ---------- 快照 ----------
 
         /// <summary>
