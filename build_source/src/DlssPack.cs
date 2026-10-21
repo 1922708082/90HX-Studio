@@ -237,6 +237,20 @@ namespace CMP90HXToolbox
             sb.Append("\"totalBytes\":").Append(totalBytes).Append(',');
             sb.Append("\"fileCount\":").Append(fileCount).Append(',');
             sb.Append("\"packReady\":").Append(downloaded ? "true" : "false");
+
+            // 界面徽标直接读这几个字段，原来没给 → 开机永远显示「未知」，
+            // 必须点一次「检查更新」才被其它路径覆盖。
+            bool runtimeOk = false;
+            try
+            {
+                NativeCore.DlssRuntimeInfo rt = NativeCore.ResolveBestDlssRuntime();
+                runtimeOk = rt != null && rt.Found && rt.Usable;
+            }
+            catch { }
+            sb.Append(",\"runtimeFound\":").Append(runtimeOk ? "true" : "false");
+            sb.Append(",\"localVersion\":").Append("\"").Append(tag).Append("\"");
+            sb.Append(",\"latestVersion\":").Append("\"").Append(tag).Append("\"");
+
             sb.Append(",\"mirrors\":").Append(HardwareBridge.DownloadSourcesJson());
             sb.Append('}');
             return sb.ToString();

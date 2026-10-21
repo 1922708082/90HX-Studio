@@ -6133,43 +6133,43 @@
                 <div>
                   <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="optLevel">优化等级</label>
                   <select class="select-input" id="dlssOptLevel">
-                    <option value="1">1: 全部加速，画面与官方一致（推荐）</option>
-                    <option value="2">2: 开启图像内核加速（PSNR 44-53dB）</option>
-                    <option value="3">3: 全部有损加速，极致帧率</option>
-                    <option value="0">0: 原厂内核，无加速</option>
+                    <option value="1">1 全部加速（推荐）</option>
+                    <option value="2">2 内核加速</option>
+                    <option value="3">3 极致帧率</option>
+                    <option value="0">0 原厂</option>
                   </select>
                 </div>
                 <div>
                   <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="maxFrames">倍率上限</label>
                   <select class="select-input" id="dlssMaxFrames" data-action-change="dlss.changeMaxFrames">
-                    <option value="4">4X: 生成 3 帧（默认推荐）</option>
-                    <option value="2">2X: 生成 1 帧（标准双倍插帧）</option>
-                    <option value="3">3X: 生成 2 帧</option>
-                    <option value="5">5X: 生成 4 帧</option>
-                    <option value="6">6X: 生成 5 帧（需游戏引擎支持）</option>
+                    <option value="4">4X 生成 3 帧（默认）</option>
+                    <option value="2">2X 生成 1 帧</option>
+                    <option value="3">3X 生成 2 帧</option>
+                    <option value="5">5X 生成 4 帧</option>
+                    <option value="6">6X 生成 5 帧</option>
                   </select>
                 </div>
                 <div>
                   <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="engine">插帧引擎</label>
                   <select class="select-input" id="dlssEngine">
-                    <option value="DLSS">DLSS: NVIDIA 模型（默认）</option>
-                    <option value="XeSS">XeSS: Intel 模型，仅 2X</option>
+                    <option value="DLSS">DLSS 模型（默认）</option>
+                    <option value="XeSS">XeSS（仅 2X）</option>
                   </select>
                 </div>
                 <div>
                   <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="preset">画质预设</label>
                   <select class="select-input" id="dlssPreset">
-                    <option value="Auto">Auto: 交给游戏或驱动决定（默认）</option>
-                    <option value="A">A: 强制关闭 UI 重组</option>
-                    <option value="B">B: 强制开启 UI 重组（HUD 更干净）</option>
-                    <option value="C">C: FG Lite 轻量插帧（省 32-54% GPU 时间）</option>
+                    <option value="Auto">Auto（默认）</option>
+                    <option value="A">A 关闭 UI 重组</option>
+                    <option value="B">B 开启 UI 重组</option>
+                    <option value="C">C 轻量插帧</option>
                   </select>
                 </div>
                 <div>
                   <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="srMode">超分模式</label>
                   <select class="select-input" id="dlssSrMode">
-                    <option value="Off">Off: 不介入（默认）</option>
-                    <option value="On">On: 预设 L/M 走本内核（仅 RTX 30/20）</option>
+                    <option value="Off">Off（默认）</option>
+                    <option value="On">On（仅 30/20 系）</option>
                   </select>
                 </div>
               </div>
