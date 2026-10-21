@@ -431,7 +431,7 @@ namespace CMP90HXToolbox
                     string preset = ExtractPayloadString(json, "preset");
                     int secs = ExtractPayloadNumber(json, "idleSeconds");
                     bool ok = PowerPresets.Apply(preset, secs <= 0 ? 8 : secs, LogPower);
-                    if (!ok) { ReplyFail(id, action, "DRIVER_REJECT", "驱动程序拒绝了部分设置，请检查是否以管理员运行"); return; }
+                    if (!ok) { ReplyFail(id, action, "DRIVER_REJECT", "功耗墙设置失败：" + (PowerPresets.LastError ?? "")); return; }
                     Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
                 }
                 else if (action == "power.enable")
