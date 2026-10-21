@@ -484,16 +484,10 @@ namespace CMP90HXToolbox
             }
             catch { }
 
-            // 新界面（WebView2 宿主）冒烟入口：HX家族多功能工具箱.exe --shell
-            // 默认仍启动旧 WPF 界面，等 P5 业务接入完成后再切换默认。
-            if (HasArgument(args, "--shell"))
-            {
-                RunWebShell();
-                return;
-            }
-
-            // 后台省电模式判断：支持命令行中任意位置包含 --powersave，不区分大小写，去除引号
+            // 命令行开关统一解析。
+            // --powersave 优先级最高：它由计划任务以后台守护进程方式拉起，与界面无关。
             bool isPowerSaveMode = false;
+            bool useLegacyUi = false;
             if (args != null && args.Length > 0)
             {
                 foreach (var arg in args)
@@ -504,12 +498,24 @@ namespace CMP90HXToolbox
                     {
                         isPowerSaveMode = true;
                     }
+                    else if (string.Equals(cleanArg, "--legacy", StringComparison.OrdinalIgnoreCase))
+                    {
+                        useLegacyUi = true;
+                    }
                 }
             }
 
             if (isPowerSaveMode)
             {
                 RunPowerSaverBackground();
+                return;
+            }
+
+            // 默认入口：新版 WebView2 界面。
+            // 旧 WPF 界面保留 --legacy 开关，待新版把业务接线完成后再整块移除。
+            if (!useLegacyUi)
+            {
+                RunWebShell();
                 return;
             }
 

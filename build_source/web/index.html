@@ -550,8 +550,14 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      /* 必须排除在标题栏拖拽区之外，否则点击被系统当作拖动窗口，
+         窗口三键的 click 事件永远不触发 */
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
     }
     .win-ctrl-btn {
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
       width: 14px;
       height: 14px;
       border-radius: 50%;
@@ -3053,26 +3059,13 @@
        dual-layer shadow, titlebar/sidebar/content tonal steps + 1px dividers)
        ========================================================================= */
     .viewport {
-      padding: 12px;
-    }
-    /* 超宽屏（≥1900px）收敛：否则四张仪表卡会被拉到 600px 宽、下半屏出现大片空白。
-       窗口在常规尺寸（1600 及以下）仍铺满窗口，不改变原有观感。 */
-    @media (min-width: 1900px) {
-      .viewport {
-        justify-content: center;
-        align-items: center;
-      }
-      .viewport > .app-frame {
-        max-width: 1760px;
-        max-height: 960px;
-        margin: auto;
-        flex: 0 1 auto;
-      }
+      /* 不再留外圈空隙：应用框直接铺满窗口，四边不留白 */
+      padding: 0;
     }
     .app-frame {
-      border-radius: 14px;
-      box-shadow: var(--frame-shadow);
-      border: var(--frame-border);
+      border-radius: 0;
+      box-shadow: none;
+      border: none;
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
     }

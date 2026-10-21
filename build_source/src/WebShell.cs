@@ -1,9 +1,11 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shell;
 using Microsoft.Web.WebView2.Core;
@@ -86,6 +88,29 @@ namespace CMP90HXToolbox
             try
             {
                 if (_webView != null) _webView.Dispose();
+            }
+            catch { }
+        }
+
+        // ---------- 窗口圆角（Windows 11）----------
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DwmwaWindowCornerPreference = 33;
+        private const int DwmwcpRound = 2;
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            // 无边框窗口默认是直角。让系统给窗口本身上圆角，
+            // 这样内容可以铺满窗口、四边不留空隙，同时外轮廓仍是圆角。
+            try
+            {
+                IntPtr hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+                int pref = DwmwcpRound;
+                DwmSetWindowAttribute(hwnd, DwmwaWindowCornerPreference, ref pref, sizeof(int));
             }
             catch { }
         }
@@ -259,23 +284,61 @@ namespace CMP90HXToolbox
                 string json = e.WebMessageAsJson;
                 if (string.IsNullOrEmpty(json)) return;
 
+                string action = ExtractJsonString(json, "action");
+                string id = ExtractJsonString(json, "id");
+                if (string.IsNullOrEmpty(action)) return;
+
                 // P3 阶段只处理窗口控制；业务 action 留到 P4 的 ActionRouter
-                if (json.IndexOf("\"action\":\"window.min\"", StringComparison.Ordinal) >= 0)
+                if (action == "window.min")
                 {
                     WindowState = WindowState.Minimized;
                 }
-                else if (json.IndexOf("\"action\":\"window.max\"", StringComparison.Ordinal) >= 0)
+                else if (action == "window.max")
                 {
                     WindowState = (WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
                 }
-                else if (json.IndexOf("\"action\":\"window.close\"", StringComparison.Ordinal) >= 0)
+                else if (action == "window.close")
                 {
                     Close();
                 }
+
+                // 必须回 res：页面 sendCmd 时会把触发按钮置 disabled + is-loading，
+                // 只有收到同 id 的 res 才恢复。不回的话按钮点一次就永久卡死。
+                ReplyOk(id, action);
             }
             catch (Exception ex)
             {
                 LogCrash("处理网页消息失败", ex);
+            }
+        }
+
+        /// <summary>从单层 JSON 里取字符串字段（足够应付 {kind,id,action,payload} 这层）。</summary>
+        private static string ExtractJsonString(string json, string key)
+        {
+            string pat = "\"" + key + "\":\"";
+            int i = json.IndexOf(pat, StringComparison.Ordinal);
+            if (i < 0) return null;
+            i += pat.Length;
+            int j = json.IndexOf('"', i);
+            if (j < 0) return null;
+            return json.Substring(i, j - i);
+        }
+
+        private void ReplyOk(string id, string action)
+        {
+            try
+            {
+                if (_webView == null || _webView.CoreWebView2 == null) return;
+
+                StringBuilder sb = new StringBuilder(160);
+                sb.Append("{\"kind\":\"res\",\"id\":\"").Append(id == null ? string.Empty : id)
+                  .Append("\",\"action\":\"").Append(action)
+                  .Append("\",\"payload\":{\"ok\":true,\"data\":null}}");
+                _webView.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogCrash("回复网页消息失败", ex);
             }
         }
 
