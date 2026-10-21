@@ -98,7 +98,7 @@ namespace CMP90HXToolbox
             {
                 preset = "adaptive";
                 TryPstate(0, log);
-                Smi("-rgc", log, "解除核心锁频");
+                UnlockClocks(log);
                 // 恢复出厂显存频率（本卡默认满速就是 9501）
                 Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                 TryRestoreDefaultPowerLimit(log);
@@ -131,22 +131,19 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>
-        /// 停掉并移除后台省电计划任务。
-        /// 该任务会以独立进程锁频，和进程内守护冲突，必须清理掉。
+        /// 让后台省电任务先停手（暂停，不删除）。
+        /// 它和进程内守护会抢控制权，同一时刻只能有一个在管 GPU。
+        /// 程序退出时会由 WebShell 恢复它，继续做后台调节。
         /// </summary>
         private static void KillBackgroundTask(Action<string, bool> log)
         {
             try
             {
-                if (!NativeCore.IsPowerSaverTaskInstalled()) return;
-                if (log != null) log("检测到后台省电计划任务，正在停止并移除…", false);
-                NativeCore.UninstallPowerSaverTask(log);
-                if (log != null)
-                    log(NativeCore.IsPowerSaverTaskInstalled() ? "后台任务仍存在，请手动删除" : "后台省电任务已移除", false);
+                NativeCore.SuspendPowerSaverTask(log);
             }
             catch (Exception ex)
             {
-                if (log != null) log("移除后台任务异常: " + ex.Message, true);
+                if (log != null) log("暂停后台任务异常: " + ex.Message, true);
             }
         }
 
@@ -156,7 +153,7 @@ namespace CMP90HXToolbox
             StopWatchdog();
             KillBackgroundTask(log);
             TryPstate(0, log);
-            Smi("-rgc", log, "解除核心锁频");
+            UnlockClocks(log);
             Smi("-rmc", log, "恢复显存调度");
             Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
             TryRelaxPowerLimit(log);
@@ -207,6 +204,16 @@ namespace CMP90HXToolbox
         }
 
         // ---------- 内部 ----------
+
+        /// <summary>
+        /// 真正解除锁频。实测本卡 -rgc 无效（返回成功但频率不动），
+        /// 必须显式写入合法区间 -lgc 210,2100 才能放开。
+        /// </summary>
+        private static bool UnlockClocks(Action<string, bool> log)
+        {
+            return Smi("-lgc " + SleepCoreClock + "," + TurboClockCeiling, log,
+                       "频率区间恢复 " + SleepCoreClock + "~" + TurboClockCeiling + "MHz");
+        }
 
         private static bool LockCore(int mhz, Action<string, bool> log)
         {
@@ -356,7 +363,7 @@ namespace CMP90HXToolbox
                 else if (!shouldThrottle && _throttled)
                 {
                     TryPstate(0, log);
-                    Smi("-rgc", log, "解除锁频");
+                    UnlockClocks(log);
                     Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                     lock (_gate) { _throttled = false; _lastSwitch = DateTime.Now.ToString("HH:mm:ss"); }
                     if (log != null) log("检测到负载，频率已放开", false);

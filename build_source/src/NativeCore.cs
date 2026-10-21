@@ -6233,6 +6233,46 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>通过 Schedule.Service COM 移除任务；失败回退 schtasks。</summary>
+        /// <summary>
+        /// 暂停后台省电任务（结束进程 + 禁用），但**保留注册**。
+        /// 用于程序启动/接管时：同一时刻只能有一个控制器管 GPU 频率，
+        /// 后台任务和进程内守护同时跑会互相覆盖，实测会让卡在负载下也拉不回频率。
+        /// </summary>
+        public static bool SuspendPowerSaverTask(Action<string, bool> log)
+        {
+            try
+            {
+                if (!IsPowerSaverTaskInstalled()) return true;
+                RunCmd("schtasks", "/end /tn \"" + PowerSaverTaskName + "\"");
+                RunCmd("schtasks", "/change /tn \"" + PowerSaverTaskName + "\" /disable");
+                if (log != null) log("后台省电任务已暂停（程序接管中）", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log("暂停后台任务失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        /// <summary>恢复后台省电任务（启用 + 立即启动），用于程序退出时交还控制权。</summary>
+        public static bool ResumePowerSaverTask(Action<string, bool> log)
+        {
+            try
+            {
+                if (!IsPowerSaverTaskInstalled()) return false;
+                RunCmd("schtasks", "/change /tn \"" + PowerSaverTaskName + "\" /enable");
+                RunCmd("schtasks", "/run /tn \"" + PowerSaverTaskName + "\"");
+                if (log != null) log("后台省电任务已恢复，接替程序继续调节", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log("恢复后台任务失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
         public static bool UninstallPowerSaverTask(Action<string, bool> log)
         {
             try

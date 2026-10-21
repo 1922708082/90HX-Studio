@@ -91,6 +91,13 @@ namespace CMP90HXToolbox
                 if (_sensorTimer != null) _sensorTimer.Stop();
             }
             catch { }
+            // 交还控制权：程序退出后由后台计划任务继续做动态调节
+            try
+            {
+                if (NativeCore.IsPowerSaverTaskInstalled())
+                    NativeCore.ResumePowerSaverTask(LogPower);
+            }
+            catch { }
             try
             {
                 if (_webView != null) _webView.Dispose();
@@ -332,6 +339,10 @@ namespace CMP90HXToolbox
             PostToPage(HardwareBridge.ThemeEvt(_theme));
             PostToPage(HardwareBridge.VersionEvt());
             LogInfo("已发送握手事件 theme.apply / app.version");
+
+            // 单控制器原则：程序接管时先把后台计划任务按下去，
+            // 否则两边同时锁频/解锁会互相覆盖（实测会让卡在负载下也拉不回频率）
+            Task.Run(new Action(delegate { NativeCore.SuspendPowerSaverTask(LogPower); }));
         }
 
         private void StartSensorTimer()
