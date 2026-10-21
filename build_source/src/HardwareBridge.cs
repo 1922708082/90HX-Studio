@@ -63,7 +63,11 @@ namespace CMP90HXToolbox
                 sb.Append("\"vram\":\"").Append(Esc(g.VramCapacity)).Append("\",");
                 sb.Append("\"currentDesc\":\"").Append(Esc(g.CurrentDesc)).Append("\",");
                 sb.Append("\"targetName\":\"").Append(Esc(g.TargetGeForceName)).Append("\",");
-                sb.Append("\"isSpoofed\":").Append(Bool(g.IsSpoofed)).Append("}");
+                sb.Append("\"isSpoofed\":").Append(Bool(g.IsSpoofed)).Append(',');
+                // 前端列表读这两个字段判断「PCIe 解锁 / 计算解锁」，
+                // 结构体里一直有值，只是从来没序列化过 → 界面恒显示「否」
+                sb.Append("\"isPcieUnlocked\":").Append(Bool(g.IsPcieUnlocked)).Append(',');
+                sb.Append("\"isComputeUnlocked\":").Append(Bool(g.IsComputeUnlocked)).Append("}");
             }
             sb.Append("]}}");
             return sb.ToString();

@@ -2449,7 +2449,10 @@
              每帧写一次 transform 的开销可以忽略，正确性优先，直接去掉。
           */
 
-          if (!isPageHidden && !isWindowMinimized && !isPerfLow && !windowBlurred && state.currentPage === 'device') {
+          /* 不再因窗口失焦而暂停：用户点了别的窗口后模型会僵在原地，
+             看起来像卡死。浏览器在窗口不可见时会自行降低 rAF 频率，
+             不需要我们再拿 windowBlurred 去挡。 */
+          if (!isPageHidden && !isWindowMinimized && !isPerfLow && state.currentPage === 'device') {
             let targetRY, targetRX, targetRZ, targetScale, targetLiftY;
 
             if (isHovering) {

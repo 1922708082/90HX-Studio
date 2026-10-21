@@ -474,6 +474,9 @@ namespace CMP90HXToolbox
                         // 名称变了，重新推一遍状态让界面同步
                         PostToPage(HardwareBridge.SpoofStateEvt());
                         PostToPage(HardwareBridge.DeviceSnapshotEvt());
+                        // 伪装后必须重推显卡列表：列表里的 isSpoofed 是构建时的快照，
+                        // 不重推界面就一直显示「伪装:否」，用户会以为没生效。
+                        PostToPage(HardwareBridge.GpuListEvt());
                     }));
                     return;
                 }
