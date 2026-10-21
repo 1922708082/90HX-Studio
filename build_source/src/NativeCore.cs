@@ -3889,6 +3889,71 @@ namespace CMP90HXToolbox
             }
             result.Items.Add(new DlssCheckItem("配置文件", iniOk, false, iniDetail));
 
+            // —— 真正会卡住部署的三件事（原来的检查项都是必然通过的，等于没用）——
+            // 1) 游戏是否在运行：DLL 被占用时注入会静默失效
+            bool gameRunning = false;
+            string runDetail = "游戏未运行";
+            try
+            {
+                System.Diagnostics.Process[] all = System.Diagnostics.Process.GetProcesses();
+                for (int i = 0; i < all.Length; i++)
+                {
+                    try
+                    {
+                        string fn = all[i].MainModule == null ? null : all[i].MainModule.FileName;
+                        if (!string.IsNullOrEmpty(fn) &&
+                            fn.StartsWith(gameDir, StringComparison.OrdinalIgnoreCase) &&
+                            fn.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            gameRunning = true;
+                            runDetail = "游戏正在运行（" + System.IO.Path.GetFileName(fn) + "），请先退出";
+                            break;
+                        }
+                    }
+                    catch { /* 无权限读进程路径，跳过 */ }
+                }
+            }
+            catch { }
+            result.Items.Add(new DlssCheckItem("游戏进程", !gameRunning, true, runDetail));
+            if (gameRunning) result.Passed = false;
+
+            // 2) 目录里是否已有旧补丁（避免重复覆盖）
+            bool hasOld = false;
+            string oldDetail = "无旧补丁";
+            try
+            {
+                if (File.Exists(Path.Combine(gameDir, "dlssg_sm86.ini"))) { hasOld = true; oldDetail = "已存在帧生成补丁（将覆盖）"; }
+                else if (File.Exists(Path.Combine(gameDir, ".dlssg_proxy"))) { hasOld = true; oldDetail = "存在上次注入的代理标记"; }
+                else if (File.Exists(Path.Combine(gameDir, "OptiScaler.ini"))) { hasOld = true; oldDetail = "已存在 DLSS5 文件（将覆盖）"; }
+            }
+            catch { }
+            result.Items.Add(new DlssCheckItem("旧补丁", true, false, hasOld ? oldDetail : "无旧补丁"));
+
+            // 3) 磁盘空间（组件约 40MB，留足余量）
+            bool spaceOk = true;
+            string spaceDetail = "空间充足";
+            try
+            {
+                string rootPath = Path.GetPathRoot(gameDir);
+                DriveInfo di = new DriveInfo(rootPath);
+                long freeMb = di.AvailableFreeSpace / 1024 / 1024;
+                spaceOk = freeMb > 200;
+                spaceDetail = freeMb + " MB 可用";
+            }
+            catch { spaceDetail = "无法读取磁盘信息"; }
+            result.Items.Add(new DlssCheckItem("磁盘空间", spaceOk, false, spaceDetail));
+
+            // 4) DLSS5 是否已部署到该目录
+            bool hasDlss5 = false;
+            try
+            {
+                hasDlss5 = File.Exists(Path.Combine(gameDir, "nvngx_dlssnr.dll")) ||
+                           File.Exists(Path.Combine(gameDir, "OptiScaler.ini"));
+            }
+            catch { }
+            result.Items.Add(new DlssCheckItem("DLSS 5", true, false,
+                hasDlss5 ? "目录内已有 DLSS5 文件" : "目录内没有 DLSS5（需勾选后部署）"));
+
             string targetProxy = Path.Combine(gameDir, proxy);
             bool proxyConflict = File.Exists(targetProxy);
             bool hasMarker = File.Exists(Path.Combine(gameDir, DlssProxyMarkerFile));
