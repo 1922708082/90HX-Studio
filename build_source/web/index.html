@@ -3882,6 +3882,18 @@
     .hero-left {
       order: 1;
       z-index: 5;
+      /* 内容再长也不许把 3D 模型挤到下一行 */
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+    /* 模型固定在「显卡名右侧、伪装按钮左侧」，禁止换行 */
+    .hero-banner,
+    #deviceHeroBanner {
+      flex-wrap: nowrap;
+    }
+    .hero-actions-right {
+      flex: 0 0 auto;
     }
     .gpu-3d-stage {
       order: 2;
@@ -8893,6 +8905,12 @@
         let curRY = -18, curRX = 8, curRZ = -1, curScale = 1, curLiftY = 0;
         let orbitPhase = -0.75;
         let lastTs = performance.now();
+        /* 性能守卫：帧率采样 + 失焦暂停标记 */
+        let perfFrames = 0;
+        let perfAccumMs = 0;
+        let windowBlurred = false;
+        window.addEventListener('blur', () => { windowBlurred = true; });
+        window.addEventListener('focus', () => { windowBlurred = false; });
 
         stage.addEventListener('mouseenter', () => {
           if (isPerfLow) return;
@@ -8920,10 +8938,29 @@
         });
 
         function tick3d(now) {
-          const dt = Math.min(0.05, Math.max(0.001, (now - lastTs) / 1000));
+          const rawDt = now - lastTs;
+          const dt = Math.min(0.05, Math.max(0.001, rawDt / 1000));
           lastTs = now;
 
-          if (!isPageHidden && !isWindowMinimized && !isPerfLow && state.currentPage === 'device') {
+          // 帧率守卫：每 2 秒统计一次，平均帧耗时 >22ms（约 <45fps）自动降级到 perf-low
+          perfFrames++;
+          perfAccumMs += rawDt;
+          if (perfAccumMs > 2000) {
+            const avgMs = perfAccumMs / Math.max(1, perfFrames);
+            if (avgMs > 22 && !isPerfLow) {
+              isPerfLow = true;
+              document.body.classList.add('perf-low');
+              try { showToast('检测到渲染压力较大，已自动切换到低功耗动效', 'info'); } catch (e) {}
+            }
+            perfAccumMs = 0;
+            perfFrames = 0;
+          }
+
+          // 高刷屏节流：低于 13ms（约 75fps 以上）的帧不重写 transform，
+          // 慢速环绕动画肉眼看不出差别，但合成开销减半
+          if (rawDt < 13) { requestAnimationFrame(tick3d); return; }
+
+          if (!isPageHidden && !isWindowMinimized && !isPerfLow && !windowBlurred && state.currentPage === 'device') {
             let targetRY, targetRX, targetRZ, targetScale, targetLiftY;
 
             if (isHovering) {
