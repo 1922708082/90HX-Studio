@@ -69,9 +69,9 @@ namespace CMP90HXToolbox
             bool ok = true;
             LastError = "";
 
-            // 后台计划任务会独立锁频，和这里的守护抢控制权（实测：任务一跑，
-            // 有负载也不解锁）。任何一次手动切档都先把它清掉，只保留进程内守护。
-            KillBackgroundTask(log);
+            // 只有「智能动态」需要后台托管；其余档位是静态状态，把任务清掉，
+            // 免得后台进程和进程内守护抢控制权（实测会让卡在负载下也拉不回频率）。
+            if (preset != "adaptive") RemoveBackgroundTask(log);
 
             if (preset == "sleep")
             {
@@ -151,19 +151,21 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>
-        /// 让后台省电任务先停手（暂停，不删除）。
-        /// 它和进程内守护会抢控制权，同一时刻只能有一个在管 GPU。
-        /// 程序退出时会由 WebShell 恢复它，继续做后台调节。
+        /// 移除后台省电计划任务。
+        /// 规则：只有「智能动态」需要后台托管；静音/满血/关闭守护都是
+        /// 明确的静态状态，不需要后台进程，留着反而会和进程内守护抢控制权。
         /// </summary>
-        private static void KillBackgroundTask(Action<string, bool> log)
+        private static void RemoveBackgroundTask(Action<string, bool> log)
         {
             try
             {
-                NativeCore.SuspendPowerSaverTask(log);
+                if (!NativeCore.IsPowerSaverTaskInstalled()) return;
+                NativeCore.UninstallPowerSaverTask(log);
+                if (log != null) log("后台省电计划任务已移除（当前档位不需要）", false);
             }
             catch (Exception ex)
             {
-                if (log != null) log("暂停后台任务异常: " + ex.Message, true);
+                if (log != null) log("移除后台任务异常: " + ex.Message, true);
             }
         }
 
@@ -171,7 +173,8 @@ namespace CMP90HXToolbox
         public static void StopAll(Action<string, bool> log)
         {
             StopWatchdog();
-            KillBackgroundTask(log);
+            // 关闭守护 = 完全不管了，后台任务也没必要留着
+            RemoveBackgroundTask(log);
             TryPstate(0, log);
             UnlockClocks(log);
             Smi("-rmc", log, "恢复显存调度");
