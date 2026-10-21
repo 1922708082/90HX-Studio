@@ -117,17 +117,17 @@ namespace CMP90HXToolbox
 
             StringBuilder sb = new StringBuilder(360);
             sb.Append("{\"kind\":\"evt\",\"action\":\"power.state\",\"payload\":{");
-            sb.Append("\"enabled\":").Append(Bool(saveActive || running)).Append(",");
-            sb.Append("\"running\":").Append(Bool(running)).Append(",");
-            sb.Append("\"preset\":\"").Append(saveActive ? "adaptive" : "manual").Append("\",");
-            sb.Append("\"idleSeconds\":0,");
-            sb.Append("\"currentPstate\":\"").Append(Esc(s.PState)).Append("\",");
-            sb.Append("\"powerRange\":{\"min\":").Append(F1(range.MinLimit))
+            sb.Append("\"enabled\":").Append(Bool(PowerPresets.Current != "none" || running)).Append(",");
+            sb.Append("\"running\":").Append(Bool(running || PowerPresets.WatchdogRunning)).Append(",");
+            sb.Append("\"preset\":").Append(Quote(PowerPresets.Current == "none" ? "manual" : PowerPresets.Current)).Append(",");
+            sb.Append("\"idleSeconds\":").Append(PowerPresets.Throttled ? "0" : "8").Append(",");
+            sb.Append("\"currentPstate\":\"").Append(Esc(PowerPresets.Throttled ? "P8" : s.PState)).Append("\",");
+            sb.Append("\"powerRange\":{\"min\":").Append(PowerPresets.SleepWatts)
               .Append(",\"default\":").Append(F1(range.DefaultLimit))
-              .Append(",\"max\":").Append(F1(range.MaxLimit))
+              .Append(",\"max\":").Append(PowerPresets.TurboWatts)
               .Append(",\"current\":").Append(F1(range.CurrentLimit)).Append("},");
             sb.Append("\"taskInstalled\":").Append(Bool(taskInstalled)).Append(",");
-            sb.Append("\"lastTrigger\":\"\"");
+            sb.Append("\"lastTrigger\":").Append(Quote(PowerPresets.LastSwitch));
             sb.Append("}}");
             return sb.ToString();
         }

@@ -426,6 +426,25 @@ namespace CMP90HXToolbox
                     string t = ExtractPayloadString(json, "theme");
                     _theme = (t == "dark") ? "dark" : "light";
                 }
+                else if (action == "power.setPreset")
+                {
+                    string preset = ExtractPayloadString(json, "preset");
+                    int secs = ExtractPayloadNumber(json, "idleSeconds");
+                    bool ok = PowerPresets.Apply(preset, secs <= 0 ? 8 : secs, LogPower);
+                    if (!ok) { ReplyFail(id, action, "DRIVER_REJECT", "驱动程序拒绝了部分设置，请检查是否以管理员运行"); return; }
+                    Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
+                }
+                else if (action == "power.enable")
+                {
+                    int secs = ExtractPayloadNumber(json, "idleSeconds");
+                    PowerPresets.Apply("adaptive", secs <= 0 ? 8 : secs, LogPower);
+                    Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
+                }
+                else if (action == "power.disable")
+                {
+                    PowerPresets.StopAll(LogPower);
+                    Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
+                }
                 else if (action == "dialog.browse")
                 {
                     string kind = ExtractPayloadString(json, "kind");
@@ -537,6 +556,32 @@ namespace CMP90HXToolbox
             int j = json.IndexOf('"', i);
             if (j < 0) return null;
             return json.Substring(i, j - i);
+        }
+
+        /// <summary>只在 payload 段里找数字字段。</summary>
+        private static int ExtractPayloadNumber(string json, string key)
+        {
+            int p = json.IndexOf("\"payload\"", StringComparison.Ordinal);
+            if (p < 0) return 0;
+            string pat = "\"" + key + "\":";
+            int i = json.IndexOf(pat, p, StringComparison.Ordinal);
+            if (i < 0) return 0;
+            i += pat.Length;
+            while (i < json.Length && (json[i] == ' ' || json[i] == '"')) i++;
+            int start = i;
+            while (i < json.Length && (char.IsDigit(json[i]) || json[i] == '.')) i++;
+            if (i <= start) return 0;
+            double v;
+            if (double.TryParse(json.Substring(start, i - start),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out v))
+                return (int)Math.Round(v);
+            return 0;
+        }
+
+        private static void LogPower(string message, bool isError)
+        {
+            LogInfo((isError ? "[WARN] " : "") + message);
         }
 
         private string ShowBrowseDialog(string kind)

@@ -6836,6 +6836,24 @@ namespace CMP90HXToolbox
             });
         }
 
+        /// <summary>
+        /// 供三档功耗预设使用的 nvidia-smi 入口。
+        /// 只暴露「执行一条 smi 命令」这一件事，不把内部 RunCmd/FindNvidiaSmi 公开出去。
+        /// </summary>
+        public static string RunNvidiaSmiCommand(string arguments)
+        {
+            try
+            {
+                string exe = FindNvidiaSmi();
+                if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return null;
+                return RunCmd(exe, arguments);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static string RunCmd(string exe, string args)
         {
             try
