@@ -1,0 +1,1942 @@
+/* 03-components.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
+
+    /* =========================================================================
+       PAGE 1: HERO BANNER & REFINED 3D GRAPHICS CARD MODEL
+       ========================================================================= */
+    .hero-banner {
+      background: var(--hero-gradient);
+      border: 1px solid var(--badge-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      gap: 16px;
+      flex-wrap: wrap;
+      transition: border-color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+    }
+    .hero-banner:hover {
+      border-color: var(--card-hover-border);
+      transform: translateY(-1px);
+    }
+    .hero-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 2;
+    }
+    /* 芯片标识：移植 6.0 的实体感，昼夜两套配色 */
+    .gpu-chip-box {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      perspective: 400px;
+      flex-shrink: 0;
+      transition: background 420ms var(--ease-std), border-color 420ms var(--ease-std), box-shadow 420ms var(--ease-std);
+    }
+    /* 曜石黑夜：深色玻璃芯片 + 冰蓝内发光 */
+    body.theme-dark .gpu-chip-box {
+      background: radial-gradient(circle at 30% 28%, rgba(56, 189, 248, 0.36) 0%, rgba(8, 12, 20, 0.94) 72%);
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 0 26px var(--accent-glow), inset 0 0 16px rgba(56, 189, 248, 0.24);
+    }
+    body.theme-dark .gpu-chip-box .svg-icon {
+      color: #7dd3fc;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.60));
+    }
+    /* 极简白昼：珍珠白玻璃芯片 + 清晰蓝描边 */
+    body.theme-light .gpu-chip-box {
+      background: radial-gradient(circle at 30% 28%, rgba(2, 132, 199, 0.18) 0%, #ffffff 78%);
+      border: 1.5px solid rgba(2, 132, 199, 0.55);
+      box-shadow: 0 8px 20px rgba(2, 132, 199, 0.16), inset 0 1px 0 #ffffff;
+    }
+    body.theme-light .gpu-chip-box .svg-icon {
+      color: #0369a1;
+    }
+    .chip-die-svg {
+      display: block;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+    }
+    .die-pulse-ring {
+      position: absolute;
+      inset: -5px;
+      border: 1.5px dashed var(--accent);
+      border-radius: 15px;
+      opacity: 0.78;
+      animation: diePulseSpin 10s linear infinite;
+    }
+    @keyframes diePulseSpin {
+      0% { transform: rotate(0deg) scale(0.98); opacity: 0.58; }
+      50% { transform: rotate(180deg) scale(1.04); opacity: 0.96; }
+      100% { transform: rotate(360deg) scale(0.98); opacity: 0.58; }
+    }
+
+    .gpu-3d-stage {
+      width: 288px;
+      height: 112px;
+      perspective: 1100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 5;
+      cursor: pointer;
+      transition: width var(--dur-slow) var(--ease-std), height var(--dur-slow) var(--ease-std);
+    }
+    .gpu-3d-stage.is-exploded {
+      width: 520px;
+      height: 184px;
+    }
+    .gpu-3d-stage::before {
+      content: "";
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      width: 216px;
+      height: 16px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62) 0%, rgba(56, 189, 248, 0.18) 48%, transparent 76%);
+      pointer-events: none;
+      z-index: 0;
+      transition: width var(--dur-slow) var(--ease-std), opacity var(--dur-slow) var(--ease-std);
+    }
+    .gpu-3d-stage.is-exploded::before {
+      width: 320px;
+      opacity: 0.92;
+    }
+    .gpu-3d-stage::after {
+      content: "点击全维透视拆解";
+      position: absolute;
+      bottom: -4px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      opacity: 0.72;
+      transform: scale(0.84);
+      transition: opacity var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+      pointer-events: none;
+    }
+    .gpu-3d-stage.is-exploded::after {
+      content: "点击合拢显卡装甲 (6层透视已展开)";
+      opacity: 0.96;
+    }
+    .gpu-3d-stage:hover::after,
+    .gpu-3d-stage:focus-visible::after {
+      opacity: 1;
+      transform: scale(0.88);
+    }
+
+    .gpu-3d-card {
+      width: 224px;
+      height: 82px;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: rotateY(-14deg) rotateX(8deg);
+      transition: transform var(--dur-slow) var(--ease-std);
+      z-index: 2;
+    }
+    .gpu-3d-card.exploded {
+      transform: rotateY(-18deg) rotateX(14deg) rotateZ(-2deg);
+    }
+
+    /* Exploded layer callout badge */
+    .gpu-layer-tag {
+      position: absolute;
+      top: -14px;
+      left: 8px;
+      font-size: 11.5px;
+      transform: scale(0.68);
+      transform-origin: left bottom;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(8, 12, 20, 0.92);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur-mid) var(--ease-std);
+      font-family: ui-monospace, monospace;
+      z-index: 10;
+    }
+    .gpu-3d-card.exploded .gpu-layer-tag {
+      opacity: 1;
+    }
+
+    /* Layer 1: Anodized Backplate + Thermal Pads */
+    .gpu-3d-back {
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(135deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #0f172a 0%, #090d16 100%);
+      border: 1px solid var(--badge-border);
+      border-radius: 12px;
+      transform: translate3d(0, 0, -12px);
+      transition: transform var(--dur-slow) var(--ease-std) 160ms, border-color var(--dur-mid) var(--ease-std);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+    .gpu-3d-card.exploded .gpu-3d-back {
+      transform: translate3d(-168px, -36px, -76px) scale(0.82);
+      border-color: var(--accent);
+      transition-delay: 0ms;
+    }
+    .gpu-thermal-pad {
+      width: 12px;
+      height: 44px;
+      border-radius: 4px;
+      background: repeating-linear-gradient(0deg, #94a3b8 0px, #94a3b8 4px, #475569 4px, #475569 6px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      opacity: 0.85;
+    }
+    .gpu-screw {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #e2e8f0 0%, #64748b 85%);
+      border: 1px solid #0f172a;
+    }
+    .gpu-screw::before,
+    .gpu-screw::after {
+      content: "";
+      position: absolute;
+      background: #0f172a;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .gpu-screw::before { width: 4px; height: 1px; }
+    .gpu-screw::after { width: 1px; height: 4px; }
+    .gpu-screw.tl { top: 4px; left: 4px; }
+    .gpu-screw.tr { top: 4px; right: 4px; }
+    .gpu-screw.bl { bottom: 4px; left: 4px; }
+    .gpu-screw.br { bottom: 4px; right: 4px; }
+
+    .gpu-back-core {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      background: rgba(15, 23, 42, 0.9);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 4px;
+    }
+    .gpu-back-core span {
+      background: var(--warning);
+      border-radius: 1px;
+    }
+
+    /* Layer 2: Custom 12-Phase PCB + GA102 Silicon Die + 10x GDDR6X VRAM */
+    .gpu-3d-pcb {
+      position: absolute;
+      inset: 2px 4px;
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.16) 0%, transparent 65%),
+        repeating-linear-gradient(0deg, rgba(52, 211, 153, 0.06) 0px, rgba(52, 211, 153, 0.06) 1px, transparent 1px, transparent 4px),
+        linear-gradient(135deg, #06221c 0%, #09151e 55%, #071917 100%);
+      border: 1.5px solid var(--success);
+      transform: translate3d(0, 0, -6px);
+      transition: transform var(--dur-slow) var(--ease-std) 120ms, box-shadow var(--dur-mid) var(--ease-std);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+    }
+    .gpu-3d-card.exploded .gpu-3d-pcb {
+      transform: translate3d(-88px, -18px, -40px) scale(0.84);
+      transition-delay: 40ms;
+    }
+    .gpu-vrm-bank {
+      display: grid;
+      grid-template-columns: repeat(2, 6px);
+      gap: 4px;
+      align-items: center;
+    }
+    .gpu-vrm-choke {
+      width: 6px;
+      height: 8px;
+      border-radius: 1px;
+      background: linear-gradient(180deg, #94a3b8 0%, #334155 100%);
+      border: 1px solid #cbd5e1;
+    }
+    .gpu-die-complex {
+      position: relative;
+      width: 68px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed rgba(251, 191, 36, 0.45);
+      border-radius: 4px;
+      background: rgba(6, 78, 59, 0.35);
+    }
+    .gpu-silicon-die {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #38bdf8 0%, #0f172a 42%, #1e293b 62%, #818cf8 100%);
+      border: 1.5px solid var(--warning);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-silicon-die span {
+      font-size: 11.5px;
+      transform: scale(0.48);
+      font-weight: 900;
+      color: #ffffff;
+      font-family: ui-monospace, monospace;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .gpu-vram-chip {
+      position: absolute;
+      width: 7px;
+      height: 9px;
+      background: #0f172a;
+      border: 1px solid #64748b;
+      border-radius: 1px;
+    }
+    .gpu-vram-chip.v-l1 { left: 4px; top: 6px; }
+    .gpu-vram-chip.v-l2 { left: 4px; top: 18px; }
+    .gpu-vram-chip.v-l3 { left: 4px; bottom: 18px; }
+    .gpu-vram-chip.v-l4 { left: 4px; bottom: 6px; }
+    .gpu-vram-chip.v-r1 { right: 4px; top: 6px; }
+    .gpu-vram-chip.v-r2 { right: 4px; top: 18px; }
+    .gpu-vram-chip.v-r3 { right: 4px; bottom: 18px; }
+    .gpu-vram-chip.v-r4 { right: 4px; bottom: 6px; }
+    .gpu-vram-chip.v-t1 { top: 2px; left: 20px; width: 10px; height: 6px; }
+    .gpu-vram-chip.v-t2 { top: 2px; right: 20px; width: 10px; height: 6px; }
+
+    /* Layer 3: 4x Copper-Nickel Heatpipes & Vapor Chamber */
+    .gpu-3d-heatpipes {
+      position: absolute;
+      inset: 8px 10px;
+      transform: translate3d(0, 0, -2px);
+      transition: transform var(--dur-slow) var(--ease-std) 80ms, opacity var(--dur-mid) var(--ease-std);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 8px 4px;
+      pointer-events: none;
+    }
+    .gpu-3d-card.exploded .gpu-3d-heatpipes {
+      transform: translate3d(-4px, 0px, 0px) scale(0.84);
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px dashed var(--warning);
+      border-radius: 8px;
+      transition-delay: 80ms;
+    }
+    .gpu-heatpipe-bar {
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #b45309 0%, #f59e0b 22%, #fde68a 50%, #f59e0b 78%, #cbd5e1 100%);
+      border: 1px solid rgba(251, 191, 36, 0.65);
+    }
+    .gpu-vapor-plate {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 48px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+      border-radius: 4px;
+      background: linear-gradient(135deg, #d97706 0%, #fbbf24 50%, #92400e 100%);
+      border: 1.5px solid #fef3c7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-vapor-plate span {
+      font-size: 11.5px;
+      transform: scale(0.52);
+      font-weight: 900;
+      color: #0f172a;
+      font-family: ui-monospace, monospace;
+      white-space: nowrap;
+    }
+
+    /* Layer 4: High-Density Fin Heatsink Array */
+    .gpu-3d-heatsink {
+      position: absolute;
+      inset: 4px 8px;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, transparent 44%, rgba(15, 23, 42, 0.85) 46%, rgba(15, 23, 42, 0.85) 54%, transparent 56%),
+        repeating-linear-gradient(90deg, rgba(203, 213, 225, 0.68) 0px, rgba(203, 213, 225, 0.68) 1.5px, var(--gpu-metal-dark) 1.5px, var(--gpu-metal-dark) 4px);
+      border: 1.5px solid var(--input-border);
+      transform: translate3d(0, 0, 2px);
+      transition: transform var(--dur-slow) var(--ease-std) 80ms, border-color var(--dur-mid) var(--ease-std);
+    }
+    .gpu-3d-card.exploded .gpu-3d-heatsink {
+      transform: translate3d(80px, 16px, 36px) scale(0.84);
+      border-color: var(--warning);
+      transition-delay: 120ms;
+    }
+
+    /* Layer 5: Top Power Bridge, IO Bracket & PCIe Gold Fingers */
+    .gpu-3d-edge-top {
+      position: absolute;
+      top: 0;
+      left: 8px;
+      right: 8px;
+      height: 16px;
+      background: var(--gpu-metal-mid);
+      border: 1px solid var(--badge-border);
+      transform-origin: top center;
+      transform: translate3d(0, 0, -4px) rotateX(90deg);
+      transition: transform var(--dur-slow) var(--ease-std) 40ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+    }
+    .gpu-3d-card.exploded .gpu-3d-edge-top {
+      transform: translate3d(4px, -44px, 16px) rotateX(68deg) scale(0.86);
+      border-color: var(--accent);
+      transition-delay: 140ms;
+    }
+    .gpu-lightbar {
+      font-size: 11.5px;
+      transform: scale(0.65);
+      transform-origin: left center;
+      font-weight: 900;
+      color: var(--text-on-accent);
+      font-family: ui-monospace, monospace;
+      padding: 0 4px;
+      border-radius: 4px;
+      /* 型号名再长也不许撑破灯条 */
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+      background: var(--btn-primary-bg);
+      white-space: nowrap;
+    }
+    .gpu-power-8pin {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 4px;
+      background: #070a12;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 4px;
+      height: 10px;
+    }
+    .gpu-power-sub4 {
+      display: flex;
+      width: 11px;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gpu-power-sub4 i {
+      width: 2px;
+      height: 5px;
+      display: block;
+      border-radius: 1px;
+    }
+    .gpu-power-sub4.p4-a i { background: var(--warning); }
+    .gpu-power-sub4.p4-b i { background: var(--accent); }
+
+    .gpu-3d-io-bracket {
+      position: absolute;
+      left: -5px;
+      top: 0;
+      bottom: -4px;
+      width: 8px;
+      background: linear-gradient(180deg, #e2e8f0 0%, #94a3b8 50%, #cbd5e1 100%);
+      border-radius: 4px 1px 1px 4px;
+      border: 1px solid #475569;
+      transform: translate3d(0, 0, 2px) rotateY(-25deg);
+      transition: transform var(--dur-slow) var(--ease-std) 40ms;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+      padding: 4px 0;
+    }
+    .gpu-3d-io-bracket i {
+      width: 4px;
+      height: 2px;
+      background: #0f172a;
+      border-radius: 1px;
+      display: block;
+    }
+    .gpu-3d-card.exploded .gpu-3d-io-bracket {
+      transform: translate3d(-96px, -12px, -28px) rotateY(-28deg) scale(0.86);
+      transition-delay: 140ms;
+    }
+
+    .gpu-3d-pins {
+      position: absolute;
+      bottom: -6px;
+      left: 24px;
+      width: 136px;
+      height: 6px;
+      background: repeating-linear-gradient(90deg, var(--warning) 0px, var(--warning) 2px, var(--gpu-metal-dark) 2px, var(--gpu-metal-dark) 4px);
+      transform: translate3d(0, 0, -4px);
+      transition: transform var(--dur-slow) var(--ease-std) 40ms;
+      border-radius: 0 0 4px 4px;
+    }
+    .gpu-3d-card.exploded .gpu-3d-pins {
+      transform: translate3d(-76px, 24px, -36px) scale(0.86);
+      transition-delay: 40ms;
+    }
+
+    /* Layer 6: Brushed Shroud + Dual 9-Blade Fans */
+    .gpu-3d-front {
+      position: absolute;
+      inset: 0;
+      background:
+        conic-gradient(
+          from 45deg at 50% 50%,
+          #1e293b 0deg, #334155 30deg,
+          #0f172a 60deg, #334155 90deg,
+          #1e293b 120deg, #475569 150deg,
+          #0f172a 180deg, #334155 210deg,
+          #1e293b 240deg, #475569 270deg,
+          #0f172a 300deg, #334155 330deg,
+          #1e293b 360deg
+        );
+      border: 1.5px solid var(--accent);
+      border-radius: 12px;
+      transform: translate3d(0, 0, 10px);
+      transition: transform var(--dur-slow) var(--ease-std) 0ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      overflow: visible;
+    }
+    .gpu-3d-front::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(56, 189, 248, 0.08) 32%, transparent 68%);
+      pointer-events: none;
+      z-index: 3;
+    }
+    .gpu-3d-card.exploded .gpu-3d-front {
+      transform: translate3d(164px, 34px, 76px) scale(0.84);
+      transition-delay: 160ms;
+    }
+
+    .gpu-shroud-xframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .gpu-shroud-badge {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px;
+      border-radius: 4px;
+      background: rgba(11, 15, 25, 0.90);
+      border: 1px solid var(--badge-border);
+    }
+    .gpu-shroud-badge span:first-child {
+      font-size: 11.5px;
+      transform: scale(0.68);
+      font-weight: 900;
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .gpu-shroud-badge span:last-child {
+      font-size: 11.5px;
+      transform: scale(0.58);
+      font-weight: 800;
+      color: var(--text-sub);
+      font-family: ui-monospace, monospace;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .gpu-fan-well {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 50%, #090d16 0%, #111827 68%, #1e293b 100%);
+      border: 1.5px solid rgba(148, 163, 184, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
+    .gpu-3d-fan {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.25) 0%, rgba(56, 189, 248, 0.14) 58%, rgba(203, 213, 225, 0.28) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fanSpinSlow 6s linear infinite;
+    }
+    .gpu-3d-fan .fan-svg {
+      width: 52px;
+      height: 52px;
+    }
+    .gpu-fan-hub {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #1e293b 0%, #090d16 100%);
+      border: 1px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 4;
+    }
+    .gpu-fan-hub span {
+      font-size: 11.5px;
+      transform: scale(0.52);
+      font-weight: 900;
+      color: var(--text-on-accent);
+      font-family: ui-monospace, monospace;
+    }
+    @keyframes fanSpinSlow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .hero-gpu-name {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .hero-tags {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pcie-lane-container {
+      padding: 12px 16px;
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      gap: 12px;
+      flex-wrap: wrap;
+      transition: border-color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+    }
+    .pcie-lane-container:hover {
+      border-color: var(--card-hover-border);
+      transform: translateY(-1px);
+    }
+    .pcie-lane-label {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pcie-lanes-grid {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .lane-pin {
+      width: 5px;
+      height: 16px;
+      border-radius: 4px;
+      background: var(--accent);
+      opacity: 0.72;
+      transition: transform var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std);
+    }
+    .view-panel.active .lane-pin:not(.inactive) {
+      animation: laneFlow 1.6s var(--ease-std) infinite;
+    }
+    .lane-pin:nth-child(4n+1) { animation-delay: 0ms; }
+    .lane-pin:nth-child(4n+2) { animation-delay: 120ms; }
+    .lane-pin:nth-child(4n+3) { animation-delay: 240ms; }
+    .lane-pin:nth-child(4n+4) { animation-delay: 360ms; }
+    .lane-pin.inactive {
+      animation: none !important;
+      opacity: 0.18;
+      background: var(--text-muted);
+    }
+    @keyframes laneFlow {
+      0%, 100% { opacity: 0.42; transform: scaleY(0.76); }
+      50% { opacity: 1; transform: scaleY(1.16); }
+    }
+
+    /* =========================================================================
+       4 TELEMETRY GAUGES (NO OVERLAP: FLOW EXPANSION + LOWER WINDOW SHIFT)
+       ========================================================================= */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      align-items: start;
+      transition: margin-bottom var(--dur-mid) var(--ease-std);
+    }
+    #telemetryGaugesGrid ~ .card {
+      transition: transform var(--dur-mid) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
+    }
+    
+    .gauge-card {
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      position: relative;
+      box-shadow: var(--card-shadow);
+      transition: border-color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std), padding-bottom var(--dur-mid) var(--ease-std);
+    }
+    .gauge-card:hover {
+      border-color: var(--card-hover-border);
+      transform: translateY(-1px);
+    }
+    .gauge-card.sensor-invalid {
+      opacity: 0.58;
+      filter: grayscale(0.85);
+    }
+    .gauge-circle {
+      width: 108px;
+      height: 108px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .gauge-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .gauge-bg-ring {
+      fill: none;
+      stroke: var(--gauge-track);
+      stroke-width: 1.75;
+    }
+    .gauge-fill-ring {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      transition: stroke-dashoffset var(--dur-gauge) var(--ease-std);
+    }
+    .gauge-val {
+      position: absolute;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+      font-weight: 900;
+      color: var(--text-main);
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: baseline;
+      transition: transform var(--dur-fast) var(--ease-std), opacity var(--dur-fast) var(--ease-std);
+    }
+    .gauge-val.val-flash {
+      animation: numTickFlash var(--dur-fast) var(--ease-std);
+    }
+    @keyframes numTickFlash {
+      0% { opacity: 0.72; transform: translateY(1px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .gauge-unit {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+    .gauge-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      position: relative;
+      z-index: 2;
+    }
+    .gauge-sub {
+      font-size: 11.5px;
+      color: var(--text-sub);
+      font-family: ui-monospace, monospace;
+      text-align: center;
+      width: 100%;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      margin-top: 0;
+      padding: 0 8px;
+      background: var(--card-sub-bg);
+      border: 0px solid transparent;
+      border-radius: 8px;
+      pointer-events: none;
+      transition: max-height var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std), margin-top var(--dur-mid) var(--ease-std), padding var(--dur-mid) var(--ease-std);
+    }
+    
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .matrix-item {
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .matrix-icon-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: var(--badge-bg);
+      color: var(--accent);
+    }
+    .matrix-icon-box.pass { background: var(--success-soft); color: var(--success); }
+    .matrix-icon-box.warn { background: var(--warning-soft); color: var(--warning); }
+    .matrix-icon-box.danger { background: var(--danger-soft); color: var(--danger); }
+    .matrix-title { font-size: 12.5px; font-weight: 800; color: var(--text-main); }
+    .matrix-sub { font-size: 11.5px; color: var(--text-sub); margin-top: 4px; font-family: ui-monospace, monospace; }
+
+    /* =========================================================================
+       PAGE 2: FIRMWARE UNLOCK & SAFETY LATCH
+       ========================================================================= */
+    .selector-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .seg-btn {
+      background: var(--card-sub-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-sub);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: border-color var(--dur-fast) var(--ease-std), color var(--dur-fast) var(--ease-std), background var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+    }
+    .seg-btn:hover {
+      border-color: var(--accent);
+      color: var(--text-main);
+    }
+    .seg-btn:active {
+      transform: scale(0.98);
+    }
+    .seg-btn.active {
+      background: var(--badge-bg);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .channel-card {
+      background: var(--card-sub-bg);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color var(--dur-fast) var(--ease-std), background var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .channel-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .channel-card:active {
+      transform: scale(0.98);
+    }
+    .channel-card.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .channel-card.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .boot-chain-stage {
+      padding: 16px;
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      gap: 8px;
+    }
+    .chain-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+      z-index: 2;
+    }
+    .node-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--card-bg);
+      border: 1.5px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: border-color var(--dur-mid) var(--ease-std), color var(--dur-mid) var(--ease-std);
+    }
+    .node-icon.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .node-icon.warn {
+      border-color: var(--warning);
+      color: var(--warning);
+    }
+    .node-title { font-size: 12.5px; font-weight: 800; color: var(--text-main); }
+    .node-status { font-size: 11.5px; color: var(--text-sub); font-family: ui-monospace, monospace; }
+
+    .chain-link-arrow {
+      flex: 1;
+      height: 3px;
+      background: var(--gauge-track);
+      margin: 0 8px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 999px;
+    }
+    .chain-link-arrow.active {
+      background: rgba(56, 189, 248, 0.35);
+    }
+    .view-panel.active .chain-link-arrow.active::after {
+      content: "";
+      position: absolute;
+      top: -2px; left: -35%; width: 35%; height: 7px;
+      background: var(--accent);
+      animation: dataStream 1.6s linear infinite;
+    }
+    @keyframes dataStream {
+      0% { left: -35%; }
+      100% { left: 100%; }
+    }
+
+    .latch-box {
+      border: 1.5px dashed var(--danger-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-sub-bg);
+      gap: 16px;
+      flex-wrap: wrap;
+      box-shadow: inset 0 0 30px rgba(244, 63, 94, 0.07);
+      position: relative;
+    }
+    .latch-desc h3 {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .latch-desc p {
+      font-size: 11.5px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+    .safety-cover-container {
+      position: relative;
+      display: inline-block;
+      perspective: 900px;
+    }
+    /* 红黑警示斜纹机械翻盖：顶部为铰链，向上翻开 */
+    .safety-cover {
+      position: absolute;
+      inset: -4px;
+      background: repeating-linear-gradient(
+        45deg,
+        var(--hazard-red),
+        var(--hazard-red) 12px,
+        var(--hazard-dark) 12px,
+        var(--hazard-dark) 24px
+      );
+      border: 1.5px solid var(--danger);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transform-origin: top center;
+      transition:
+        transform 0.52s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        opacity 0.35s ease,
+        box-shadow 0.3s ease;
+      box-shadow:
+        0 12px 26px rgba(0, 0, 0, 0.40),
+        0 0 18px rgba(244, 63, 94, 0.30),
+        inset 0 2px 0 rgba(255, 255, 255, 0.26),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.42);
+    }
+    /* 铰链金属反光 */
+    .safety-cover::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10px;
+      right: 10px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+      opacity: 0.75;
+      pointer-events: none;
+    }
+    /* 闭合状态的危险呼吸光，提示"这里有个盖子" */
+    .safety-cover::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: 12px;
+      pointer-events: none;
+      animation: hazardBreath 2.8s ease-in-out infinite;
+    }
+    @keyframes hazardBreath {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.34); }
+      50%      { box-shadow: 0 0 20px 2px rgba(244, 63, 94, 0.20); }
+    }
+    .safety-cover:hover {
+      transform: rotateX(16deg);
+      box-shadow:
+        0 16px 32px rgba(0, 0, 0, 0.48),
+        0 0 30px rgba(244, 63, 94, 0.55),
+        inset 0 2px 0 rgba(255, 255, 255, 0.32);
+    }
+    /* 翻开后盖板停在原位（rotateX 120°），保留半透明可见，和 6.0 完全一致 */
+    .safety-cover.open {
+      transform: rotateX(120deg);
+      opacity: 0.22;
+      pointer-events: none;
+    }
+    .safety-cover.open::after {
+      animation: none;
+      box-shadow: none;
+    }
+    .safety-cover-label {
+      background: rgba(10, 12, 18, 0.92);
+      border: 1px solid rgba(239, 68, 68, 0.60);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 900;
+      padding: 5px 11px;
+      border-radius: 7px;
+      letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+    }
+    .latch-trigger-btn {
+      padding: 12px 24px;
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+    /* 掀盖后整块保险区域进入"已解除"状态：虚线转实线并泛红 */
+    .latch-box:has(.safety-cover-container.armed) {
+      border-style: solid;
+      border-color: rgba(244, 63, 94, 0.55);
+      box-shadow: inset 0 0 38px rgba(244, 63, 94, 0.10);
+    }
+    /* 夜间模式：掀盖后按钮进入"已上膛"呼吸发光（用户最爱的那个高光时刻） */
+    body.theme-dark .safety-cover-container.armed .latch-trigger-btn {
+      animation: dangerArmed 2.6s ease-in-out infinite;
+    }
+    body.theme-dark .safety-cover-container.armed .latch-trigger-btn:hover {
+      animation-play-state: paused;
+      filter: brightness(1.12);
+      box-shadow: 0 10px 34px rgba(244, 63, 94, 0.78), 0 0 0 4px rgba(244, 63, 94, 0.14) !important;
+    }
+    @keyframes dangerArmed {
+      0%, 100% {
+        box-shadow: 0 6px 20px rgba(244, 63, 94, 0.42), 0 0 0 0 rgba(244, 63, 94, 0.28);
+      }
+      50% {
+        box-shadow: 0 10px 32px rgba(244, 63, 94, 0.72), 0 0 0 6px rgba(244, 63, 94, 0.09);
+      }
+    }
+    /* 亮色模式：用清晰的描边代替霓虹光晕 */
+    body.theme-light .safety-cover-container.armed .latch-trigger-btn {
+      box-shadow: 0 6px 16px rgba(225, 29, 72, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    }
+
+    /* =========================================================================
+       PAGE 3 & 7: SPOOF, CASO TOPOLOGY & TABLES
+       ========================================================================= */
+    .caso-flow-box {
+      padding: 16px;
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .caso-card {
+      padding: 12px;
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      text-align: center;
+      z-index: 2;
+      min-width: 148px;
+    }
+    .caso-card.primary {
+      border-color: var(--accent);
+    }
+    .caso-title { font-size: 12.5px; font-weight: 800; color: var(--text-main); }
+    .caso-sub { font-size: 11.5px; color: var(--text-sub); margin-top: 4px; font-family: ui-monospace, monospace; }
+    .caso-pipe {
+      flex: 1;
+      height: 3px;
+      background: var(--gauge-track);
+      margin: 0 8px;
+      position: relative;
+      border-radius: 999px;
+    }
+    .caso-packet {
+      position: absolute;
+      top: -4px;
+      left: 0%;
+      width: 14px;
+      height: 11px;
+      border-radius: 4px;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+    .view-panel.active .caso-packet {
+      animation: packetFly 1.5s linear infinite;
+    }
+    @keyframes packetFly {
+      0% { left: 0%; opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { left: 92%; opacity: 0; }
+    }
+
+    .two-col-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .select-input, .text-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      outline: none;
+      font-family: inherit;
+      transition: border-color var(--dur-fast) var(--ease-std), background var(--dur-fast) var(--ease-std);
+    }
+    /* 下拉框：干掉原生按钮条与滚动条，换成自绘箭头 + 主题化列表 */
+    select.select-input {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 34px;
+      cursor: pointer;
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      background-size: 13px 13px;
+      scrollbar-width: none;
+    }
+    select.select-input::-ms-expand {
+      display: none;
+    }
+    select.select-input::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    body.theme-light select.select-input {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+    body.theme-dark select.select-input {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+    select.select-input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    /* 展开的下拉列表本身（Windows 原生弹层）跟随主题配色 */
+    select.select-input option,
+    select.select-input optgroup {
+      background: var(--frame-bg-solid);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 8px;
+    }
+    select.select-input option:checked {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .select-input:hover, .text-input:hover {
+      border-color: var(--accent);
+      background: var(--card-sub-bg);
+    }
+    .select-input:focus, .text-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+    }
+    /* 下拉展开时把当前项高亮出来 */
+    select.select-input option:checked,
+    select.select-input option:hover {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    /* =========================================================================
+       CUSTOM SELECT (自绘下拉：原生弹层由系统绘制，无法主题化，这里整体替换)
+       ========================================================================= */
+    .hx-select {
+      position: relative;
+      width: 100%;
+    }
+    .hx-select-native {
+      position: absolute !important;
+      left: 0;
+      top: 0;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    .hx-select-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-main);
+      padding: 8px 11px 8px 12px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 160ms var(--ease-std), background 160ms var(--ease-std), box-shadow 160ms var(--ease-std);
+    }
+    .hx-select-trigger:hover {
+      border-color: var(--accent);
+    }
+    .hx-select.open .hx-select-trigger,
+    .hx-select-trigger:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+      outline: none;
+    }
+    .hx-select-value {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .hx-select-caret {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      fill: none;
+      stroke: var(--text-sub);
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 200ms var(--ease-std), stroke 160ms var(--ease-std);
+    }
+    .hx-select.open .hx-select-caret {
+      transform: rotate(180deg);
+      stroke: var(--accent);
+    }
+    .hx-select-menu {
+      position: fixed;
+      z-index: 900;
+      display: none;
+      max-height: 268px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 6px;
+      background: var(--frame-bg-solid);
+      border: 1px solid var(--input-border);
+      border-radius: 12px;
+      box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.30),
+        0 2px 8px rgba(0, 0, 0, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+    body.theme-dark .hx-select-menu {
+      box-shadow:
+        0 20px 48px rgba(0, 0, 0, 0.62),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .hx-select-menu.is-open {
+      display: block;
+      animation: selectMenuIn 160ms var(--ease-std);
+    }
+    @keyframes selectMenuIn {
+      from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+      to   { opacity: 1; transform: none; }
+    }
+    .hx-select-menu::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    .hx-select-option {
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 120ms var(--ease-std), color 120ms var(--ease-std);
+    }
+    .hx-select-option:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .hx-select-option.is-selected {
+      background: rgba(var(--accent-rgb), 0.14);
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .hx-select-option.is-selected::after {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-left: 8px;
+      vertical-align: middle;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .hx-select-empty {
+      padding: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 7px 12px;
+      background: transparent;
+      color: var(--text-sub);
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--card-border-color);
+    }
+    body.theme-dark .data-table th {
+      color: #b6c2d1;
+      border-bottom-color: rgba(255, 255, 255, 0.10);
+    }
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--text-main);
+      font-size: 12.5px;
+    }
+    .diff-old { color: var(--danger); text-decoration: line-through; }
+    .diff-new { color: var(--success); font-weight: 800; }
+    /* 键值型表格：标签列按内容收缩、永不折行（修「当前版/本」断字问题） */
+    .kv-table td:first-child {
+      white-space: nowrap;
+      width: 1%;
+      color: var(--text-sub);
+      font-weight: 700;
+      font-family: inherit;
+    }
+
+    /* =========================================================================
+       PAGE 4: DYNAMIC ECO POWER & REACTOR STAGE
+       ========================================================================= */
+    .power-preset-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .power-preset-card {
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color var(--dur-fast) var(--ease-std), background var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+      text-align: left;
+    }
+    .power-preset-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .power-preset-card:active {
+      transform: scale(0.98);
+    }
+    .power-preset-card.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .power-preset-card.active.turbo-mode {
+      border-color: var(--turbo-border);
+      background: var(--danger-soft);
+    }
+    .power-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: var(--card-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    .power-preset-card.active.turbo-mode .power-icon-box {
+      color: var(--danger);
+    }
+    .power-name { font-size: 12.5px; font-weight: 800; color: var(--text-main); }
+    .power-desc { font-size: 11.5px; color: var(--text-sub); margin-top: 4px; line-height: 1.4; }
+
+    .power-preset-card.active[data-preset="sleep"] {
+      border: 1.5px solid var(--success);
+      background: var(--success-soft);
+    }
+    .power-preset-card.active[data-preset="sleep"] .power-icon-box {
+      color: var(--success);
+    }
+    .power-preset-card.active[data-preset="adaptive"] {
+      border: 1.5px solid var(--accent);
+      background: var(--accent-soft);
+    }
+    .power-preset-card.active.turbo-mode {
+      border: 1.5px solid var(--danger);
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.24) 0%, rgba(249, 115, 22, 0.10) 100%);
+    }
+    /* 注册色标变量，让渐变本身也能插值 —— 否则换挡时背景会硬跳 */
+    @property --power-tint-a {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: rgba(56, 189, 248, 0.14);
+    }
+    @property --power-tint-b {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: rgba(56, 189, 248, 0.02);
+    }
+    .animation-stage {
+      border: 1.5px solid var(--badge-border);
+      border-radius: 12px;
+      padding: 16px;
+      --power-tint-a: rgba(56, 189, 248, 0.14);
+      --power-tint-b: rgba(56, 189, 248, 0.02);
+      background: linear-gradient(135deg, var(--power-tint-a) 0%, var(--power-tint-b) 46%, var(--card-sub-bg) 88%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      gap: 16px;
+      transition:
+        --power-tint-a 560ms var(--ease-std),
+        --power-tint-b 560ms var(--ease-std),
+        border-color 560ms var(--ease-std);
+    }
+    .animation-stage.preset-sleep {
+      --power-tint-a: rgba(16, 185, 129, 0.13);
+      --power-tint-b: rgba(16, 185, 129, 0.02);
+      border-color: var(--success-border);
+    }
+    .animation-stage.preset-adaptive {
+      --power-tint-a: rgba(56, 189, 248, 0.14);
+      --power-tint-b: rgba(56, 189, 248, 0.02);
+      border-color: var(--badge-border);
+    }
+    .animation-stage.preset-turbo {
+      --power-tint-a: rgba(244, 63, 94, 0.24);
+      --power-tint-b: rgba(249, 115, 22, 0.12);
+      border-color: var(--danger);
+    }
+    /* 换挡时数字与文案做一次短促的"滚动换值"，而不是硬替换 */
+    @keyframes readoutSwap {
+      0%   { opacity: 0; transform: translateY(7px) scale(0.94); filter: blur(2px); }
+      100% { opacity: 1; transform: none; filter: none; }
+    }
+    .turbo-data-readout.swapping .turbo-mhz,
+    .turbo-data-readout.swapping .turbo-tag {
+      animation: readoutSwap 420ms var(--ease-std) both;
+    }
+    .anim-left.swapping .anim-title,
+    .anim-left.swapping .anim-sub {
+      animation: readoutSwap 420ms var(--ease-std) both;
+    }
+    /* 画布与卡片同尺寸（逃逸效果已按需求回退） */
+    #turboFireCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .anim-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 2;
+      flex: 1;
+    }
+    .anim-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .animation-stage.preset-sleep .anim-status-badge { color: var(--success); }
+    .animation-stage.preset-turbo .anim-status-badge { color: var(--danger); }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+    .animation-stage.preset-turbo .pulse-dot {
+      animation: dotRapidPulse 0.6s var(--ease-std) infinite alternate;
+    }
+    @keyframes dotRapidPulse {
+      from { transform: scale(0.85); opacity: 0.65; }
+      to { transform: scale(1.35); opacity: 1; }
+    }
+    .anim-title { font-size: 14px; font-weight: 900; color: var(--text-main); }
+    .anim-sub { font-size: 11.5px; color: var(--text-sub); }
+    .wave-strip-wrap {
+      margin-top: 8px;
+      max-width: 480px;
+      height: 64px;
+      border-radius: 12px;
+      background: var(--code-bg);
+      border: var(--card-border);
+      overflow: hidden;
+      position: relative;
+    }
+    .animation-stage.preset-turbo .wave-strip-wrap {
+      border-color: var(--danger-border);
+    }
+    #powerWaveCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .turbo-visual-box {
+      position: relative;
+      width: 184px;
+      height: 116px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      flex-shrink: 0;
+    }
+    .turbo-fire-ring {
+      position: absolute;
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      transition:
+        border-color 560ms var(--ease-std),
+        border-width 560ms var(--ease-std),
+        box-shadow 560ms var(--ease-std),
+        opacity 480ms var(--ease-std),
+        transform var(--dur-mid) var(--ease-std);
+    }
+    /* 换挡时文字与指示灯颜色一起渐变，不做硬切 */
+    .anim-status-badge,
+    .anim-title,
+    .anim-sub,
+    .turbo-mhz,
+    .turbo-tag,
+    .pulse-dot {
+      transition:
+        color 480ms var(--ease-std),
+        background-color 480ms var(--ease-std),
+        border-color 480ms var(--ease-std),
+        box-shadow 480ms var(--ease-std);
+    }
+    .turbo-fire-ring-2 {
+      position: absolute;
+      width: 108px;
+      height: 108px;
+      border-radius: 50%;
+      border: 2px dashed var(--accent-secondary);
+      animation: turboSpin 4.2s linear infinite;
+    }
+    .turbo-fire-ring-3 {
+      position: absolute;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 1.5px dotted var(--warning);
+      opacity: 0.55;
+      animation: turboSpinReverse 3.2s linear infinite;
+    }
+    .animation-stage.preset-sleep .turbo-fire-ring {
+      border-color: var(--success);
+      animation: sleepBreathe 3.6s ease-in-out infinite;
+    }
+    .animation-stage.preset-sleep .turbo-fire-ring-2 {
+      border-color: var(--success);
+      animation-duration: 10s;
+      opacity: 0.55;
+    }
+    .animation-stage.preset-sleep .turbo-fire-ring-3 {
+      border-color: var(--success);
+      animation-duration: 8s;
+      opacity: 0.35;
+    }
+    .animation-stage.preset-turbo .turbo-fire-ring {
+      border: 2.5px solid var(--danger);
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.32) 0%, rgba(249, 115, 22, 0.14) 58%, transparent 75%);
+      animation: turboCoreThrob 0.55s ease-in-out infinite alternate;
+    }
+    .animation-stage.preset-turbo .turbo-fire-ring-2 {
+      border: 2px dashed var(--warning);
+      animation: turboSpin 1.15s linear infinite;
+    }
+    .animation-stage.preset-turbo .turbo-fire-ring-3 {
+      border: 2px dashed var(--danger);
+      opacity: 0.95;
+      animation: turboSpinReverse 0.85s linear infinite;
+    }
+    @keyframes turboSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes turboSpinReverse {
+      0% { transform: rotate(360deg) scale(0.96); }
+      50% { transform: rotate(180deg) scale(1.06); }
+      100% { transform: rotate(0deg) scale(0.96); }
+    }
+    @keyframes turboCoreThrob {
+      0% { transform: scale(0.94); }
+      100% { transform: scale(1.10); }
+    }
+    @keyframes sleepBreathe {
+      0%, 100% { transform: scale(0.96); opacity: 0.65; }
+      50% { transform: scale(1.03); opacity: 0.95; }
+    }
+    .turbo-data-readout {
+      position: relative;
+      z-index: 3;
+      text-align: center;
+      font-family: ui-monospace, monospace;
+    }
+    .turbo-mhz { font-size: 24px; font-weight: 900; color: var(--text-main); line-height: 1.05; }
+    .animation-stage.preset-turbo .turbo-mhz { color: #ffffff; }
+    /* 副标题必须留在内环里，否则会被圆环切开（原 104px 宽 > 82px 环内径） */
+    .turbo-tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: var(--warning);
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+      line-height: 1.3;
+    }
+    .animation-stage.preset-sleep .turbo-tag { color: var(--success); }
+    .animation-stage.preset-adaptive .turbo-tag { color: var(--accent); }
+
+    /* =========================================================================
+       PAGE 5, 8, 9, 10: PREFLIGHT, SNAPSHOT TIMELINE, LOG STREAM, PROGRESS
+       ========================================================================= */
+    .progress-wrap {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      display: none;
+    }
+    .progress-wrap.active { display: block; }
+    .progress-track {
+      height: 8px;
+      background: var(--gauge-track);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--btn-primary-bg);
+      border-radius: 999px;
+      transition: width var(--dur-gauge) var(--ease-std);
+    }
+    .progress-fill.indeterminate {
+      width: 35% !important;
+      position: absolute;
+      animation: indeterminateSlide 1.2s infinite var(--ease-std);
+    }
+    @keyframes indeterminateSlide {
+      0% { left: -35%; }
+      100% { left: 100%; }
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .timeline-item {
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .timeline-time { font-size: 11.5px; color: var(--text-sub); font-weight: 700; font-family: ui-monospace, monospace; }
+    .timeline-title { font-size: 12.5px; font-weight: 800; color: var(--text-main); margin-top: 4px; }
+    .timeline-sub { font-size: 11.5px; color: var(--text-sub); margin-top: 4px; font-family: ui-monospace, monospace; }
+
+    .log-stream-box {
+      height: 352px;
+      background: var(--code-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-row {
+      display: flex;
+      gap: 8px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+    .log-row:hover {
+      background: var(--card-sub-bg);
+    }
+    .log-time { color: var(--text-sub); flex-shrink: 0; }
+    .log-lvl {
+      font-weight: 800;
+      width: 48px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .log-lvl.info { color: var(--accent); }
+    .log-lvl.warn { color: var(--warning); }
+    .log-lvl.error { color: var(--danger); }
+    .log-lvl.audit { color: var(--success); }
+    .log-txt { color: var(--text-main); user-select: text; }
+
+    /* MODAL & TOAST */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--overlay-mask);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open {
+      display: flex;
+      animation: modalFadeIn var(--dur-mid) var(--ease-std) forwards;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-card {
+      width: 512px;
+      max-width: 100%;
+      background: var(--modal-bg);
+      border: 1px solid var(--badge-border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--frame-shadow);
+    }
+    .modal-header {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-body {
+      font-size: 12.5px;
+      color: var(--text-sub);
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .modal-checklist {
+      background: var(--card-sub-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12.5px;
+    }
+    .modal-checklist div strong {
+      color: var(--text-main);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .toast-stack {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast-item {
+      background: var(--modal-bg);
+      border: 1px solid var(--badge-border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--card-shadow);
+      pointer-events: auto;
+    }
+
+    @media (max-width: 1100px) {
+      .telemetry-grid, .channel-grid { grid-template-columns: repeat(2, 1fr); }
+      .matrix-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 860px) {
+      .two-col-grid, .power-preset-group { grid-template-columns: 1fr; }
+      .gpu-3d-stage { display: none; }
+    }

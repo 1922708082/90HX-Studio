@@ -1,0 +1,386 @@
+/* 01-base.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
+
+    /* =========================================================================
+       CSS RESET & BASE TYPOGRAPHY (4 FONT SIZES: 11.5px / 12.5px / 14px / 24px)
+       ========================================================================= */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    :root {
+      --ease-std: cubic-bezier(0.2, 0.8, 0.2, 1);
+      --dur-fast: 120ms;
+      --dur-mid: 180ms;
+      --dur-page: 160ms;
+      --dur-slow: 240ms;
+      --dur-gauge: 300ms;
+      --divider-line: rgba(255, 255, 255, 0.06);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 12.5px;
+      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-variant-numeric: tabular-nums;
+      transition: background var(--dur-slow) var(--ease-std), color var(--dur-mid) var(--ease-std);
+      position: relative;
+      background: var(--bg-desk);
+      color: var(--text-main);
+    }
+
+    /* =========================================================================
+       THEME 1: 曜石黑夜 (Titanium Dark) - SECONDARY TEXT RAISED TO #94a3b8
+       ========================================================================= */
+    body.theme-dark {
+      color-scheme: dark;
+      --bg-desk: #07090e;
+      --bg-desk-grad: radial-gradient(ellipse 90% 60% at 50% -10%, #131c2e 0%, #07090e 65%, #050609 100%);
+      --frame-bg: rgba(15, 19, 28, 0.94);
+      --frame-bg-solid: #0f131c;
+      --frame-border: 1px solid rgba(255, 255, 255, 0.06);
+      --frame-shadow: 0 24px 64px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      --titlebar-bg: rgba(16, 20, 30, 0.96);
+      --titlebar-border: 1px solid rgba(255, 255, 255, 0.06);
+      --sidebar-bg: rgba(11, 14, 21, 0.94);
+      --sidebar-border: 1px solid rgba(255, 255, 255, 0.06);
+      --sidebar-btn: #94a3b8;
+      --sidebar-btn-hover: #f8fafc;
+      --sidebar-btn-hover-bg: rgba(56, 189, 248, 0.08);
+      --sidebar-btn-active: #ffffff;
+      --sidebar-btn-active-bg: linear-gradient(90deg, rgba(56, 189, 248, 0.16) 0%, rgba(56, 189, 248, 0.02) 100%);
+      --sidebar-btn-indicator: #38bdf8;
+      --content-bg: rgba(14, 18, 26, 0.82);
+      --content-fade-top: linear-gradient(180deg, rgba(14, 18, 26, 0.95) 0%, rgba(14, 18, 26, 0) 100%);
+      --content-fade-bot: linear-gradient(0deg, rgba(14, 18, 26, 0.95) 0%, rgba(14, 18, 26, 0) 100%);
+      --card-bg: rgba(20, 26, 38, 0.88);
+      --card-bg-solid: #141a26;
+      --card-border-color: rgba(255, 255, 255, 0.06);
+      --card-border: 1px solid rgba(255, 255, 255, 0.06);
+      --card-hover-border: rgba(56, 189, 248, 0.42);
+      --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      --card-sub-bg: rgba(10, 14, 22, 0.68);
+      --accent: #38bdf8;
+      --accent-secondary: #818cf8;
+      --accent-rgb: 56, 189, 248;
+      --accent-glow: rgba(56, 189, 248, 0.28);
+      --accent-soft: rgba(56, 189, 248, 0.12);
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --text-muted: #94a3b8;
+      --text-on-accent: #ffffff;
+      --gauge-track: rgba(255, 255, 255, 0.08);
+      --badge-bg: rgba(56, 189, 248, 0.12);
+      --badge-border: rgba(56, 189, 248, 0.32);
+      --badge-text: #38bdf8;
+      --success: #34d399;
+      --success-soft: rgba(52, 211, 153, 0.12);
+      --success-border: rgba(52, 211, 153, 0.32);
+      --warning: #fbbf24;
+      --warning-soft: rgba(251, 191, 36, 0.12);
+      --warning-border: rgba(251, 191, 36, 0.32);
+      --danger: #f43f5e;
+      --danger-soft: rgba(244, 63, 94, 0.14);
+      --danger-border: rgba(244, 63, 94, 0.36);
+      --fire-mid: #f97316;
+      --emerald-deep: #059669;
+      --btn-primary-bg: linear-gradient(135deg, #38bdf8 0%, #0284c7 55%, #4f46e5 100%);
+      --btn-primary-text: #ffffff;
+      --btn-primary-shadow: 0 4px 16px var(--accent-glow);
+      --btn-danger-bg: linear-gradient(135deg, #f43f5e 0%, #e11d48 55%, #9f1239 100%);
+      --hero-gradient: linear-gradient(135deg, rgba(24, 31, 46, 0.94) 0%, rgba(15, 20, 30, 0.94) 100%);
+      --table-header-bg: rgba(255, 255, 255, 0.035);
+      --modal-bg: #141824;
+      --overlay-mask: rgba(4, 6, 10, 0.72);
+      --input-bg: #0d131c;
+      --input-border: rgba(255, 255, 255, 0.16);
+      --code-bg: rgba(0, 0, 0, 0.42);
+      --turbo-glow: rgba(244, 63, 94, 0.28);
+      --turbo-border: #f43f5e;
+      --skeleton-a: rgba(255, 255, 255, 0.05);
+      --skeleton-b: rgba(56, 189, 248, 0.12);
+      --win-min: #ffbd2e;
+      --win-max: #27c93f;
+      --win-close: #ff5f56;
+      --gpu-metal-dark: #0b0f19;
+      --gpu-metal-mid: #1e293b;
+      --gpu-metal-light: #cbd5e1;
+      --hazard-red: rgba(239, 68, 68, 0.92);
+      --hazard-dark: rgba(18, 22, 31, 0.96);
+      /* 芯片俯视图配色（暗夜：深蓝基板 + 冰蓝走线 + 金脚） */
+      --chip-substrate: #0b1320;
+      --chip-frame: #38bdf8;
+      --chip-vram: #1e293b;
+      --chip-vram-line: #64748b;
+      --chip-die-edge: #e0f2fe;
+      --chip-gpc: #090d16;
+      --chip-pin: #fbbf24;
+    }
+
+    /* =========================================================================
+       THEME 2: 极简白昼 (Titanium Light)
+       ========================================================================= */
+    body.theme-light {
+      color-scheme: light;
+      --bg-desk: #e9eef5;
+      --bg-desk-grad: radial-gradient(ellipse 90% 60% at 50% -10%, #dbeafe 0%, #e9eef5 65%, #e2e8f0 100%);
+      --frame-bg: rgba(255, 255, 255, 0.96);
+      --frame-bg-solid: #ffffff;
+      --frame-border: 1px solid rgba(15, 23, 42, 0.08);
+      --frame-shadow: 0 20px 48px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      --titlebar-bg: rgba(248, 250, 252, 0.96);
+      --titlebar-border: 1px solid rgba(15, 23, 42, 0.06);
+      --sidebar-bg: rgba(241, 245, 249, 0.96);
+      --sidebar-border: 1px solid rgba(15, 23, 42, 0.06);
+      --sidebar-btn: #475569;
+      --sidebar-btn-hover: #0f172a;
+      --sidebar-btn-hover-bg: rgba(2, 132, 199, 0.08);
+      --sidebar-btn-active: #0284c7;
+      --sidebar-btn-active-bg: linear-gradient(90deg, rgba(2, 132, 199, 0.14) 0%, rgba(2, 132, 199, 0.02) 100%);
+      --sidebar-btn-indicator: #0284c7;
+      --content-bg: rgba(248, 250, 252, 0.92);
+      --content-fade-top: linear-gradient(180deg, rgba(248, 250, 252, 0.95) 0%, rgba(248, 250, 252, 0) 100%);
+      --content-fade-bot: linear-gradient(0deg, rgba(248, 250, 252, 0.95) 0%, rgba(248, 250, 252, 0) 100%);
+      --card-bg: #ffffff;
+      --card-bg-solid: #ffffff;
+      --card-border-color: rgba(15, 23, 42, 0.08);
+      --card-border: 1px solid rgba(15, 23, 42, 0.08);
+      --card-hover-border: rgba(2, 132, 199, 0.45);
+      --card-shadow: 0 6px 18px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      --card-sub-bg: #f1f5f9;
+      --accent: #0284c7;
+      --accent-secondary: #4f46e5;
+      --accent-rgb: 2, 132, 199;
+      --accent-glow: rgba(2, 132, 199, 0.22);
+      --accent-soft: rgba(2, 132, 199, 0.09);
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --text-muted: #64748b;
+      --text-on-accent: #ffffff;
+      --gauge-track: #e2e8f0;
+      --badge-bg: rgba(2, 132, 199, 0.10);
+      --badge-border: rgba(2, 132, 199, 0.28);
+      --badge-text: #0284c7;
+      --success: #10b981;
+      --success-soft: rgba(16, 185, 129, 0.12);
+      --success-border: rgba(16, 185, 129, 0.32);
+      --warning: #d97706;
+      --warning-soft: rgba(245, 158, 11, 0.12);
+      --warning-border: rgba(245, 158, 11, 0.32);
+      --danger: #e11d48;
+      --danger-soft: rgba(225, 29, 72, 0.10);
+      --danger-border: rgba(225, 29, 72, 0.30);
+      --fire-mid: #ea580c;
+      --emerald-deep: #047857;
+      --btn-primary-bg: linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #4f46e5 100%);
+      --btn-primary-text: #ffffff;
+      --btn-primary-shadow: 0 4px 14px var(--accent-glow);
+      --btn-danger-bg: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+      --hero-gradient: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%);
+      --table-header-bg: #f1f5f9;
+      --modal-bg: #ffffff;
+      --overlay-mask: rgba(15, 23, 42, 0.45);
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --code-bg: #e2e8f0;
+      --turbo-glow: rgba(225, 29, 72, 0.20);
+      --turbo-border: #e11d48;
+      --skeleton-a: rgba(15, 23, 42, 0.05);
+      --skeleton-b: rgba(2, 132, 199, 0.12);
+      --win-min: #f59e0b;
+      --win-max: #10b981;
+      --win-close: #ef4444;
+      --gpu-metal-dark: #1e293b;
+      --gpu-metal-mid: #334155;
+      --gpu-metal-light: #94a3b8;
+      --hazard-red: rgba(225, 29, 72, 0.90);
+      --hazard-dark: rgba(15, 23, 42, 0.95);
+      /* 芯片俯视图配色（白昼：石板灰基板 + 蓝走线，对比更克制） */
+      --chip-substrate: #1e293b;
+      --chip-frame: #0284c7;
+      --chip-vram: #475569;
+      --chip-vram-line: #cbd5e1;
+      --chip-die-edge: #ffffff;
+      --chip-gpc: #0b1220;
+      --chip-pin: #f59e0b;
+    }
+
+    body {
+      background: var(--bg-desk-grad);
+    }
+
+    /* =========================================================================
+       UNIFIED SCROLLBAR (thin, themed, unobtrusive)
+       ========================================================================= */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(var(--accent-rgb), 0.18);
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(var(--accent-rgb), 0.42);
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(var(--accent-rgb), 0.24) transparent;
+    }
+
+    /* =========================================================================
+       PERF-LOW DEGRADATION MODE
+       ========================================================================= */
+    body.perf-low #ambientParticleCanvas,
+    body.perf-low #turboFireCanvas {
+      display: none !important;
+    }
+    body.perf-low .app-frame,
+    body.perf-low .modal-overlay {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: var(--frame-bg-solid) !important;
+    }
+    body.perf-low .card,
+    body.perf-low .gauge-card,
+    body.perf-low .hero-banner {
+      background: var(--card-bg-solid) !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    }
+    body.perf-low .gpu-3d-card,
+    body.perf-low .gpu-3d-fan,
+    body.perf-low .die-pulse-ring,
+    body.perf-low .lane-pin,
+    body.perf-low .caso-packet,
+    body.perf-low .turbo-fire-ring,
+    body.perf-low .turbo-fire-ring-2,
+    body.perf-low .logo-diamond::after,
+    body.perf-low .chain-link-arrow::after {
+      animation: none !important;
+    }
+    body.perf-low .gpu-3d-card {
+      transform: rotateY(-14deg) rotateX(8deg) !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gpu-3d-card, .gpu-3d-fan, .die-pulse-ring, .lane-pin, .caso-packet {
+        animation: none !important;
+      }
+    }
+
+    #ambientParticleCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.45;
+    }
+
+    /* =========================================================================
+       UNIFIED DUOTONE SVG ICON SYSTEM (3 TIERS: 14px / 18px / 22px, STROKE 1.75)
+       ========================================================================= */
+    .svg-icon,
+    .nav-icon,
+    .ctrl-glyph {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+      transition: transform var(--dur-fast) var(--ease-std), color var(--dur-fast) var(--ease-std);
+    }
+    .btn .svg-icon,
+    .seg-btn .svg-icon,
+    .tool-chip-btn .svg-icon,
+    .safety-cover-label .svg-icon,
+    .win-ctrl-btn .ctrl-glyph {
+      width: 14px;
+      height: 14px;
+    }
+    .nav-icon,
+    .card-title .svg-icon,
+    .gauge-label .svg-icon,
+    .matrix-icon-box .svg-icon,
+    .node-icon .svg-icon,
+    .power-icon-box .svg-icon,
+    .pcie-lane-label .svg-icon,
+    .caso-card .svg-icon {
+      width: 18px;
+      height: 18px;
+    }
+    .page-title .svg-icon,
+    .modal-header .svg-icon,
+    .latch-desc h3 .svg-icon {
+      width: 22px;
+      height: 22px;
+    }
+    /* -------------------------------------------------------------------------
+       DUOTONE COLOR ENGINE (v6.2)
+       图标填充改为语义渐变：默认蓝紫，按 data-tone 切换色系。
+       保留了 6.0 的「彩色硬件图标」语言，同时维持统一描边粗细。
+       ------------------------------------------------------------------------- */
+    svg .svg-tone {
+      fill: var(--icon-tone, url(#hxCyberGrad));
+      fill-opacity: 0.24;
+      stroke: none;
+      transition: fill-opacity var(--dur-mid) var(--ease-std), fill var(--dur-mid) var(--ease-std);
+    }
+    /* 实心点缀：用于锁芯、指示灯、闪电等需要"亮起来"的局部 */
+    svg .svg-dot {
+      fill: var(--icon-tone, url(#hxCyberGrad));
+      fill-opacity: 1;
+      stroke: none;
+      transition: fill-opacity var(--dur-mid) var(--ease-std);
+    }
+    /* 彩色笔触：用于提示符、连接线、箭头等需要"通电"的线条 */
+    svg .svg-line {
+      fill: none;
+      stroke: var(--icon-tone, url(#hxCyberGrad));
+      stroke-width: 2.1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    svg[data-tone="fire"]    { --icon-tone: url(#hxFireGrad); }
+    svg[data-tone="emerald"] { --icon-tone: url(#hxEmeraldGrad); }
+    svg[data-tone="violet"]  { --icon-tone: url(#hxVioletGrad); }
+    svg[data-tone="amber"]   { --icon-tone: url(#hxAmberGrad); }
+
+    .nav-item.active svg .svg-tone,
+    .seg-btn.active svg .svg-tone,
+    .channel-card.active svg .svg-tone,
+    .power-preset-card.active svg .svg-tone,
+    .node-icon.active svg .svg-tone,
+    .matrix-icon-box.pass svg .svg-tone,
+    .btn-primary svg .svg-tone {
+      fill: var(--icon-tone, url(#hxCyberGrad));
+      fill-opacity: 0.34;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }

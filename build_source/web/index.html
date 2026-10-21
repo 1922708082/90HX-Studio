@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
   <style>
+/* =====================  01-base.css  ===================== */
+/* 01-base.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
+
     /* =========================================================================
        CSS RESET & BASE TYPOGRAPHY (4 FONT SIZES: 11.5px / 12.5px / 14px / 24px)
        ========================================================================= */
@@ -389,6 +392,8 @@
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
+/* =====================  02-layout.css  ===================== */
+/* 02-layout.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
 
     /* =========================================================================
        FULL-WINDOW DESKTOP SHELL FRAME & 44PX TITLEBAR
@@ -972,6 +977,8 @@
       color: var(--danger);
       margin-right: 8px;
     }
+/* =====================  03-components.css  ===================== */
+/* 03-components.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
 
     /* =========================================================================
        PAGE 1: HERO BANNER & REFINED 3D GRAPHICS CARD MODEL
@@ -2913,6 +2920,8 @@
       .two-col-grid, .power-preset-group { grid-template-columns: 1fr; }
       .gpu-3d-stage { display: none; }
     }
+/* =====================  04-pages.css  ===================== */
+/* 04-pages.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
 
     /* =========================================================================
        ROUND 3 UPGRADES:
@@ -3693,6 +3702,8 @@
       color: var(--text-main);
     }
 
+/* =====================  05-overrides.css  ===================== */
+/* 05-overrides.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
 
     /* =========================================================================
        FINAL UPGRADE ON OUR BASE (hx_v6_1.html):
@@ -5177,6 +5188,7 @@
       display: block;
     }
 
+  
   </style>
 </head>
 
@@ -5357,7 +5369,8 @@
           <!-- =================================================================
                PAGE 1: device (硬件总览)
                ================================================================= -->
-          <div id="view-device" class="view-panel active">
+                    <!-- <!-- PAGE: device · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-device" class="view-panel active">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -5494,7 +5507,7 @@
                         <div class="gpu-3d-fan">
                           <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
                         </div>
-                        <div class="gpu3-fan-hub"><span>HX</span></div>
+                        <div class="gpu3-fan-hub"><span id="gpu3dBadgeBrand">HX</span></div>
                       </div>
 
                       <!-- Fan 2 (Center Flagship Counter-Rotating Fan) -->
@@ -5626,10 +5639,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 2: unlock (固件解锁)
-               ================================================================= -->
-          <div id="view-unlock" class="view-panel">
+<!-- PAGE: unlock · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-unlock" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -5751,10 +5762,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 3: spoof (显卡伪装)
-               ================================================================= -->
-          <div id="view-spoof" class="view-panel">
+<!-- PAGE: spoof · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-spoof" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -5883,10 +5892,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 4: power (动态节能)
-               ================================================================= -->
-          <div id="view-power" class="view-panel">
+<!-- PAGE: power · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-power" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -5984,10 +5991,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 5: dlss (DLSS 5 / 帧生成 - TARGET <= 180 CHINESE CHARS)
-               ================================================================= -->
-          <div id="view-dlss" class="view-panel">
+<!-- PAGE: dlss · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-dlss" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -6185,10 +6190,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 6: overlay (游戏覆盖)
-               ================================================================= -->
-          <div id="view-overlay" class="view-panel">
+<!-- PAGE: overlay · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-overlay" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -6333,10 +6336,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 7: dualgpu (双卡协同)
-               ================================================================= -->
-          <div id="view-dualgpu" class="view-panel">
+<!-- PAGE: dualgpu · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-dualgpu" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -6471,10 +6472,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 8: maintenance (系统维护 - TARGET <= 170 CHINESE CHARS)
-               ================================================================= -->
-          <div id="view-maintenance" class="view-panel">
+<!-- PAGE: maintenance · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-maintenance" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -6584,10 +6583,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 9: logs (审计日志)
-               ================================================================= -->
-          <div id="view-logs" class="view-panel">
+<!-- PAGE: logs · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-logs" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -6695,10 +6692,8 @@
             </div>
           </div>
 
-          <!-- =================================================================
-               PAGE 10: update (软件更新 - TARGET <= 150 CHINESE CHARS)
-               ================================================================= -->
-          <div id="view-update" class="view-panel">
+<!-- PAGE: update · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-update" class="view-panel">
             <div class="page-header">
               <div>
                 <div class="page-title">
@@ -6810,6 +6805,8 @@
               </div>
             </div>
           </div>
+ 构建时按 pages/ 顺序注入 -->
+
 
         </section>
       </div>
@@ -6972,6 +6969,12 @@
              .replace(/^Quadro\s+/i, '');
         if (s.length > 15) s = s.slice(0, 14) + '…';
         return s;
+      }
+
+      /* 中间风扇只放数字：'CMP 90HX' → '90'，'RTX 3080' → '3080' */
+      function digitsOnly(raw) {
+        const m = String(raw === undefined || raw === null ? '' : raw).match(/\d+/);
+        return m ? m[0] : '--';
       }
 
       function showToast(text, level) {
@@ -7335,11 +7338,14 @@
         }
 
         // 3D Card Labels
+        // 三个风扇分工：左=品牌标记(RX/HX)，中=纯数字型号，右=芯片代号
+        const bBrand = document.getElementById('gpu3dBadgeBrand');
         const bModel = document.getElementById('gpu3dBadgeModel');
         const bChip = document.getElementById('gpu3dBadgeChip');
         const bBack = document.getElementById('gpu3dBackText');
         const bLight = document.getElementById('gpu3dLightbarText');
-        if (bModel) bModel.textContent = shortModelName(gpu && gpu.model);
+        if (bBrand) bBrand.textContent = (gpu && gpu.isSpoofed) ? 'RX' : 'HX';
+        if (bModel) bModel.textContent = digitsOnly(gpu && gpu.model);
         if (bChip) bChip.textContent = gpu && gpu.chip ? gpu.chip : '--';
         if (bBack) bBack.textContent = gpu && gpu.chip ? gpu.chip : 'CMP';
         if (bLight) bLight.textContent = shortModelName(gpu && gpu.model);
@@ -9975,6 +9981,8 @@
         }
       }
     })();
+  
+
   </script>
 </body>
 </html>

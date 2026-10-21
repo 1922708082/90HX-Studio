@@ -1,0 +1,198 @@
+<!-- PAGE: dlss · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-dlss" class="view-panel">
+            <div class="page-header">
+              <div>
+                <div class="page-title">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="6" width="20" height="12" rx="5"/><rect x="2" y="6" width="20" height="12" rx="5"/><path d="M7 12h4M9 10v4"/><circle cx="16.5" cy="12" r="1.5"/></svg>
+                  <span>DLSS 5 / 帧生成</span>
+                </div>
+                <div class="page-desc">神经插帧与参数调优</div>
+              </div>
+              <div class="header-actions">
+                <button class="btn btn-secondary" data-action="dlss.preflight" id="btnDlssPreflight" title="dlss.preflight">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M5.5 12.5l4.5 4.5L19 7.5"/></svg>
+                  <span>前置检查</span>
+                </button>
+                <button class="btn btn-secondary" data-action="modal.confirm" data-confirm-type="dlss.remove" id="btnDlssRemove" title="dlss.remove">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="6" y="6" width="12" height="14" rx="2"/><path d="M4 6h16M9 6V4h6v2M6 6v13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/></svg>
+                  <span>移除补丁</span>
+                </button>
+                <button class="btn btn-primary" data-action="dlss.deploy" id="btnDlssDeploy" title="dlss.deploy">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                  <span>一键部署</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="dlssStateBanner"></div>
+
+            <div class="card">
+              <div class="card-title">
+                <span title="dlss.state">运行库</span>
+                <span class="tag" id="dlssVersionBadge">未知</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;" id="dlssRuntimePathText">
+                  --
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);" for="dlssMirrorSelect">镜像源:</label>
+                  <select class="select-input" id="dlssMirrorSelect" style="width:192px;"></select>
+                  <button class="btn btn-secondary" data-action="dlss.checkUpdate" id="btnDlssCheckUpdate">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="14" width="16" height="6" rx="2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 10l4 4 4-4M12 14V4"/></svg>
+                    <span>检查更新</span>
+                  </button>
+                </div>
+              </div>
+              <div class="progress-wrap" id="dlssProgressWrap">
+                <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;">
+                  <span id="dlssProgressStage">处理中...</span>
+                  <span id="dlssProgressPercent">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="dlssProgressFill" style="width:0%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="two-col-grid">
+              <div class="card">
+                <div class="card-title">
+                  <span>游戏目录</span>
+                  <span class="tag" id="dlssPreflightSummaryBadge">未检查</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div>
+                    <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="gameDir">主程序目录</label>
+                    <div style="display:flex;gap:8px;">
+                      <input type="text" class="text-input" id="dlssGameDirInput" placeholder="游戏路径" />
+                      <button class="btn btn-secondary" data-action="dialog.browse" data-browse-kind="dir" data-browse-target="dlssGameDirInput">
+                        <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
+                        <span>浏览</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="proxyName">代理文件</label>
+                      <select class="select-input" id="dlssProxySelect"></select>
+                    </div>
+                    <div>
+                      <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;">REFramework</label>
+                      <select class="select-input" id="dlssReFrameworkSelect">
+                        <option value="false">关闭</option>
+                        <option value="true">开启</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">
+                  <span title="dlss.preflight">前置检查</span>
+                  <span class="tag" id="dlssBlockingBadge">阻塞: --</span>
+                </div>
+                <div id="dlssPreflightItemsContainer" style="display:flex;flex-direction:column;gap:8px;">
+                  <div class="state-box">
+                    <div class="state-box-text">未执行</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span title="optLevel / maxFrames / engine / preset / srMode">插帧参数</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="optLevel">优化等级</label>
+                  <select class="select-input" id="dlssOptLevel">
+                    <option value="1">无损</option>
+                    <option value="2">均衡</option>
+                    <option value="3">极限</option>
+                    <option value="0">默认</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="maxFrames">倍率上限</label>
+                  <select class="select-input" id="dlssMaxFrames" data-action-change="dlss.changeMaxFrames">
+                    <option value="4">4X</option>
+                    <option value="3">3X</option>
+                    <option value="2">2X</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="engine">插帧引擎</label>
+                  <select class="select-input" id="dlssEngine">
+                    <option value="fsr3">通用</option>
+                    <option value="pure">原生</option>
+                    <option value="re">REFramework</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="preset">画质预设</label>
+                  <select class="select-input" id="dlssPreset">
+                    <option value="C">高速</option>
+                    <option value="E">画质</option>
+                    <option value="F">低延迟</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="srMode">超分模式</label>
+                  <select class="select-input" id="dlssSrMode">
+                    <option value="quality">质量</option>
+                    <option value="balanced">平衡</option>
+                    <option value="performance">性能</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>插帧管线</span>
+                <span class="tag accent" id="dlssPipelineBadge">4X 管线</span>
+              </div>
+              <div class="boot-chain-stage">
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="19" height="13" rx="2"/><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+                  </div>
+                  <div class="node-title">输入帧</div>
+                  <div class="node-status">原始渲染</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
+                  </div>
+                  <div class="node-title" id="dlssPipelineNode1">光流合成</div>
+                  <div class="node-status">运动合成</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                  </div>
+                  <div class="node-title" id="dlssPipelineNode2">多倍插帧</div>
+                  <div class="node-status" id="dlssPipelineModeSub">4X 倍率</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="19" height="13" rx="2"/><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+                  </div>
+                  <div class="node-title">画面输出</div>
+                  <div class="node-status">同步呈现</div>
+                </div>
+              </div>
+            </div>
+          </div>

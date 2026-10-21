@@ -6,8 +6,18 @@ $gac64Path = "C:\Windows\Microsoft.NET\assembly\GAC_64"
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "HX家族多功能工具箱 v5.0 绿色免安装版构建流程" -ForegroundColor Cyan
+Write-Host "HX家族多功能工具箱 v6.2 绿色免安装版构建流程" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
+
+# 先把 web/ 下的模块化源文件（css/ + pages/ + js/）合并成单文件 index.html，
+# 再交给编译器内嵌。改了任何 css/pages/js 都必须经过这一步。
+$mergeScript = "D:\app\build_source\scripts\merge-web.ps1"
+if (Test-Path $mergeScript) {
+    & $mergeScript
+    if (-not $?) { Write-Host "[ERROR] 前端合并失败" -ForegroundColor Red; exit 1 }
+} else {
+    Write-Host "[WARN] 未找到 merge-web.ps1，跳过合并" -ForegroundColor Yellow
+}
 
 $targetExe = "D:\app\90HX Studio.exe"
 Write-Host "正在编译免安装可执行程序: $targetExe ..." -ForegroundColor Yellow

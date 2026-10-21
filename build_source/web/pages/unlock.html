@@ -1,0 +1,122 @@
+<!-- PAGE: unlock · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-unlock" class="view-panel">
+            <div class="page-header">
+              <div>
+                <div class="page-title">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><path d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><circle cx="12" cy="11" r="2"/><path d="M12 13v3"/></svg>
+                  <span>固件解锁</span>
+                </div>
+                <div class="page-desc">引导通道注入与引导恢复</div>
+              </div>
+              <div class="header-actions">
+                <button class="btn btn-secondary" data-action="unlock.scan" id="btnUnlockScan">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M20.5 3.5v5h-5"/></svg>
+                  <span>检测状态</span>
+                </button>
+                <button class="btn btn-secondary" data-action="modal.confirm" data-confirm-type="unlock.rollback" id="btnUnlockRollback">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
+                  <span>恢复引导</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="unlockStateBanner"></div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>型号与通道</span>
+                <span class="tag" id="unlockModeTag">未知</span>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div class="selector-bar" id="unlockCardTypeBar">
+                  <button class="seg-btn active" data-action="unlock.selectCard" data-card="90HX" title="GA102">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                    <span>CMP 90HX</span>
+                  </button>
+                  <button class="seg-btn" data-action="unlock.selectCard" data-card="50HX" title="TU102">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                    <span>CMP 50HX</span>
+                  </button>
+                  <button class="seg-btn" data-action="unlock.selectCard" data-card="40HX" title="TU106">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                    <span>CMP 40HX</span>
+                  </button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;" id="unlockEnvFlags">
+                  <span class="tag">UEFI: 未知</span>
+                </div>
+              </div>
+
+              <div class="channel-grid" id="unlockChannelsGrid">
+                <div class="skeleton-line" style="height:64px;"></div>
+                <div class="skeleton-line" style="height:64px;"></div>
+                <div class="skeleton-line" style="height:64px;"></div>
+                <div class="skeleton-line" style="height:64px;"></div>
+              </div>
+
+              <div id="unlockUsbRow" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);">目标 U 盘:</label>
+                <select class="select-input" id="unlockUsbSelect" style="max-width:260px;"></select>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>启动链状态</span>
+                <span class="tag" id="unlockDetailTag">检测中...</span>
+              </div>
+              <div class="boot-chain-stage">
+                <div class="chain-node">
+                  <div class="node-icon" id="chainNodeUefi">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                  </div>
+                  <div class="node-title">主板 UEFI</div>
+                  <div class="node-status" id="chainTextUefi">未知</div>
+                </div>
+
+                <div class="chain-link-arrow" id="chainArrow1"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon" id="chainNodeEfi">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><path d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><circle cx="12" cy="11" r="2"/><path d="M12 13v3"/></svg>
+                  </div>
+                  <div class="node-title" id="chainTitleEfi">引导载荷</div>
+                  <div class="node-status" id="chainTextEfi">未知</div>
+                </div>
+
+                <div class="chain-link-arrow" id="chainArrow2"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon" id="chainNodeOs">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="19" height="13" rx="2"/><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+                  </div>
+                  <div class="node-title">系统驱动</div>
+                  <div class="node-status" id="chainTextOs">未知</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="latch-box">
+              <div class="latch-desc">
+                <h3>
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4.5M12 17.5h.01"/></svg>
+                  <span>引导写入安全锁</span>
+                </h3>
+                <p id="unlockActionSummaryText">掀开右侧保护盖后可执行引导写入。</p>
+              </div>
+
+              <div class="safety-cover-container">
+                <div class="safety-cover" id="safetyCover" tabindex="0" role="button" data-action="ui.toggleSafetyCover">
+                  <span class="safety-cover-label">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4M12 15.5h.01"/></svg>
+                    <span>掀开保护盖</span>
+                  </span>
+                </div>
+                <button class="btn btn-danger latch-trigger-btn" data-action="modal.confirm" data-confirm-type="unlock.install" id="btnUnlockInstall" title="unlock.install">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                  <span>立即执行固件解锁</span>
+                </button>
+              </div>
+            </div>
+          </div>

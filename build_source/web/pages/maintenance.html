@@ -1,0 +1,110 @@
+<!-- PAGE: maintenance · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-maintenance" class="view-panel">
+            <div class="page-header">
+              <div>
+                <div class="page-title">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/></svg>
+                  <span>系统维护</span>
+                </div>
+                <div class="page-desc">系统快照备份与出厂重置</div>
+              </div>
+              <div class="header-actions">
+                <input type="text" class="text-input" id="snapshotLabelInput" placeholder="快照备注（可选）" style="width:184px;" />
+                <button class="btn btn-primary" data-action="snapshot.create" id="btnSnapshotCreate">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M12 5.5v13M5.5 12h13"/></svg>
+                  <span>创建快照</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="maintenanceStateBanner"></div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>备份机制</span>
+                <span class="tag accent" id="maintenanceStorageSummaryTag">0 个快照</span>
+              </div>
+              <div class="boot-chain-stage">
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9L14 3z"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9L14 3z"/><path d="M14 3v6h6M12 17v-5M9.5 14.5h5"/></svg>
+                  </div>
+                  <div class="node-title">自动备份</div>
+                  <div class="node-status">操作前归档</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><ellipse class="svg-tone" cx="12" cy="6" rx="8" ry="3"/><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/><path d="M4 6v12c0 1.66 3.58 3 8 3s8-1.34 8-3V6"/></svg>
+                  </div>
+                  <div class="node-title">配置镜像</div>
+                  <div class="node-status">注册表与引导</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
+                  </div>
+                  <div class="node-title">无损回滚</div>
+                  <div class="node-status">一键还原</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span title="maintenance.snapshots">历史快照</span>
+                  <button class="seg-btn active" data-action="snapshot.filterKind" data-kind="all" style="padding:4px 8px;font-size:11.5px;">全部</button>
+                  <button class="seg-btn" data-action="snapshot.filterKind" data-kind="auto" title="auto" style="padding:4px 8px;font-size:11.5px;">自动备份</button>
+                  <button class="seg-btn" data-action="snapshot.filterKind" data-kind="factory" title="factory" style="padding:4px 8px;font-size:11.5px;">出厂基线</button>
+                  <button class="seg-btn" data-action="snapshot.filterKind" data-kind="manual" title="manual" style="padding:4px 8px;font-size:11.5px;">手动创建</button>
+                </div>
+                <span class="tag" id="snapshotCountBadge">未知</span>
+              </div>
+              <div class="timeline" id="snapshotTimelineContainer">
+                <div class="skeleton-line" style="height:48px;"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>主题与性能</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:12.5px;color:var(--text-sub);display:flex;align-items:center;gap:8px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M2.5 12h2M19.5 12h2"/></svg>
+                  <span>切换界面配色或开启低功耗渲染</span>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="btn btn-secondary" data-action="theme.set" data-theme="dark" title="dark">暗色主题</button>
+                  <button class="btn btn-secondary" data-action="theme.set" data-theme="light" title="light">亮色主题</button>
+                  <button class="btn btn-secondary" id="btnTogglePerfLow" data-action="ui.togglePerfLow" title="ui.togglePerfLow">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                    <span id="perfLowBtnLabel">标准动效</span>
+                  </button>
+                  <button class="btn btn-secondary" id="btnToggleTheme" data-action="ui.toggleTheme" style="display:none;"><span id="themeBtnLabel"></span></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="border-color:var(--danger-border);">
+              <div class="card-title">
+                <span style="color:var(--danger);" title="factory.reset">出厂重置</span>
+                <span class="tag danger">需输入 RESET</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:12.5px;color:var(--text-sub);">
+                  清除伪装、引导与节能配置并恢复默认状态
+                </div>
+                <button class="btn btn-danger" data-action="modal.confirm" data-confirm-type="factory.reset" id="btnFactoryReset" title="factory.reset">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4.5M12 17.5h.01"/></svg>
+                  <span>紧急重置</span>
+                </button>
+              </div>
+            </div>
+          </div>

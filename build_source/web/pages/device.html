@@ -1,0 +1,269 @@
+<!-- PAGE: device · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-device" class="view-panel active">
+            <div class="page-header">
+              <div>
+                <div class="page-title">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="12" rx="2"/><rect x="3" y="4" width="18" height="12" rx="2"/><circle cx="8.5" cy="10" r="2"/><circle cx="15.5" cy="10" r="2"/><path d="M7 20h10M12 16v4"/></svg>
+                  <span>硬件总览</span>
+                </div>
+                <div class="page-desc">显卡实时状态与系统环境</div>
+              </div>
+              <div class="header-actions">
+                <button class="btn btn-secondary" data-action="device.refresh" id="btnDeviceRefresh" title="刷新硬件与传感器数据">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M20.5 3.5v5h-5"/></svg>
+                  <span>刷新状态</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="deviceStateBanner"></div>
+
+            <!-- HERO GPU BANNER + 3D MODEL (TRIPLE-FAN FLAGSHIP EDITION · DISTINCT DAY & NIGHT MODELS) -->
+            <div class="hero-banner" id="deviceHeroBanner">
+              <div class="hero-left">
+                <div class="gpu-chip-box">
+                  <div class="die-pulse-ring"></div>
+                  <svg class="chip-die-svg" width="44" height="44" viewBox="0 0 48 48" aria-label="GA102 芯片俯视图">
+                    <!-- BGA 基板 -->
+                    <rect x="4" y="4" width="40" height="40" rx="5" fill="var(--chip-substrate)" stroke="var(--chip-frame)" stroke-width="1.5"/>
+                    <!-- 10 颗 GDDR6X 显存颗粒 -->
+                    <g fill="var(--chip-vram)" stroke="var(--chip-vram-line)" stroke-width="0.8">
+                      <rect x="7" y="11" width="5" height="6" rx="0.8"/>
+                      <rect x="7" y="19" width="5" height="6" rx="0.8"/>
+                      <rect x="7" y="27" width="5" height="6" rx="0.8"/>
+                      <rect x="36" y="11" width="5" height="6" rx="0.8"/>
+                      <rect x="36" y="19" width="5" height="6" rx="0.8"/>
+                      <rect x="36" y="27" width="5" height="6" rx="0.8"/>
+                      <rect x="14" y="6.5" width="6" height="4.5" rx="0.8"/>
+                      <rect x="28" y="6.5" width="6" height="4.5" rx="0.8"/>
+                      <rect x="14" y="37" width="6" height="4.5" rx="0.8"/>
+                      <rect x="28" y="37" width="6" height="4.5" rx="0.8"/>
+                    </g>
+                    <!-- 中央 GA102 硅晶片 + 6 组 GPC -->
+                    <rect x="14" y="13" width="20" height="22" rx="2" fill="url(#hxCyberGrad)" stroke="var(--chip-die-edge)" stroke-width="1"/>
+                    <g fill="var(--chip-gpc)" opacity="0.65">
+                      <rect x="16" y="15" width="7" height="5" rx="0.6"/>
+                      <rect x="25" y="15" width="7" height="5" rx="0.6"/>
+                      <rect x="16" y="21.5" width="7" height="5" rx="0.6"/>
+                      <rect x="25" y="21.5" width="7" height="5" rx="0.6"/>
+                      <rect x="16" y="28" width="7" height="5" rx="0.6"/>
+                      <rect x="25" y="28" width="7" height="5" rx="0.6"/>
+                    </g>
+                    <!-- 四角 SMD 金脚 -->
+                    <circle cx="8" cy="8" r="1.2" fill="var(--chip-pin)"/>
+                    <circle cx="40" cy="8" r="1.2" fill="var(--chip-pin)"/>
+                    <circle cx="8" cy="40" r="1.2" fill="var(--chip-pin)"/>
+                    <circle cx="40" cy="40" r="1.2" fill="var(--chip-pin)"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="hero-gpu-name">
+                    <span id="heroGpuDisplayName">读取中...</span>
+                    <span class="tag" id="heroSpoofBadge">未知</span>
+                  </div>
+                  <div class="hero-tags" id="heroGpuTags">
+                    <span class="tag">--</span>
+                    <span class="tag">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- INTERACTIVE TRIPLE-FAN 3D GRAPHICS CARD MODEL (LEFT<->RIGHT SWING + MOUSE TRACKING) -->
+              <div class="gpu-3d-stage" id="gpu3dStage" aria-label="三风扇 3D 显卡模型：支持左右平滑自转与鼠标朝向追踪">
+                <div class="gpu-3d-card" id="gpu3dCard">
+                  <!-- 3D LAYER 1 (Z: -14px): Anodized Metal Backplate with Flow-Through Vents & Core Capacitor Window -->
+                  <div class="gpu3-backplate">
+                    <i class="gpu-screw tl"></i><i class="gpu-screw tr"></i><i class="gpu-screw bl"></i><i class="gpu-screw br"></i>
+                    <div class="gpu3-back-brand" id="gpu3dBackText">GA102</div>
+                    <div class="gpu3-back-vents"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="gpu-back-core">
+                      <span></span><span></span><span></span>
+                      <span></span><span></span><span></span>
+                      <span></span><span></span><span></span>
+                    </div>
+                  </div>
+
+                  <!-- 3D LAYER 2 (Z: -8px): Multi-Layer PCB + Bottom Gold PCIe x16 Fingers + Left Silver Dual-Slot I/O Bracket -->
+                  <div class="gpu3-pcb-layer">
+                    <div class="gpu3-io-bracket"><i></i><i></i><i></i><i></i></div>
+                    <div class="gpu3-pcie-fingers"></div>
+                  </div>
+
+                  <!-- 3D LAYER 3 (Z: -2px): Full-Length High-Density Aluminum Fin Stack & 5x Copper/Nickel Heatpipes -->
+                  <div class="gpu3-heatsink-layer">
+                    <div class="gpu3-heatpipe-row">
+                      <span></span><span></span><span></span><span></span>
+                    </div>
+                    <!-- Top Side Shoulder: Illuminated RGB/Ice Lightbar + Triple 8-Pin Power Connectors -->
+                    <div class="gpu3-top-shoulder">
+                      <div class="gpu3-lightbar-wrap">
+                        <span class="gpu3-edition-tag" id="gpu3dEditionTag">OBSIDIAN 3X</span>
+                        <span class="gpu-lightbar" id="gpu3dLightbarText">CMP 90HX</span>
+                      </div>
+                      <div class="gpu3-power-bank">
+                        <div class="gpu-power-8pin"><div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div><div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div></div>
+                        <div class="gpu-power-8pin"><div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div><div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div></div>
+                        <div class="gpu-power-8pin"><div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div><div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 3D LAYER 4 (Z: +4px): Sculpted Die-Cast Armor Mid-Plate & Geometric X-Bridges -->
+                  <div class="gpu3-armor-mid"></div>
+
+                  <!-- 3D LAYER 5 (Z: +10px): Flagship Triple-Fan Shroud Armor (Left / Center / Right 9-Blade Axial Fans) -->
+                  <div class="gpu3-shroud-front">
+                    <div class="gpu-mouse-glare" id="gpuMouseGlare"></div>
+                    <i class="gpu-screw tl"></i><i class="gpu-screw tr"></i><i class="gpu-screw bl"></i><i class="gpu-screw br"></i>
+                    <i class="gpu-screw tm-l"></i><i class="gpu-screw tm-r"></i><i class="gpu-screw bm-l"></i><i class="gpu-screw bm-r"></i>
+
+                    <!-- Top & Bottom Neon/Ice Accent Strips on Shroud -->
+                    <div class="gpu3-accent-strip strip-top-left"></div>
+                    <div class="gpu3-accent-strip strip-top-right"></div>
+                    <div class="gpu3-accent-strip strip-bot-left"></div>
+                    <div class="gpu3-accent-strip strip-bot-right"></div>
+
+                    <!-- Geometric Mech Bevel Overlay SVG -->
+                    <svg class="gpu3-mech-lines" viewBox="0 0 356 108" preserveAspectRatio="none">
+                      <path d="M108 6 L122 24 L122 84 L108 102 M248 6 L234 24 L234 84 L248 102" fill="none" stroke="var(--gpu-mech-line)" stroke-width="1.5"/>
+                      <path d="M14 6 L44 6 L54 14 M302 14 L312 6 L342 6 M14 102 L44 102 L54 94 M302 94 L312 102 L342 102" fill="none" stroke="var(--gpu-accent-line)" stroke-width="1.6"/>
+                    </svg>
+
+                    <!-- TRIPLE AXIAL FANS ROW (FAN #1 LEFT, FAN #2 CENTER REVERSE, FAN #3 RIGHT) -->
+                    <div class="gpu3-fans-row">
+                      <!-- Fan 1 (Left) -->
+                      <div class="gpu3-fan-well">
+                        <div class="gpu-3d-fan">
+                          <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
+                        </div>
+                        <div class="gpu3-fan-hub"><span id="gpu3dBadgeBrand">HX</span></div>
+                      </div>
+
+                      <!-- Fan 2 (Center Flagship Counter-Rotating Fan) -->
+                      <div class="gpu3-fan-well fan-well-center">
+                        <div class="gpu-3d-fan" style="animation-direction: reverse;">
+                          <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
+                        </div>
+                        <div class="gpu3-fan-hub hub-center">
+                          <span id="gpu3dBadgeModel">90HX</span>
+                        </div>
+                      </div>
+
+                      <!-- Fan 3 (Right) -->
+                      <div class="gpu3-fan-well">
+                        <div class="gpu-3d-fan">
+                          <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
+                        </div>
+                        <div class="gpu3-fan-hub"><span id="gpu3dBadgeChip">GA102</span></div>
+                      </div>
+                    </div>
+
+                    <!-- Bottom Center Nameplate Pill -->
+                    <div class="gpu3-bottom-plate">
+                      <span id="gpu3dPlateText">GEFORCE RTX · TRIPLE FAN OC</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hero-actions-right">
+                <button class="btn btn-primary" data-action="nav.switch" data-page="spoof">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
+                  <span>显卡伪装</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- PCIE LANE THROUGHPUT BAR -->
+            <div class="pcie-lane-container">
+              <div class="pcie-lane-label">
+                <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="7" width="20" height="10" rx="2"/><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h12"/></svg>
+                <span id="pcieFormattedText">PCIe 状态: 未知</span>
+              </div>
+              <div class="pcie-lanes-grid" id="pcieLanesGrid">
+                <div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div>
+                <div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div>
+                <div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div>
+                <div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div><div class="lane-pin inactive"></div>
+              </div>
+            </div>
+
+            <!-- 4 TELEMETRY GAUGES (Sleek Horizontal Progress-Bar Cards per Reference File 1 + Hover Drawer & Push-Down) -->
+            <div class="telemetry-grid" id="telemetryGaugesGrid">
+              <div class="gauge-card sensor-invalid" id="gaugeCardTemp">
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringGpuTemp" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
+                  <div class="gauge-val" id="textGpuTemp">--</div>
+                </div>
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">核心温度</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="16.5" r="4"/><path d="M14 13.5V5a2 2 0 0 0-4 0v8.5a4 4 0 1 0 4 0z"/></svg>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-temp" id="barGpuTemp" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subGpuTemp">--</div>
+              </div>
+
+              <div class="gauge-card sensor-invalid" id="gaugeCardFan">
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringFanPercent" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
+                  <div class="gauge-val" id="textFanPercent">--</div>
+                </div>
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">风扇转速</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5C12 6 15 4 17 6s0 5-2.5 6M14.5 12c3.5 0 5.5 3 3.5 5s-5 0-6-2.5M12 14.5c0 3.5-3 5.5-5 3.5s0-5 2.5-6M9.5 12C6 12 4 9 6 7s5 0 6 2.5"/></svg>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-fan" id="barFanPercent" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subFanUtil">--</div>
+              </div>
+
+              <div class="gauge-card sensor-invalid" id="gaugeCardPower">
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringBoardPower" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
+                  <div class="gauge-val" id="textBoardPower">--</div>
+                </div>
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">实时功耗</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-power" id="barBoardPower" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subBoardPower">--</div>
+              </div>
+
+              <div class="gauge-card sensor-invalid" id="gaugeCardMem">
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringMemUsed" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
+                  <div class="gauge-val" id="textMemUsed">--</div>
+                </div>
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">显存占用</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="6" width="18" height="12" rx="2"/><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7.5 10v4M12 10v4M16.5 10v4"/></svg>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-mem" id="barMemUsed" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subMemClock">--</div>
+              </div>
+            </div>
+
+            <!-- SYSTEM & HARDWARE DETAILS TABLE -->
+            <div class="card">
+              <div class="card-title">
+                <span title="System & Flags">系统与硬件详情</span>
+                <span class="tag" id="deviceFlagsSummary">同步中...</span>
+              </div>
+              <div class="matrix-grid" id="deviceSystemMatrix">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+              </div>
+            </div>
+
+            <!-- MULTI-GPU LIST TABLE -->
+            <div class="card">
+              <div class="card-title">
+                <span title="gpu.list">显卡列表</span>
+                <span class="tag" id="gpuListCountBadge">--</span>
+              </div>
+              <div id="gpuListContainer">
+                <div class="skeleton-line"></div>
+              </div>
+            </div>
+          </div>

@@ -1,0 +1,129 @@
+<!-- PAGE: spoof · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-spoof" class="view-panel">
+            <div class="page-header">
+              <div>
+                <div class="page-title">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
+                  <span>显卡伪装</span>
+                </div>
+                <div class="page-desc">型号映射与驱动免重启重载</div>
+              </div>
+              <div class="header-actions">
+                <button class="btn btn-secondary" data-action="spoof.restore" id="btnSpoofRestore" title="spoof.restore">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
+                  <span>还原出厂名</span>
+                </button>
+                <button class="btn btn-primary" data-action="modal.confirm" data-confirm-type="spoof.apply" id="btnSpoofApply" title="spoof.apply">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                  <span>应用伪装</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="spoofStateBanner"></div>
+
+            <div class="card">
+              <div class="card-title">
+                <span title="spoof.state">映射链路</span>
+                <span class="tag" id="spoofCurrentStatusBadge">未知</span>
+              </div>
+              <div class="caso-flow-box">
+                <div class="caso-card primary">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;color:var(--accent);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                    <span class="caso-title" id="spoofStageSourceTitle">物理芯片</span>
+                  </div>
+                  <div class="caso-sub" id="spoofStageSourceSub">--</div>
+                </div>
+
+                <div class="caso-pipe">
+                  <div class="caso-packet"></div>
+                </div>
+
+                <div class="caso-card">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;color:var(--warning);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M20.5 3.5v5h-5"/></svg>
+                    <span class="caso-title">注册表映射</span>
+                  </div>
+                  <div class="caso-sub">驱动免重启重载</div>
+                </div>
+
+                <div class="caso-pipe">
+                  <div class="caso-packet"></div>
+                </div>
+
+                <div class="caso-card primary">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;color:var(--success);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><path d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><circle cx="12" cy="11" r="2"/><path d="M12 13v3"/></svg>
+                    <span class="caso-title" id="spoofStageTargetTitle">目标型号</span>
+                  </div>
+                  <div class="caso-sub" id="spoofStageTargetSub">签名保留</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span title="spoof.models.groups">支持架构</span>
+                <span class="tag" id="spoofModelCountBadge">0 款</span>
+              </div>
+              <div class="matrix-grid" id="spoofArchMatrixGrid">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+              </div>
+            </div>
+
+            <div class="two-col-grid">
+              <div class="card">
+                <div class="card-title">
+                  <span>型号选择</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div>
+                    <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;" title="gpuSlot">显卡槽位</label>
+                    <select class="select-input" id="spoofSlotSelect" data-action-change="spoof.selectSlot"></select>
+                  </div>
+                  <div>
+                    <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;">目标伪装型号</label>
+                    <select class="select-input" id="spoofModelSelect" data-action-change="spoof.selectModel"></select>
+                  </div>
+                  <div style="padding:8px 12px;border-radius:12px;background:var(--card-sub-bg);border:var(--card-border);font-size:11.5px;color:var(--text-sub);display:flex;align-items:center;gap:8px;">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v4M12 15.5h.01"/></svg>
+                    <span id="spoofRecommendedHint">推荐型号: 未知</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">
+                  <span>改动对比</span>
+                </div>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>项目</th>
+                      <th>当前值</th>
+                      <th>目标值</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>物理核心</td>
+                      <td id="spoofTableDetected">--</td>
+                      <td id="spoofTableChip">--</td>
+                    </tr>
+                    <tr>
+                      <td title="DriverDesc">显示名称</td>
+                      <td class="diff-old" id="spoofTableCurrentDesc">--</td>
+                      <td class="diff-new" id="spoofTableTargetName">--</td>
+                    </tr>
+                    <tr>
+                      <td title="isSpoofed">伪装状态</td>
+                      <td colspan="2" id="spoofTableFlag">--</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>

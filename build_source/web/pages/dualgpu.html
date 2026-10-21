@@ -1,0 +1,135 @@
+<!-- PAGE: dualgpu · 单独维护，构建时注入 index.html 的 #pageHost -->
+<div id="view-dualgpu" class="view-panel">
+            <div class="page-header">
+              <div>
+                <div class="page-title">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="7" height="16" rx="2"/><rect x="2.5" y="4" width="7" height="16" rx="2"/><rect x="14.5" y="4" width="7" height="16" rx="2"/><path d="M9.5 9h5M9.5 15h5"/></svg>
+                  <span>双卡协同</span>
+                </div>
+                <div class="page-desc">矿卡渲染与显示输出卡绑定</div>
+              </div>
+              <div class="header-actions">
+                <button class="btn btn-secondary" data-action="dual.scanGames" id="btnDualScanGames">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="11" cy="11" r="7.5"/><circle cx="11" cy="11" r="7.5"/><path d="M20.5 20.5l-4.2-4.2"/></svg>
+                  <span>扫描常见游戏</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="dualStateBanner"></div>
+
+            <div class="telemetry-grid" id="dualSummaryGrid">
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div class="matrix-icon-box" id="dualCardIconRender">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="12" rx="2"/><rect x="3" y="4" width="18" height="12" rx="2"/><circle cx="8.5" cy="10" r="2"/><circle cx="15.5" cy="10" r="2"/><path d="M7 20h10M12 16v4"/></svg>
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="hasRenderGpu">渲染卡</div>
+                    <div style="font-size:12.5px;font-weight:800;color:var(--text-main);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="dualCardTextRender">未知</div>
+                    <div style="font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;" id="dualCardSubRender">--</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div class="matrix-icon-box" id="dualCardIconDisplay">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="19" height="13" rx="2"/><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="hasDisplayGpu">显示卡</div>
+                    <div style="font-size:12.5px;font-weight:800;color:var(--text-main);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="dualCardTextDisplay">未知</div>
+                    <div style="font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;" id="dualCardSubDisplay">--</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div class="matrix-icon-box" id="dualCardIconHags">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                  </div>
+                  <div>
+                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="hagsActive">HAGS 调度</div>
+                    <div style="font-size:12.5px;font-weight:800;color:var(--text-main);" id="dualCardTextHags">未知</div>
+                    <div style="font-size:11.5px;color:var(--text-sub);">硬件加速</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div class="matrix-icon-box" id="dualCardIconVirtual">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
+                  </div>
+                  <div>
+                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="hasVirtualGpu">虚拟显示</div>
+                    <div style="font-size:12.5px;font-weight:800;color:var(--text-main);" id="dualCardTextVirtual">未知</div>
+                    <div style="font-size:11.5px;color:var(--text-sub);" id="dualCardSubVirtual">--</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>跨卡拓扑</span>
+                <span class="tag" id="dualHagsBadge">HAGS: 未知</span>
+              </div>
+              <div class="caso-flow-box">
+                <div class="caso-card primary">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;color:var(--accent);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="12" rx="2"/><rect x="3" y="4" width="18" height="12" rx="2"/><circle cx="8.5" cy="10" r="2"/><circle cx="15.5" cy="10" r="2"/><path d="M7 20h10M12 16v4"/></svg>
+                    <span class="caso-title" id="dualRenderGpuName">渲染卡</span>
+                  </div>
+                  <div class="caso-sub" id="dualRenderGpuPci">--</div>
+                </div>
+
+                <div class="caso-pipe">
+                  <div class="caso-packet"></div>
+                </div>
+
+                <div class="caso-card">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;color:var(--warning);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M4.5 12h15M14 6.5l5.5 5.5-5.5 5.5"/></svg>
+                    <span class="caso-title">PCIe 帧传输</span>
+                  </div>
+                  <div class="caso-sub" id="dualVirtualGpuInfo">未挂载</div>
+                </div>
+
+                <div class="caso-pipe">
+                  <div class="caso-packet"></div>
+                </div>
+
+                <div class="caso-card primary">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;color:var(--success);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="19" height="13" rx="2"/><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+                    <span class="caso-title" id="dualDisplayGpuName">显示卡</span>
+                  </div>
+                  <div class="caso-sub" id="dualDisplayGpuPci">--</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span title="boundApps">已绑定游戏</span>
+                <span class="tag" id="dualBoundCountBadge">0 款</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                <input type="text" class="text-input" id="dualBindExeInput" placeholder="选择游戏主程序文件" style="flex:1;" />
+                <button class="btn btn-secondary" data-action="dialog.browse" data-browse-kind="file" data-browse-target="dualBindExeInput">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
+                  <span>浏览文件</span>
+                </button>
+                <button class="btn btn-primary" data-action="dual.bind" id="btnDualBind">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M12 5.5v13M5.5 12h13"/></svg>
+                  <span>添加绑定</span>
+                </button>
+              </div>
+              <div id="dualBoundListContainer">
+                <div class="skeleton-line"></div>
+              </div>
+            </div>
+          </div>

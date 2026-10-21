@@ -1,0 +1,1486 @@
+/* 05-overrides.css · 由 index.html 拆分，顺序不可调换（层叠覆盖依赖此顺序） */
+
+    /* =========================================================================
+       FINAL UPGRADE ON OUR BASE (hx_v6_1.html):
+       1. 4 Telemetry Cards: Reference File 1's Sleek Horizontal Progress-Bar Card
+          Design + Hover Detail Unfold & Smooth Lower Window Push-Down
+       2. Unconstrained 3D GPU Model: Bold Pop-Out + Smooth Left<->Right Swing
+          + Mouse-Tracking Face-Cursor Rotation + Seamless Blending
+       3. Panoramic 6-Part Exploded View: L-Shaped ("一竖一横") Leader Lines
+          + Full-Size 13.5px/11.5px High-Contrast Labels (Zero Overlap)
+       4. Silky 60fps GPU-Composited translate3d Flow Lines Across All 7 Locations
+       ========================================================================= */
+    :root {
+      --spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* 1. FOUR TELEMETRY CARDS (Sleek Horizontal Progress-Bar Design from File 1 + Hover Unfold) */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .gauge-svg-hidden {
+      display: none !important;
+    }
+    .gauge-card {
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px !important;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch !important;
+      justify-content: flex-start;
+      gap: 8px !important;
+      position: relative;
+      box-shadow: var(--card-shadow);
+      transition:
+        transform 220ms var(--spring-ease),
+        border-color 150ms var(--ease-std),
+        background-color 150ms var(--ease-std),
+        box-shadow 220ms var(--ease-std);
+    }
+    .gauge-card:hover,
+    .gauge-card.is-hovered {
+      transform: translateY(-2px);
+      border-color: var(--card-hover-border);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+    body.theme-light .gauge-card:hover,
+    body.theme-light .gauge-card.is-hovered {
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08), inset 0 1px 0 #ffffff;
+    }
+    .gauge-num-row {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .gauge-val {
+      position: static !important;
+      font-size: 26px !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.4px;
+      line-height: 1.15;
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .gauge-unit {
+      font-size: 12px !important;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+    .gauge-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-sub);
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .gauge-label-row .svg-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--text-sub);
+      transition: color 150ms var(--ease-std), transform 200ms var(--spring-ease);
+    }
+    .gauge-card:hover .gauge-label-row .svg-icon,
+    .gauge-card.is-hovered .gauge-label-row .svg-icon {
+      color: var(--accent);
+      transform: scale(1.08);
+    }
+    .gauge-bar-track {
+      height: 4px;
+      width: 100%;
+      border-radius: 4px;
+      background: var(--gauge-track);
+      overflow: hidden;
+    }
+    .gauge-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 300ms var(--ease-std), background-color 300ms var(--ease-std);
+    }
+    .gauge-bar-fill.bar-temp { background: var(--accent); }
+    .gauge-bar-fill.bar-fan { background: var(--warning); }
+    .gauge-bar-fill.bar-power { background: var(--success); }
+    .gauge-bar-fill.bar-mem { background: var(--accent-secondary); }
+
+    /* Hover-expandable detail drawer inside each of the 4 cards */
+    .gauge-sub {
+      width: 100%;
+      min-height: 0 !important;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      margin-top: 0;
+      padding: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      border-top: 1px dashed transparent !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: var(--text-sub);
+      transform: translateY(-2px);
+      pointer-events: none;
+      transition:
+        max-height 240ms var(--spring-ease),
+        opacity 180ms var(--ease-std),
+        margin-top 240ms var(--spring-ease),
+        padding-top 240ms var(--spring-ease),
+        transform 220ms var(--spring-ease),
+        border-color 180ms var(--ease-std);
+    }
+    .gauge-card:hover .gauge-sub,
+    .gauge-card.is-hovered .gauge-sub,
+    .gauge-card:focus-within .gauge-sub {
+      max-height: 32px;
+      opacity: 1;
+      margin-top: 2px;
+      padding-top: 6px !important;
+      border-top-color: var(--divider-line) !important;
+      transform: translateY(0);
+    }
+    .gauge-sub .gs-pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11.5px;
+      color: var(--text-sub);
+    }
+    .gauge-sub .gs-pair strong {
+      color: var(--text-main);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 700;
+    }
+
+    /* Smooth downward shift of lower cards when hovering over a gauge card */
+    #telemetryGaugesGrid ~ .card {
+      transition:
+        transform 240ms var(--spring-ease),
+        border-color var(--dur-fast) var(--ease-std) !important;
+    }
+    #telemetryGaugesGrid:hover ~ .card,
+    #telemetryGaugesGrid:has(.gauge-card.is-hovered) ~ .card {
+      transform: translateY(6px) !important;
+    }
+
+    /* 2. UNCONSTRAINED 3D GPU HERO & PANORAMIC 6-PART L-SHAPED CALLOUT EXPLODED VIEW */
+    .hero-banner,
+    #deviceHeroBanner {
+      overflow: visible !important;
+      position: relative;
+      z-index: 25;
+      padding: 18px 24px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      border: var(--card-border);
+      transition:
+        padding 420ms var(--spring-ease),
+        border-color var(--dur-fast) var(--ease-std),
+        background 420ms var(--ease-std);
+    }
+    .hero-left {
+      order: 1;
+      z-index: 5;
+      /* 内容再长也不许把 3D 模型挤到下一行 */
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+    /* 模型固定在「显卡名右侧、伪装按钮左侧」，禁止换行 */
+    .hero-banner,
+    #deviceHeroBanner {
+      flex-wrap: nowrap;
+    }
+    .hero-actions-right {
+      flex: 0 0 auto;
+    }
+    .gpu-3d-stage {
+      order: 2;
+      width: 330px !important;
+      height: 112px !important;
+      perspective: 1200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 30;
+      cursor: grab;
+      overflow: visible !important;
+      margin: -8px 0;
+      transition:
+        width 460ms var(--spring-ease),
+        height 460ms var(--spring-ease),
+        margin 460ms var(--spring-ease);
+    }
+    .gpu-3d-stage:active {
+      cursor: grabbing;
+    }
+    .hero-actions-right {
+      order: 3;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 5;
+    }
+    .hero-banner.hero-exploded {
+      padding: 20px 24px 28px;
+      border-color: var(--badge-border);
+    }
+    .hero-banner.hero-exploded .hero-actions-right {
+      order: 2;
+    }
+    .hero-banner.hero-exploded .gpu-3d-stage,
+    .gpu-3d-stage.is-exploded {
+      order: 3;
+      flex: 0 0 100%;
+      width: 100% !important;
+      height: 348px !important;
+      margin: 8px 0 6px;
+    }
+
+    .gpu-3d-stage::before {
+      content: "";
+      position: absolute;
+      bottom: -12px;
+      left: 50%;
+      width: 260px;
+      height: 20px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(var(--accent-rgb), 0.28) 0%, rgba(0, 0, 0, 0.45) 48%, transparent 76%);
+      pointer-events: none;
+      transition: width 460ms var(--spring-ease), bottom 460ms var(--spring-ease), opacity 300ms var(--ease-std);
+    }
+    .gpu-3d-stage.is-exploded::before {
+      width: 84%;
+      height: 28px;
+      bottom: 6px;
+      opacity: 0.85;
+    }
+    .gpu-3d-stage::after {
+      content: "支持鼠标追踪转动 · 点击展开工程拆解图" !important;
+      position: absolute;
+      bottom: -20px !important;
+      left: 50%;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--card-bg-solid);
+      border: 1px solid var(--badge-border);
+      padding: 2px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 180ms var(--ease-std), transform 180ms var(--ease-std);
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+      z-index: 45;
+    }
+    .gpu-3d-stage:hover::after,
+    .gpu-3d-stage:focus-visible::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-2px) !important;
+    }
+    .gpu-3d-stage.is-exploded::after {
+      content: "已展开 6 大核心模组工程拆解图 · 移动鼠标可 3D 环视 · 点击任意处合拢" !important;
+      bottom: -6px !important;
+      opacity: 0.95;
+    }
+
+    .gpu-3d-card,
+    .gpu-3d-card.exploded {
+      width: 264px !important;
+      height: 96px !important;
+      left: 0 !important;
+      top: 0 !important;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: none !important;
+      transition: none;
+      will-change: transform;
+    }
+
+    .gpu-part {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      transform-style: preserve-3d;
+      overflow: visible !important;
+      transition:
+        transform 520ms var(--spring-ease),
+        box-shadow 420ms var(--ease-std),
+        border-color 320ms var(--ease-std),
+        opacity 320ms var(--ease-std);
+      will-change: transform;
+    }
+
+    .gpu-mouse-glare {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 6;
+      background: radial-gradient(
+        circle 110px at var(--glare-x, 50%) var(--glare-y, 50%),
+        rgba(255, 255, 255, 0.30) 0%,
+        rgba(var(--accent-rgb), 0.14) 40%,
+        transparent 75%
+      );
+      opacity: 0;
+      transition: opacity 200ms var(--ease-std);
+    }
+    .gpu-3d-stage:hover .gpu-mouse-glare {
+      opacity: 1;
+    }
+
+    /* PART 1: Anodized Backplate */
+    .gpu-part-backplate {
+      background:
+        repeating-linear-gradient(135deg, rgba(56, 189, 248, 0.06) 0px, rgba(56, 189, 248, 0.06) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #162032 0%, #090d16 100%);
+      border: 1.5px solid rgba(56, 189, 248, 0.42);
+      transform: translate3d(0, 0, -18px);
+      transition-delay: 200ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+    body.theme-light .gpu-part-backplate {
+      background:
+        repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.04) 0px, rgba(15, 23, 42, 0.04) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+      border-color: #64748b;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .gpu-back-brand {
+      font-size: 12.5px;
+      font-weight: 900;
+      color: #e2e8f0;
+      font-family: ui-monospace, monospace;
+      padding: 3px 8px;
+      border-radius: 5px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .gpu-back-vents {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .gpu-back-vents i {
+      width: 4px;
+      height: 34px;
+      border-radius: 2px;
+      background: rgba(56, 189, 248, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transform: skewX(-18deg);
+      display: block;
+    }
+
+    /* PART 2: Frame & Thermal Pads */
+    .gpu-part-frame {
+      inset: 3px 6px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1.5px solid rgba(148, 163, 184, 0.45);
+      transform: translate3d(0, 0, -11px);
+      transition-delay: 160ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    }
+    body.theme-light .gpu-part-frame {
+      background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+      border-color: #64748b;
+    }
+    .gpu-x-bracket {
+      width: 46px;
+      height: 46px;
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11.5px;
+      font-weight: 900;
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+      background: rgba(15, 23, 42, 0.55);
+    }
+    body.theme-light .gpu-x-bracket {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    /* PART 3: GA102 Die & 12-Phase PCB */
+    .gpu-part-pcb {
+      inset: 2px 4px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.22) 0%, transparent 68%),
+        linear-gradient(135deg, #062820 0%, #091926 55%, #051d18 100%);
+      border: 1.5px solid var(--success);
+      transform: translate3d(0, 0, -4px);
+      transition-delay: 120ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+    }
+    body.theme-light .gpu-part-pcb {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.18) 0%, transparent 68%),
+        linear-gradient(135deg, #0f392f 0%, #132a3e 55%, #0c2b24 100%);
+    }
+    .gpu-die-package {
+      position: relative;
+      width: 84px;
+      height: 66px;
+      border: 1.5px dashed rgba(251, 191, 36, 0.65);
+      border-radius: 6px;
+      background: rgba(6, 78, 59, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-part-pcb .gpu-silicon-die {
+      width: 44px;
+      height: 38px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #38bdf8 0%, #0f172a 42%, #1e293b 62%, #818cf8 100%);
+      border: 1.5px solid var(--warning);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-part-pcb .gpu-silicon-die span {
+      transform: none !important;
+      font-size: 10.5px !important;
+      font-weight: 900;
+      color: #ffffff;
+      font-family: ui-monospace, monospace;
+      line-height: 1.1;
+    }
+    .gpu-vram-chip.vl1 { left: 4px; top: 6px; }
+    .gpu-vram-chip.vl2 { left: 4px; top: 20px; }
+    .gpu-vram-chip.vl3 { left: 4px; bottom: 20px; }
+    .gpu-vram-chip.vl4 { left: 4px; bottom: 6px; }
+    .gpu-vram-chip.vr1 { right: 4px; top: 6px; }
+    .gpu-vram-chip.vr2 { right: 4px; top: 20px; }
+    .gpu-vram-chip.vr3 { right: 4px; bottom: 20px; }
+    .gpu-vram-chip.vr4 { right: 4px; bottom: 6px; }
+    .gpu-part-pcb .gpu-3d-pins {
+      position: absolute;
+      bottom: -8px;
+      left: 28px;
+      width: 144px;
+      height: 7px;
+      background: repeating-linear-gradient(90deg, #fbbf24 0px, #fbbf24 2.5px, #0f172a 2.5px, #0f172a 4.5px);
+      border-radius: 0 0 3px 3px;
+      border: 1px solid rgba(251, 191, 36, 0.6);
+      transform: none !important;
+    }
+
+    /* PART 4: Vapor Chamber & 4x Heatpipes */
+    .gpu-part-vapor {
+      inset: 6px 10px;
+      background: rgba(15, 23, 42, 0.84);
+      border: 1.5px dashed var(--warning);
+      transform: translate3d(0, 0, 3px);
+      transition-delay: 80ms;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      padding: 8px 10px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.48);
+    }
+    body.theme-light .gpu-part-vapor {
+      background: rgba(30, 41, 59, 0.90);
+    }
+    .gpu-heatpipe-tube {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #b45309 0%, #f59e0b 24%, #fef08a 50%, #f59e0b 76%, #cbd5e1 100%);
+      border: 1px solid rgba(254, 240, 138, 0.75);
+    }
+    .gpu-vapor-chamber-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 72px;
+      height: 50px;
+      transform: translate(-50%, -50%);
+      border-radius: 6px;
+      background: linear-gradient(135deg, #d97706 0%, #fbbf24 50%, #92400e 100%);
+      border: 1.5px solid #fef3c7;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-vapor-chamber-core span {
+      font-size: 11px;
+      font-weight: 900;
+      color: #0f172a;
+      font-family: ui-monospace, monospace;
+      line-height: 1.15;
+    }
+
+    /* PART 5: Fin Heatsink Array + I/O Bracket + Top Lightbar */
+    .gpu-part-heatsink {
+      inset: 3px 6px;
+      background:
+        linear-gradient(90deg, transparent 45%, rgba(15, 23, 42, 0.85) 47%, rgba(15, 23, 42, 0.85) 53%, transparent 55%),
+        repeating-linear-gradient(90deg, rgba(226, 232, 240, 0.65) 0px, rgba(226, 232, 240, 0.65) 1.5px, #0f172a 1.5px, #0f172a 4.5px);
+      border: 1.5px solid rgba(148, 163, 184, 0.6);
+      transform: translate3d(0, 0, 10px);
+      transition-delay: 40ms;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+    }
+    body.theme-light .gpu-part-heatsink {
+      background:
+        linear-gradient(90deg, transparent 45%, rgba(51, 65, 85, 0.75) 47%, rgba(51, 65, 85, 0.75) 53%, transparent 55%),
+        repeating-linear-gradient(90deg, #f8fafc 0px, #f8fafc 1.5px, #64748b 1.5px, #64748b 4.5px);
+      border-color: #475569;
+    }
+    .gpu-part-heatsink .gpu-3d-io-bracket {
+      position: absolute;
+      left: -8px;
+      top: -3px;
+      bottom: -5px;
+      width: 9px;
+      background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 50%, #64748b 100%);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 4px 1px 1px 4px;
+      transform: rotateY(-20deg) !important;
+    }
+    .gpu-part-heatsink .gpu-3d-edge-top {
+      position: absolute;
+      top: -1px;
+      left: 6px;
+      right: 6px;
+      height: 16px;
+      background: #1e293b;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      transform-origin: top center;
+      transform: rotateX(90deg) !important;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+    }
+    .gpu-part-heatsink .gpu-lightbar {
+      font-size: 10.5px;
+      transform: none !important;
+      font-weight: 900;
+      color: #ffffff;
+      padding: 1px 6px;
+    }
+
+    /* PART 6: Dual-Fan Shroud */
+    .gpu-part-shroud {
+      inset: 0;
+      background:
+        conic-gradient(from 45deg at 50% 50%, #0f172a 0deg, #334155 60deg, #0f172a 120deg, #475569 180deg, #0f172a 240deg, #334155 300deg, #0f172a 360deg);
+      border: 1.5px solid rgba(56, 189, 248, 0.55);
+      transform: translate3d(0, 0, 18px);
+      transition-delay: 0ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    body.theme-light .gpu-part-shroud {
+      background:
+        conic-gradient(from 45deg at 50% 50%, #1e293b 0deg, #475569 60deg, #0f172a 120deg, #64748b 180deg, #1e293b 240deg, #475569 300deg, #1e293b 360deg);
+      border-color: #0284c7;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+    .gpu-part-shroud .gpu-fan-well {
+      width: 68px;
+      height: 68px;
+      background: radial-gradient(circle at center, #090d16 0%, #111827 72%, #1e293b 100%) !important;
+    }
+    .gpu-part-shroud .gpu-3d-fan {
+      width: 60px;
+      height: 60px;
+    }
+    .gpu-part-shroud .gpu-fan-hub {
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, #1e293b 0%, #090d16 100%) !important;
+    }
+    .gpu-part-shroud .gpu-fan-hub span {
+      transform: none !important;
+      font-size: 9px !important;
+      color: #38bdf8 !important;
+    }
+    .gpu-part-shroud .gpu-shroud-badge {
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: rgba(9, 13, 22, 0.92) !important;
+      border: 1px solid rgba(56, 189, 248, 0.48);
+    }
+    .gpu-part-shroud .gpu-shroud-badge span:first-child {
+      transform: none !important;
+      font-size: 11.5px !important;
+      line-height: 1.2 !important;
+      color: #38bdf8 !important;
+    }
+    .gpu-part-shroud .gpu-shroud-badge span:last-child {
+      transform: none !important;
+      font-size: 10.5px !important;
+      line-height: 1.2 !important;
+      color: #e2e8f0 !important;
+    }
+
+    /* EXPLODED POSITIONS (Fitted for 1160px inner width with left sidebar) */
+    .gpu-3d-card.exploded .gpu-part-backplate {
+      transform: translate3d(-425px, -8px, -50px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 0ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-frame {
+      transform: translate3d(-271px, 8px, -30px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 45ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-pcb {
+      transform: translate3d(-117px, -8px, -10px) rotateY(-22deg) scale(0.64);
+      border-color: var(--success);
+      transition-delay: 90ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-vapor {
+      transform: translate3d(37px, 8px, 10px) rotateY(-22deg) scale(0.64);
+      border-color: var(--warning);
+      transition-delay: 135ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-heatsink {
+      transform: translate3d(191px, -8px, 30px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 180ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-shroud {
+      transform: translate3d(345px, 8px, 50px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 225ms;
+    }
+
+    /* L-Shaped ("一竖一横") Engineering Callouts with positive bounds */
+    .gpu-callout {
+      position: absolute;
+      width: 360px;
+      height: 120px;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 80;
+      transform-origin: 16px 104px;
+      transform: rotateY(26deg) rotateX(-6deg) rotateZ(2.6deg) scale(1.48);
+      transition: opacity 220ms var(--ease-std);
+    }
+    .gpu-callout.callout-top {
+      left: calc(50% - 16px);
+      top: -102px;
+      transform-origin: 16px 104px;
+    }
+    .gpu-callout.callout-bottom {
+      left: calc(50% - 16px);
+      bottom: -102px;
+      transform-origin: 16px 10px;
+    }
+    .gpu-3d-card.exploded .gpu-callout {
+      opacity: 1;
+      transition-delay: 200ms;
+    }
+    .callout-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .callout-top .callout-dot { left: 11px; top: 98px; }
+    .callout-bottom .callout-dot { left: 11px; top: 6px; }
+
+    .callout-v {
+      position: absolute;
+      width: 2.5px;
+      height: 52px;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      transform: scaleY(0);
+      transition: transform 240ms var(--spring-ease);
+    }
+    .callout-top .callout-v { left: 15px; top: 48px; transform-origin: bottom center; }
+    .callout-bottom .callout-v { left: 15px; top: 14px; transform-origin: top center; }
+    .gpu-3d-card.exploded .callout-v { transform: scaleY(1); transition-delay: 250ms; }
+
+    .callout-elbow {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .callout-top .callout-elbow { left: 13px; top: 45px; }
+    .callout-bottom .callout-elbow { left: 13px; top: 63px; }
+
+    .callout-h {
+      position: absolute;
+      width: 30px;
+      height: 2.5px;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      transform: scaleX(0);
+      transition: transform 240ms var(--spring-ease);
+    }
+    .callout-top .callout-h { left: 16px; top: 47px; transform-origin: left center; }
+    .callout-bottom .callout-h { left: 16px; top: 65px; transform-origin: left center; }
+    .gpu-3d-card.exploded .callout-h { transform: scaleX(1); transition-delay: 390ms; }
+
+    .callout-box {
+      position: absolute;
+      width: max-content;
+      min-width: 192px;
+      background: var(--frame-bg-solid);
+      border: 1.5px solid var(--accent);
+      border-radius: 10px;
+      padding: 7px 14px;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      opacity: 0;
+      transform: translateX(-6px);
+      transition: opacity 220ms var(--ease-std), transform 240ms var(--spring-ease);
+      text-align: left;
+      white-space: nowrap;
+    }
+    body.theme-light .callout-box {
+      background: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+    }
+    .callout-top .callout-box { left: 46px; top: 18px; }
+    .callout-bottom .callout-box { left: 46px; top: 38px; }
+    .gpu-3d-card.exploded .callout-box { opacity: 1; transform: translateX(0); transition-delay: 450ms; }
+
+    .callout-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .callout-idx {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      color: var(--accent);
+      font-size: 10.5px;
+      font-weight: 900;
+      font-family: ui-monospace, monospace;
+    }
+    .callout-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-top: 2px;
+      font-family: ui-monospace, monospace;
+    }
+
+
+    /* =========================================================================
+       UPGRADE V6:
+       1. ZERO-STUTTER CONSTANT-VELOCITY LINEAR FLOW ANIMATIONS ACROSS ALL PAGES
+          (Fixes "走到快要完的时候它会卡一下" on Spoof, DualGPU, Unlock, DLSS, Overlay, etc.)
+       2. FLAGSHIP TRIPLE-FAN (三风扇) 3D GRAPHICS CARD MODEL
+          - Night Mode (theme-dark): "暗夜黑金 · 赛博霓虹版" (Obsidian Carbon + Molten Gold + Cyber Cyan)
+          - Day Mode (theme-light): "白昼冰魄 · 钛白银翼版" (Pearl White + Brushed Silver + Ice Blue)
+          - Smooth Left<->Right Auto-Rotation + Mouse-Tracking 3D Tilt
+       ========================================================================= */
+
+    /* -------------------------------------------------------------------------
+       PART A: SILKY 100% LINEAR CONSTANT-SPEED FLOW PIPES & ARROWS (ZERO BRAKING)
+       ------------------------------------------------------------------------- */
+    /* 1. Spoof & Dual-GPU CASO Pipes (.caso-pipe & .caso-packet) */
+    .caso-pipe {
+      flex: 1;
+      height: 5px !important;
+      background: var(--gauge-track) !important;
+      margin: 0 10px !important;
+      position: relative !important;
+      border-radius: 999px !important;
+      overflow: hidden !important;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+    /* Disable the conflicting ::before animation that paused at 34% */
+    .view-panel.active .caso-pipe::before,
+    .caso-pipe::before {
+      display: none !important;
+      animation: none !important;
+    }
+    /* Pure constant-speed linear comet: 0% (-110%) -> 100% (+250%) with NO intermediate stops! */
+    .caso-packet {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 44% !important;
+      height: 100% !important;
+      border-radius: 999px !important;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--accent-rgb), 0.18) 22%,
+        var(--accent-secondary) 55%,
+        var(--accent) 82%,
+        #ffffff 96%,
+        transparent 100%
+      ) !important;
+      box-shadow: 0 0 10px var(--accent-glow) !important;
+      opacity: 0;
+      transform: translate3d(-110%, 0, 0);
+      will-change: transform, opacity;
+    }
+    /* -------------------------------------------------------------------------
+       RELAY FLOW (v6.2)
+       光点接力：A→B 跑完，B→C 才出发；同一时刻只有一段管线在传输。
+       周期 = 段数 × 1.3s，每段速度恒定，段与段之间无缝衔接。
+       ------------------------------------------------------------------------- */
+    @keyframes cometRelay2 {
+      0%    { transform: translate3d(-110%, 0, 0); opacity: 0; }
+      14%   { opacity: 1; }
+      50%   { transform: translate3d(240%, 0, 0); opacity: 1; }
+      55%   { opacity: 0; }
+      100%  { transform: translate3d(-110%, 0, 0); opacity: 0; }
+    }
+    @keyframes cometRelay3 {
+      0%     { transform: translate3d(-110%, 0, 0); opacity: 0; }
+      9%     { opacity: 1; }
+      33.33% { transform: translate3d(240%, 0, 0); opacity: 1; }
+      37%    { opacity: 0; }
+      100%   { transform: translate3d(-110%, 0, 0); opacity: 0; }
+    }
+    /* 节点在光点抵达的那一刻亮起 */
+    @keyframes nodeIgnite {
+      0%   { border-color: var(--accent); box-shadow: 0 0 14px var(--accent-glow); }
+      26%  { border-color: var(--badge-border); box-shadow: none; }
+      100% { border-color: var(--badge-border); box-shadow: none; }
+    }
+
+    .view-panel.active .caso-packet {
+      animation: cometRelay2 2.6s linear infinite !important;
+    }
+    /* 第 1 段 0s；第 2 段在 1.3s 出发（相位写进简写，避免被上面的声明重置） */
+    .view-panel.active .caso-flow-box > .caso-pipe:nth-child(2) .caso-packet {
+      animation: cometRelay2 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .caso-flow-box > .caso-pipe:nth-child(4) .caso-packet {
+      animation: cometRelay2 2.6s linear -1.3s infinite !important;
+    }
+    @keyframes linearPipeComet {
+      0% {
+        transform: translate3d(-110%, 0, 0);
+      }
+      100% {
+        transform: translate3d(240%, 0, 0);
+      }
+    }
+
+    /* 2. Boot Chain / DLSS / Overlay / Maintenance / Update Arrows (.chain-link-arrow) */
+    .chain-link-arrow {
+      flex: 1;
+      height: 4px !important;
+      background: var(--gauge-track) !important;
+      margin: 0 10px !important;
+      position: relative !important;
+      overflow: hidden !important;
+      border-radius: 999px !important;
+    }
+    .chain-link-arrow.active {
+      background: var(--accent-soft) !important;
+    }
+    .view-panel.active .boot-chain-stage .chain-link-arrow::after,
+    .view-panel.active .chain-link-arrow.active::after {
+      content: "" !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 46% !important;
+      height: 100% !important;
+      border-radius: 999px !important;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--accent-rgb), 0.20) 25%,
+        var(--accent-secondary) 58%,
+        var(--accent) 85%,
+        #ffffff 96%,
+        transparent 100%
+      ) !important;
+      background-size: 100% 100% !important;
+      opacity: 0;
+      transform: translate3d(-110%, 0, 0);
+      will-change: transform, opacity;
+      animation: cometRelay2 2.6s linear infinite !important;
+    }
+    /* 相位必须写进 animation 简写：上面那条 .view-panel.active 优先级更高，
+       单独的 animation-delay 会被简写里的默认 0s 重置掉 */
+    .view-panel.active .boot-chain-stage > .chain-link-arrow:nth-child(2)::after {
+      animation: cometRelay2 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .boot-chain-stage > .chain-link-arrow:nth-child(4)::after {
+      animation: cometRelay2 2.6s linear -1.3s infinite !important;
+    }
+    /* DLSS 插帧管线是「4 节点 / 3 段」：A→B→C→D */
+    #view-dlss.active .boot-chain-stage .chain-link-arrow::after {
+      animation: cometRelay3 3.9s linear 0s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-link-arrow:nth-child(2)::after {
+      animation: cometRelay3 3.9s linear 0s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-link-arrow:nth-child(4)::after {
+      animation: cometRelay3 3.9s linear -2.6s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-link-arrow:nth-child(6)::after {
+      animation: cometRelay3 3.9s linear -1.3s infinite !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       JELLY NODES
+       光点抵达的一刻，节点被"撞"一下：压扁 → 回弹 → 余震，像果冻一样。
+       ------------------------------------------------------------------------- */
+    @keyframes jellyNodeTick {
+      0%   { transform: scale(1.28, 0.78); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+      5%   { transform: scale(0.88, 1.16); border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+      10%  { transform: scale(1.10, 0.93); box-shadow: 0 0 11px var(--accent-glow); }
+      15%  { transform: scale(0.96, 1.04); }
+      20%  { transform: scale(1.02, 0.99); box-shadow: none; border-color: var(--badge-border); }
+      26%  { transform: scale(1); }
+      100% { transform: scale(1); border-color: var(--badge-border); box-shadow: none; }
+    }
+    @keyframes jellyCardTick {
+      0%   { transform: scale(1.045) translateY(-2px); border-color: var(--accent); box-shadow: 0 0 24px var(--accent-glow); }
+      7%   { transform: scale(0.985) translateY(0); }
+      14%  { transform: scale(1.015); }
+      22%  { transform: scale(1); border-color: var(--badge-border); box-shadow: none; }
+      100% { transform: scale(1); border-color: var(--badge-border); box-shadow: none; }
+    }
+
+    /* 2 段链路：固件解锁 / 游戏覆盖 / 系统维护 / 软件更新 —— 节点在 0s → 1.3s → 0s 被点亮 */
+    .view-panel.active .boot-chain-stage > .chain-node:nth-child(1) .node-icon {
+      animation: jellyNodeTick 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .boot-chain-stage > .chain-node:nth-child(3) .node-icon {
+      animation: jellyNodeTick 2.6s linear -1.3s infinite !important;
+    }
+    .view-panel.active .boot-chain-stage > .chain-node:nth-child(5) .node-icon {
+      animation: jellyNodeTick 2.6s linear 0s infinite !important;
+    }
+    /* 3 段链路（DLSS）：节点在 0s → 1.3s → 2.6s → 0s 被点亮 */
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(1) .node-icon {
+      animation: jellyNodeTick 3.9s linear 0s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(3) .node-icon {
+      animation: jellyNodeTick 3.9s linear -2.6s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(5) .node-icon {
+      animation: jellyNodeTick 3.9s linear -1.3s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(7) .node-icon {
+      animation: jellyNodeTick 3.9s linear 0s infinite !important;
+    }
+    /* 显卡伪装 / 双卡协同的卡片节点 */
+    .view-panel.active .caso-flow-box > .caso-card:nth-child(1) {
+      animation: jellyCardTick 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .caso-flow-box > .caso-card:nth-child(3) {
+      animation: jellyCardTick 2.6s linear -1.3s infinite !important;
+    }
+    .view-panel.active .caso-flow-box > .caso-card:nth-child(5) {
+      animation: jellyCardTick 2.6s linear 0s infinite !important;
+    }
+
+    /* 3. PCIe 16 Lanes: pure linear phase wave without background-position stutter */
+    .view-panel.active .pcie-lanes-grid::after {
+      display: none !important;
+    }
+    .view-panel.active .lane-pin:not(.inactive) {
+      animation: linearPcieWave 1.6s ease-in-out infinite !important;
+    }
+    @keyframes linearPcieWave {
+      0%, 100% { opacity: 0.35; transform: scaleY(0.76); }
+      50% { opacity: 1; transform: scaleY(1.20); }
+    }
+    .lane-pin:nth-child(1)  { animation-delay: -1.60s !important; }
+    .lane-pin:nth-child(2)  { animation-delay: -1.50s !important; }
+    .lane-pin:nth-child(3)  { animation-delay: -1.40s !important; }
+    .lane-pin:nth-child(4)  { animation-delay: -1.30s !important; }
+    .lane-pin:nth-child(5)  { animation-delay: -1.20s !important; }
+    .lane-pin:nth-child(6)  { animation-delay: -1.10s !important; }
+    .lane-pin:nth-child(7)  { animation-delay: -1.00s !important; }
+    .lane-pin:nth-child(8)  { animation-delay: -0.90s !important; }
+    .lane-pin:nth-child(9)  { animation-delay: -0.80s !important; }
+    .lane-pin:nth-child(10) { animation-delay: -0.70s !important; }
+    .lane-pin:nth-child(11) { animation-delay: -0.60s !important; }
+    .lane-pin:nth-child(12) { animation-delay: -0.50s !important; }
+    .lane-pin:nth-child(13) { animation-delay: -0.40s !important; }
+    .lane-pin:nth-child(14) { animation-delay: -0.30s !important; }
+    .lane-pin:nth-child(15) { animation-delay: -0.20s !important; }
+    .lane-pin:nth-child(16) { animation-delay: -0.10s !important; }
+
+    /* -------------------------------------------------------------------------
+       PART B: FLAGSHIP TRIPLE-FAN (三风扇) 3D GPU MODEL
+       Distinct Day Mode ("白昼冰魄版") vs Night Mode ("暗夜黑金版") Models!
+       ------------------------------------------------------------------------- */
+    body.theme-dark {
+      /* Night Mode: Obsidian Black-Gold & Cyber Cyan Flagship Triple-Fan GPU */
+      --gpu-shroud-bg:
+        radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.10) 0%, transparent 65%),
+        conic-gradient(from 45deg at 50% 50%, #090d16 0deg, #1e293b 55deg, #0b111e 120deg, #283548 180deg, #090d16 240deg, #1e293b 305deg, #090d16 360deg);
+      --gpu-shroud-border: rgba(251, 191, 36, 0.65);
+      --gpu-shroud-shadow: 0 16px 36px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      --gpu-armor-mid-bg: linear-gradient(135deg, #1e293b 0%, #090d16 50%, #334155 100%);
+      --gpu-armor-mid-border: rgba(56, 189, 248, 0.45);
+      --gpu-well-bg: radial-gradient(circle at center, #04070d 0%, #0b111e 68%, #1e293b 100%);
+      --gpu-well-border: rgba(251, 191, 36, 0.42);
+      --gpu-well-center-border: rgba(56, 189, 248, 0.75);
+      --gpu-blade-inner: #0f172a;
+      --gpu-blade-mid: #334155;
+      --gpu-blade-outer: #fbbf24;
+      --gpu-blade-stroke: rgba(251, 191, 36, 0.58);
+      --gpu-fan-ring: rgba(251, 191, 36, 0.55);
+      --gpu-fan-ring-inner: rgba(56, 189, 248, 0.40);
+      --gpu-hub-bg: radial-gradient(circle at 35% 35%, #334155 0%, #090d16 85%);
+      --gpu-hub-border: #fbbf24;
+      --gpu-hub-text: #fbbf24;
+      --gpu-hub-center-border: #38bdf8;
+      --gpu-hub-center-text: #38bdf8;
+      --gpu-strip-a: linear-gradient(90deg, transparent, #fbbf24, #38bdf8, transparent);
+      --gpu-strip-b: linear-gradient(90deg, transparent, #38bdf8, #fbbf24, transparent);
+      --gpu-strip-glow: 0 0 10px rgba(251, 191, 36, 0.65);
+      --gpu-mech-line: rgba(251, 191, 36, 0.35);
+      --gpu-accent-line: rgba(56, 189, 248, 0.65);
+      --gpu-plate-bg: rgba(9, 13, 22, 0.92);
+      --gpu-plate-border: rgba(251, 191, 36, 0.55);
+      --gpu-plate-text: #fbbf24;
+      --gpu-backplate-bg:
+        repeating-linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0px, rgba(251, 191, 36, 0.05) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #111827 0%, #070a12 100%);
+      --gpu-backplate-border: rgba(251, 191, 36, 0.45);
+      --gpu-heatsink-fins: repeating-linear-gradient(90deg, rgba(203, 213, 225, 0.55) 0px, rgba(203, 213, 225, 0.55) 1.5px, #0b0f19 1.5px, #0b0f19 4px);
+      --gpu-heatpipe-grad: linear-gradient(90deg, #b45309 0%, #fbbf24 50%, #d97706 100%);
+      --gpu-shoulder-bg: linear-gradient(90deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      --gpu-edition-bg: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+      --gpu-edition-text: #090d16;
+      --gpu-floor-glow: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.26) 0%, rgba(56, 189, 248, 0.18) 38%, rgba(0, 0, 0, 0.6) 65%, transparent 80%);
+    }
+
+    body.theme-light {
+      /* Day Mode: White Frost & Titanium Silver Flagship Triple-Fan GPU ("白天模式专属模型配色") */
+      --gpu-shroud-bg:
+        radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.14) 0%, transparent 65%),
+        conic-gradient(from 45deg at 50% 50%, #ffffff 0deg, #e2e8f0 55deg, #f8fafc 120deg, #cbd5e1 180deg, #ffffff 240deg, #e2e8f0 305deg, #ffffff 360deg);
+      --gpu-shroud-border: #0284c7;
+      --gpu-shroud-shadow: 0 16px 32px rgba(15, 23, 42, 0.20), 0 4px 10px rgba(2, 132, 199, 0.12), inset 0 1px 0 #ffffff;
+      --gpu-armor-mid-bg: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #e2e8f0 100%);
+      --gpu-armor-mid-border: #64748b;
+      --gpu-well-bg: radial-gradient(circle at center, #cbd5e1 0%, #e2e8f0 68%, #f8fafc 100%);
+      --gpu-well-border: #64748b;
+      --gpu-well-center-border: #0284c7;
+      --gpu-blade-inner: #ffffff;
+      --gpu-blade-mid: #bae6fd;
+      --gpu-blade-outer: #0284c7;
+      --gpu-blade-stroke: rgba(2, 132, 199, 0.65);
+      --gpu-fan-ring: rgba(2, 132, 199, 0.65);
+      --gpu-fan-ring-inner: rgba(79, 70, 229, 0.45);
+      --gpu-hub-bg: radial-gradient(circle at 35% 35%, #ffffff 0%, #cbd5e1 85%);
+      --gpu-hub-border: #0284c7;
+      --gpu-hub-text: #0f172a;
+      --gpu-hub-center-border: #4f46e5;
+      --gpu-hub-center-text: #0284c7;
+      --gpu-strip-a: linear-gradient(90deg, transparent, #0284c7, #6366f1, transparent);
+      --gpu-strip-b: linear-gradient(90deg, transparent, #38bdf8, #0284c7, transparent);
+      --gpu-strip-glow: 0 0 8px rgba(2, 132, 199, 0.45);
+      --gpu-mech-line: rgba(100, 116, 139, 0.45);
+      --gpu-accent-line: rgba(2, 132, 199, 0.75);
+      --gpu-plate-bg: rgba(255, 255, 255, 0.94);
+      --gpu-plate-border: #0284c7;
+      --gpu-plate-text: #0284c7;
+      --gpu-backplate-bg:
+        repeating-linear-gradient(135deg, rgba(2, 132, 199, 0.06) 0px, rgba(2, 132, 199, 0.06) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+      --gpu-backplate-border: #64748b;
+      --gpu-heatsink-fins: repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1.5px, #94a3b8 1.5px, #94a3b8 4px);
+      --gpu-heatpipe-grad: linear-gradient(90deg, #94a3b8 0%, #f8fafc 50%, #cbd5e1 100%);
+      --gpu-shoulder-bg: linear-gradient(90deg, #e2e8f0 0%, #ffffff 50%, #e2e8f0 100%);
+      --gpu-edition-bg: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+      --gpu-edition-text: #ffffff;
+      --gpu-floor-glow: radial-gradient(ellipse at center, rgba(2, 132, 199, 0.22) 0%, rgba(15, 23, 42, 0.18) 52%, transparent 78%);
+    }
+
+    /* Stage & Card Dimensions for the Flagship Triple-Fan 3D Model */
+    .gpu-3d-stage {
+      width: 400px !important;
+      height: 126px !important;
+      perspective: 1200px !important;
+      margin: -10px 0 !important;
+      cursor: grab !important;
+    }
+    .gpu-3d-stage::before {
+      width: 340px !important;
+      height: 22px !important;
+      bottom: -12px !important;
+      background: var(--gpu-floor-glow) !important;
+    }
+    /* 常态不再显示任何提示文字（展开态仍保留状态说明） */
+    .gpu-3d-stage::after {
+      content: none !important;
+      bottom: -18px !important;
+    }
+
+    .gpu-3d-card {
+      width: 356px !important;
+      height: 108px !important;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: none !important;
+      will-change: transform;
+    }
+
+    /* Layer 1: Backplate (Z = -14px) */
+    .gpu3-backplate {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: var(--gpu-backplate-bg);
+      border: 1.5px solid var(--gpu-backplate-border);
+      transform: translate3d(0, 0, -14px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.38);
+    }
+    .gpu3-back-brand {
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--gpu-plate-text);
+      font-family: ui-monospace, monospace;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--gpu-plate-bg);
+      border: 1px solid var(--gpu-plate-border);
+    }
+    .gpu3-back-vents {
+      display: flex;
+      gap: 4px;
+    }
+    .gpu3-back-vents i {
+      width: 4px;
+      height: 40px;
+      border-radius: 2px;
+      background: var(--accent-soft);
+      border: 1px solid var(--badge-border);
+      transform: skewX(-20deg);
+      display: block;
+    }
+
+    /* Layer 2: PCB + Dual-Slot I/O Bracket + Gold PCIe Fingers (Z = -8px) */
+    .gpu3-pcb-layer {
+      position: absolute;
+      inset: 2px 4px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #062820 0%, #0b1928 50%, #062820 100%);
+      border: 1px solid var(--success);
+      transform: translate3d(0, 0, -8px);
+    }
+    body.theme-light .gpu3-pcb-layer {
+      background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 50%, #cbd5e1 100%);
+      border-color: #64748b;
+    }
+    .gpu3-io-bracket {
+      position: absolute;
+      left: -10px;
+      top: -4px;
+      bottom: -8px;
+      width: 10px;
+      background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 50%, #64748b 100%);
+      border: 1px solid #475569;
+      border-radius: 4px 1px 1px 4px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+      padding: 6px 0;
+      box-shadow: -3px 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    .gpu3-io-bracket i {
+      width: 4px;
+      height: 8px;
+      background: #0f172a;
+      border-radius: 1px;
+      display: block;
+    }
+    .gpu3-pcie-fingers {
+      position: absolute;
+      bottom: -8px;
+      left: 34px;
+      width: 196px;
+      height: 7px;
+      background: repeating-linear-gradient(90deg, #fbbf24 0px, #fbbf24 3px, #0f172a 3px, #0f172a 5px);
+      border-radius: 0 0 3px 3px;
+      border: 1px solid rgba(245, 158, 11, 0.65);
+    }
+
+    /* Layer 3: Full-Length Fin Heatsink & Heatpipes + Top Shoulder (Z = -2px) */
+    .gpu3-heatsink-layer {
+      position: absolute;
+      inset: 3px 6px;
+      border-radius: 10px;
+      background: var(--gpu-heatsink-fins);
+      border: 1px solid var(--gpu-armor-mid-border);
+      transform: translate3d(0, 0, -2px);
+    }
+    .gpu3-heatpipe-row {
+      position: absolute;
+      inset: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .gpu3-heatpipe-row span {
+      display: block;
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--gpu-heatpipe-grad);
+      opacity: 0.85;
+    }
+    .gpu3-top-shoulder {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      right: 16px;
+      height: 11px;
+      border-radius: 5px 5px 0 0;
+      background: var(--gpu-shoulder-bg);
+      border: 1px solid var(--gpu-shroud-border);
+      border-bottom: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+    }
+    .gpu3-lightbar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .gpu3-edition-tag {
+      font-size: 9.5px;
+      font-weight: 900;
+      padding: 1px 6px;
+      border-radius: 3px;
+      background: var(--gpu-edition-bg);
+      color: var(--gpu-edition-text);
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.4px;
+    }
+    .gpu3-power-bank {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Layer 4: Sculpted Die-Cast Armor Mid-Plate (Z = +4px) */
+    .gpu3-armor-mid {
+      position: absolute;
+      inset: 2px;
+      border-radius: 11px;
+      background: var(--gpu-armor-mid-bg);
+      border: 1.5px solid var(--gpu-armor-mid-border);
+      transform: translate3d(0, 0, 4px);
+    }
+
+    /* Layer 5: Flagship Triple-Fan Shroud Front (Z = +12px) */
+    .gpu3-shroud-front {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: var(--gpu-shroud-bg);
+      border: 1.8px solid var(--gpu-shroud-border);
+      box-shadow: var(--gpu-shroud-shadow);
+      transform: translate3d(0, 0, 12px);
+      transform-style: flat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      overflow: visible;
+    }
+    .gpu-screw.tm-l { top: 4px; left: 114px; }
+    .gpu-screw.tm-r { top: 4px; right: 114px; }
+    .gpu-screw.bm-l { bottom: 4px; left: 114px; }
+    .gpu-screw.bm-r { bottom: 4px; right: 114px; }
+
+    /* Neon / Ice Accent Light Strips on Shroud */
+    .gpu3-accent-strip {
+      position: absolute;
+      height: 2.5px;
+      width: 78px;
+      border-radius: 999px;
+      box-shadow: var(--gpu-strip-glow);
+      z-index: 3;
+      pointer-events: none;
+    }
+    .gpu3-accent-strip.strip-top-left  { top: 3px; left: 24px; background: var(--gpu-strip-a); }
+    .gpu3-accent-strip.strip-top-right { top: 3px; right: 24px; background: var(--gpu-strip-b); }
+    .gpu3-accent-strip.strip-bot-left  { bottom: 3px; left: 24px; background: var(--gpu-strip-b); }
+    .gpu3-accent-strip.strip-bot-right { bottom: 3px; right: 24px; background: var(--gpu-strip-a); }
+
+    .gpu3-mech-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Triple Axial Fans Row (3 Fans Side by Side) */
+    .gpu3-fans-row {
+      position: relative;
+      z-index: 4;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      gap: 8px;
+    }
+    .gpu3-fan-well {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      background: var(--gpu-well-bg);
+      border: 1.8px solid var(--gpu-well-border);
+      box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    body.theme-light .gpu3-fan-well {
+      box-shadow: inset 0 3px 8px rgba(15, 23, 42, 0.16);
+    }
+    .gpu3-fan-well.fan-well-center {
+      width: 92px;
+      height: 92px;
+      border: 2px solid var(--gpu-well-center-border);
+      box-shadow: 0 0 14px var(--accent-glow), inset 0 4px 12px rgba(0, 0, 0, 0.45);
+    }
+    body.theme-light .gpu3-fan-well.fan-well-center {
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.22), inset 0 3px 8px rgba(15, 23, 42, 0.16);
+    }
+    .gpu3-fan-well .gpu-3d-fan {
+      width: 80px;
+      height: 80px;
+      background: none !important;
+      animation: fanSpinSlow 5.2s linear infinite;
+    }
+    .gpu3-fan-well.fan-well-center .gpu-3d-fan {
+      width: 86px;
+      height: 86px;
+    }
+    .gpu3-fan-well .fan-svg {
+      width: 100%;
+      height: 100%;
+    }
+    .gpu3-fan-hub {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gpu-hub-bg);
+      border: 1.5px solid var(--gpu-hub-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+    .gpu3-fan-hub span {
+      font-size: 9px;
+      font-weight: 900;
+      color: var(--gpu-hub-text);
+      font-family: ui-monospace, monospace;
+      letter-spacing: -0.2px;
+      line-height: 1;
+    }
+    .gpu3-fan-hub.hub-center {
+      width: 28px;
+      height: 28px;
+      border-color: var(--gpu-hub-center-border);
+    }
+    .gpu3-fan-hub.hub-center span {
+      font-size: 9.5px;
+      color: var(--gpu-hub-center-text);
+    }
+
+    /* Bottom Center Nameplate Pill on Triple-Fan Shroud */
+    .gpu3-bottom-plate {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      background: var(--gpu-plate-bg);
+      border: 1px solid var(--gpu-plate-border);
+      padding: 1px 10px;
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
+    .gpu3-bottom-plate span {
+      font-size: 9px;
+      font-weight: 900;
+      color: var(--gpu-plate-text);
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.6px;
+      white-space: nowrap;
+      display: block;
+    }
+
+  
