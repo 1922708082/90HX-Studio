@@ -809,6 +809,28 @@ namespace CMP90HXToolbox
                                   ",\"failedCount\":" + failed + "}");
                     return;
                 }
+                else if (action == "dlss.deployUnlocked")
+                {
+                    // 与帧生成完全独立：这条用的是 dlss-unlocked 那个大包
+                    string gameDir2 = ExtractPayloadString(json, "gameDir");
+                    if (string.IsNullOrEmpty(gameDir2))
+                    {
+                        ReplyFail(id, action, "CHECKSUM_MISMATCH", "请先选择游戏目录");
+                        return;
+                    }
+                    LogInfo("部署 DLSS 解锁包 → " + gameDir2);
+                    string rid2 = id;
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok2 = false;
+                        try { ok2 = NativeCore.DeployDlssUnlockedToGame(gameDir2, LogPower); }
+                        catch (Exception ex) { LogCrash("部署 DLSS 解锁包失败", ex); }
+                        PostToPage(HardwareBridge.DlssStateEvt());
+                        if (ok2) ReplyOk(rid2, action);
+                        else ReplyFail(rid2, action, "FILE_LOCKED", "部署失败，详见日志（需先有资源包）");
+                    }));
+                    return;
+                }
                 else if (action == "dlss.deploy")
                 {
                     string gameDir = ExtractPayloadString(json, "gameDir");

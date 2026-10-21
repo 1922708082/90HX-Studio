@@ -402,6 +402,11 @@
             state.dlssError = null;
             renderDlssPage();
             break;
+          case 'dlss.deployUnlocked': {
+            const base2 = getDlssPreflightPayload();
+            sendCmd('dlss.deployUnlocked', { gameDir: base2.gameDir }, target);
+            break;
+          }
           case 'dlss.preflight':
             state.dlssPreflight = payload;
             renderDlssPreflightSection();
