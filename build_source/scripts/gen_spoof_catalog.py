@@ -26,6 +26,12 @@ for gm in re.finditer(
 rec = re.search(r"recommended:\s*'([^']*)'", body)
 recommended = rec.group(1) if rec else 'NVIDIA GeForce RTX 3080'
 
+# 排序：按显卡代际从新到旧，30 系主力（90HX 同架构）紧跟 40/50 系；
+# 数据中心卡放最后。不按解析顺序，避免新加的型号总是沉到列表底部。
+ORDER = ['GB202', 'AD102', 'GA102', 'GA104', 'TU102', 'TU106', 'TU116', 'GA100']
+rank = {c: i for i, c in enumerate(ORDER)}
+groups.sort(key=lambda g: rank.get(g[0], len(ORDER)))
+
 print('解析到分组:', len(groups), '总型号:', sum(len(g[2]) for g in groups))
 for chip, label, models in groups:
     print('  %-8s %-28s %d 款' % (chip, label, len(models)))

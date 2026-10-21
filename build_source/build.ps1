@@ -19,6 +19,22 @@ if (Test-Path $mergeScript) {
     Write-Host "[WARN] 未找到 merge-web.ps1，跳过合并" -ForegroundColor Yellow
 }
 
+# 契约门禁：比对「前端发的/等的」与「后端实现的/发的」
+# 历史上多次出现「页面等某个事件、宿主从来不推」导致整页空白，
+# 这条检查让它在构建时就暴露，而不是等用户点进去发现。
+$auditScript = "D:\app\build_source\scripts\audit_contract.py"
+$pyExe = "C:\Users\19227\.workbuddy\binaries\python\versions\3.13.12\python.exe"
+if ((Test-Path $auditScript) -and (Test-Path $pyExe)) {
+    $auditOut = & $pyExe $auditScript 2>&1
+    $waiting = ($auditOut | Select-String "^\[2\] 前端在等" | Select-Object -First 1)
+    if ($waiting -and $waiting.Line -notmatch ": 0$") {
+        Write-Host "--------------------------------------------------" -ForegroundColor Yellow
+        Write-Host "[契约告警] 有页面在等待宿主从不发出的事件：" -ForegroundColor Yellow
+        $auditOut | Select-String "    - " | ForEach-Object { Write-Host $_.Line -ForegroundColor Yellow }
+        Write-Host "--------------------------------------------------" -ForegroundColor Yellow
+    }
+}
+
 $targetExe = "D:\app\90HX Studio.exe"
 Write-Host "正在编译免安装可执行程序: $targetExe ..." -ForegroundColor Yellow
 
