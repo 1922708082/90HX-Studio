@@ -861,6 +861,27 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "dlss.remove")
+                {
+                    string gd = ExtractPayloadString(json, "gameDir");
+                    if (string.IsNullOrEmpty(gd))
+                    {
+                        ReplyFail(id, action, "CHECKSUM_MISMATCH", "请先选择游戏目录");
+                        return;
+                    }
+                    LogInfo("移除补丁 → " + gd);
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = false;
+                        try { ok = NativeCore.RemoveDlssG(gd, LogPower); }
+                        catch (Exception ex) { LogCrash("移除补丁失败", ex); }
+                        PostToPage(HardwareBridge.DlssStateEvt());
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "FILE_LOCKED", "移除未完成，详见日志");
+                    }));
+                    return;
+                }
                 else if (action == "dual.scanGames")
                 {
                     string drive = ExtractPayloadString(json, "drive");

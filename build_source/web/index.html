@@ -8001,7 +8001,12 @@
 
         if (verBadge) {
           verBadge.className = 'tag ' + (d.hasUpdate ? 'warning' : (d.runtimeFound ? 'success' : 'danger'));
-          verBadge.textContent = 'v' + valOrUnknown(d.localVersion) + ' / v' + valOrUnknown(d.latestVersion);
+          // 没有本地包时不要显示「未知」——内置帧生成是可用的，如实说明
+          if (d.localVersion) {
+            verBadge.textContent = d.localVersion;
+          } else {
+            verBadge.textContent = d.runtimeFound ? '内置资源' : '资源缺失';
+          }
         }
         if (rtPath) {
           rtPath.textContent = valOrUnknown(d.runtimePath);
@@ -8010,20 +8015,23 @@
         try {
           const listEl = document.getElementById('dlssComponentList');
           if (listEl && Array.isArray(d.components)) {
-            const keepF = (document.getElementById('dlssCbFrame') || {}).checked;
-            const keepU = (document.getElementById('dlssCbUnlock') || {}).checked;
+            const cbF = document.getElementById('dlssCbFrame');
+            const cbU = document.getElementById('dlssCbUnlock');
+            const keepF = cbF ? cbF.checked : true;
+            const keepU = cbU ? cbU.checked : false;
             listEl.innerHTML = d.components.map(function (c) {
               const id = c.key === 'frame' ? 'dlssCbFrame' : 'dlssCbUnlock';
-              const checked = c.key === 'frame'
-                ? (keepF === undefined ? true : keepF)
-                : (keepU === undefined ? false : keepU);
-              const tag = c.ready ? 'success' : 'warning';
-              const txt = c.ready ? '就绪' : (c.builtin ? '缺失' : '未下载');
-              return '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">' +
-                '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' />' +
-                '<span style="font-weight:700;">' + escapeHtml(c.name) + '</span>' +
-                '<span class="tag ' + tag + '">' + txt + '</span>' +
-                '<span style="color:var(--text-sub);font-size:11.5px;">' + escapeHtml(c.detail || '') + '</span>' +
+              const checked = c.key === 'frame' ? keepF : keepU;
+              const cls = c.ready ? 'success' : 'warning';
+              const txt = c.ready ? '可用' : '未内置';
+              return '' +
+                '<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);cursor:pointer;">' +
+                  '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' style="width:15px;height:15px;flex:0 0 auto;" />' +
+                  '<span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">' +
+                    '<span style="font-size:13px;font-weight:700;color:var(--text-main);">' + escapeHtml(c.name) + '</span>' +
+                    '<span style="font-size:11px;color:var(--text-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(c.detail || '') + '</span>' +
+                  '</span>' +
+                  '<span class="tag ' + cls + '" style="flex:0 0 auto;">' + txt + '</span>' +
                 '</label>';
             }).join('');
           }

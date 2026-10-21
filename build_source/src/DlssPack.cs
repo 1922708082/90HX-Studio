@@ -256,7 +256,7 @@ namespace CMP90HXToolbox
             sb.Append("{\"key\":\"frame\",\"name\":\"DLSS 帧生成\",\"builtin\":true,\"ready\":")
               .Append(runtimeOk ? "true" : "false")
               .Append(",\"detail\":\"内置运行库（nvngx_dlssg / sm86_backend / fg_kernels）\"}");
-            sb.Append(",{\"key\":\"unlock\",\"name\":\"DLSS 解锁（超分/神经渲染）\",\"builtin\":false,\"ready\":")
+            sb.Append(",{\"key\":\"unlock\",\"name\":\"DLSS 5\",\"builtin\":false,\"ready\":")
               .Append(downloaded ? "true" : "false")
               .Append(",\"detail\":");
             if (downloaded)
