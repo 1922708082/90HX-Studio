@@ -7719,6 +7719,12 @@
         const archGrid = document.getElementById('spoofArchMatrixGrid');
         if (!selectEl) return;
 
+        // 型号清单是静态能力表（6 大架构 76 款），不是运行时数据。
+        // 宿主暂未单独下发前，直接复用页面内置的那份，避免下拉框空着。
+        if (!state.spoofModels && typeof MOCK !== 'undefined' && MOCK.spoofModels) {
+          state.spoofModels = MOCK.spoofModels;
+        }
+
         const m = state.spoofModels;
         if (!m || !Array.isArray(m.groups) || m.groups.length === 0) {
           selectEl.innerHTML = '<option value="">等待宿主注入型号清单...</option>';

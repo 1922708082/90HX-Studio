@@ -68,6 +68,93 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
+        /// <summary>其余页面：先推可用的真实字段，缺失的留空让页面走空态，
+        /// 避免整页停在「等待宿主同步数据」。</summary>
+        public static string[] StubStates()
+        {
+            SystemStatus st = null;
+            try { st = SystemDetector.DetectAll(); }
+            catch { }
+            if (st == null) st = new SystemStatus();
+
+            System.Collections.Generic.List<string> outList = new System.Collections.Generic.List<string>();
+            StringBuilder sb = new StringBuilder(1200);
+
+            // 覆盖层（NVIDIA App 覆盖补丁状态）
+            sb.Append("{\"kind\":\"evt\",\"action\":\"overlay.state\",\"payload\":{");
+            sb.Append("\"patched\":").Append(Bool(st.OverlayPatched)).Append(",");
+            sb.Append("\"backupExists\":").Append(Bool(st.OverlayBakExists)).Append(",");
+            sb.Append("\"nvAppInstalled\":").Append(Bool(st.NvAppInstalled)).Append(",");
+            sb.Append("\"nvAppPath\":").Append(Quote(st.NvAppPath));
+            sb.Append("}}");
+            outList.Add(sb.ToString());
+            sb = new StringBuilder(600);
+
+            // DLSS：尚未扫描过游戏目录，给空列表（诚实空态，不编造）
+            sb.Append("{\"kind\":\"evt\",\"action\":\"dlss.state\",\"payload\":{");
+            sb.Append("\"games\":[],\"deployed\":[],\"preflightOk\":").Append(Bool(false));
+            sb.Append("}}");
+            outList.Add(sb.ToString());
+            sb = new StringBuilder(600);
+
+            // 双卡拓扑
+            sb.Append("{\"kind\":\"evt\",\"action\":\"dual.state\",\"payload\":{");
+            sb.Append("\"gpus\":[],\"bindings\":[],\"detected\":").Append(Bool(false));
+            sb.Append("}}");
+            outList.Add(sb.ToString());
+            sb = new StringBuilder(600);
+
+            // 快照列表：扫描备份目录
+            sb.Append("{\"kind\":\"evt\",\"action\":\"maintenance.snapshots\",\"payload\":{\"items\":[");
+            try
+            {
+                string dir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "CMP90HX_Toolbox", "backup");
+                if (System.IO.Directory.Exists(dir))
+                {
+                    string[] files = System.IO.Directory.GetFiles(dir);
+                    int n = 0;
+                    for (int i = 0; i < files.Length && n < 30; i++)
+                    {
+                        System.IO.FileInfo fi = new System.IO.FileInfo(files[i]);
+                        if (n > 0) sb.Append(',');
+                        sb.Append("{\"id\":").Append(Quote(fi.Name))
+                          .Append(",\"label\":").Append(Quote(fi.Name))
+                          .Append(",\"createdAt\":").Append(Quote(fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")))
+                          .Append(",\"sizeBytes\":").Append(fi.Length)
+                          .Append(",\"kind\":\"auto\",\"restorable\":true}");
+                        n++;
+                    }
+                }
+            }
+            catch { }
+            sb.Append("]}}");
+            outList.Add(sb.ToString());
+            sb = new StringBuilder(400);
+
+            // 更新状态：本机版本，无可用更新（未接更新源前如实报告）
+            sb.Append("{\"kind\":\"evt\",\"action\":\"update.state\",\"payload\":{");
+            sb.Append("\"currentVersion\":").Append(Quote(CurrentVersion())).Append(",");
+            sb.Append("\"latestVersion\":").Append(Quote(CurrentVersion())).Append(",");
+            sb.Append("\"hasUpdate\":false,\"verified\":false,\"releaseNotes\":\"\"");
+            sb.Append("}}");
+            outList.Add(sb.ToString());
+
+            return outList.ToArray();
+        }
+
+        public static string CurrentVersion()
+        {
+            try
+            {
+                Version v = Assembly.GetExecutingAssembly().GetName().Version;
+                if (v != null) return v.Major + "." + v.Minor + "." + v.Build;
+            }
+            catch { }
+            return "0.0.0";
+        }
+
         /// <summary>一次性构建全部首屏状态（快照 + 显卡列表 + 三个页面状态）。</summary>
         public static string[] AllInitialEvents()
         {
@@ -77,6 +164,13 @@ namespace CMP90HXToolbox
             try { list.Add(SpoofStateEvt()); } catch { }
             try { list.Add(PowerStateEvt()); } catch { }
             try { list.Add(UnlockStateEvt()); } catch { }
+            try
+            {
+                string[] stubs = StubStates();
+                for (int i = 0; i < stubs.Length; i++)
+                    if (!string.IsNullOrEmpty(stubs[i])) list.Add(stubs[i]);
+            }
+            catch { }
             return list.ToArray();
         }
 
