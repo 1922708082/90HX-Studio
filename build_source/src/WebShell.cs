@@ -946,6 +946,9 @@ namespace CMP90HXToolbox
                     string cardSel = ExtractPayloadString(json, "card");
                     LogInfo("选择显卡: " + (string.IsNullOrEmpty(cardSel) ? "90HX" : cardSel));
                     PostToPage(HardwareBridge.UnlockStateEvt());
+                    // 必须回执：页面的 sendCmd 收到同 id 的 res 才会解除按钮的
+                    // disabled + is-loading 状态，否则整个界面会永远卡在等待。
+                    ReplyOk(id, action);
                     return;
                 }
                 else if (action == "unlock.toolkit")

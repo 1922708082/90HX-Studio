@@ -790,6 +790,10 @@
           if (grid) grid.style.display = is40 ? 'none' : '';
           if (tool) tool.style.display = is40 ? 'flex' : 'none';
           if (usb && is40) usb.style.display = 'none';
+          // 顶部「前置检查 / 移除补丁 / 一键部署」都是 90HX 的操作，
+          // 选 40HX 时全部藏起来，避免点了变成操作 90HX
+          const hdr = document.querySelector('#view-unlock .header-actions');
+          if (hdr) hdr.style.display = is40 ? 'none' : '';
         } catch (e) { }
       }
 
