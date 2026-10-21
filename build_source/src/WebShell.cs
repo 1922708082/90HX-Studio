@@ -655,10 +655,6 @@ namespace CMP90HXToolbox
                     }
                     AppSettings.DownloadProxy = proxy;
                     AppSettings.UpdateManifestUrl = upd;
-                    string pm = ExtractPayloadString(json, "proxyMode");
-                    if (string.IsNullOrEmpty(pm)) pm = "system";
-                    AppSettings.ProxyMode = pm;
-                    AppSettings.ProxyAddress = (ExtractPayloadString(json, "proxyAddress") ?? "").Trim();
                     AppSettings.Save();
                     string pdesc;
                     DlssPack.ResolveProxy(out pdesc);

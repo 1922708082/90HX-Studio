@@ -497,39 +497,21 @@ namespace CMP90HXToolbox
         /// </summary>
         public static IWebProxy ResolveProxy(out string desc)
         {
-            desc = "直连";
+            // 固定跟随系统代理：用户要求不做选择项。
+            // 仍打印实际命中的代理，便于日志排查（本机应为 127.0.0.1:7892）。
+            desc = "系统(未检测到代理)";
             try
             {
-                AppSettings.Load();
-                string mode = (AppSettings.ProxyMode ?? "system").Trim().ToLowerInvariant();
-
-                if (mode == "direct")
-                {
-                    desc = "直连(已禁用代理)";
-                    return null;
-                }
-                if (mode == "manual" && !string.IsNullOrEmpty(AppSettings.ProxyAddress))
-                {
-                    desc = "手动 " + AppSettings.ProxyAddress;
-                    return new WebProxy(AppSettings.ProxyAddress.Trim());
-                }
-
                 IWebProxy sys = WebRequest.DefaultWebProxy;
-                if (sys != null)
+                if (sys == null) return null;
+                try
                 {
-                    try
-                    {
-                        Uri probe = new Uri("https://github.com");
-                        Uri via = sys.GetProxy(probe);
-                        if (via != null && via.Host != probe.Host)
-                        {
-                            desc = "系统 " + via.Host + ":" + via.Port;
-                            return sys;
-                        }
-                    }
-                    catch { }
+                    Uri probe = new Uri("https://github.com");
+                    Uri via = sys.GetProxy(probe);
+                    if (via != null && via.Host != probe.Host)
+                        desc = "系统 " + via.Host + ":" + via.Port;
                 }
-                desc = "系统(未检测到代理，将直连)";
+                catch { }
                 return sys;
             }
             catch { return null; }

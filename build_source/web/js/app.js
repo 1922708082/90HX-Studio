@@ -442,9 +442,15 @@
               const p = payload || {};
               const g = function (id) { return document.getElementById(id); };
               if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
-              if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
-              if (g('cfgProxyMode')) g('cfgProxyMode').value = p.proxyMode || 'system';
-              if (g('cfgProxyAddress')) g('cfgProxyAddress').value = p.proxyAddress || '';
+              const sel = g('cfgDownloadProxy');
+              if (sel && Array.isArray(p.sources)) {
+                const keep = p.downloadProxy || '';
+                sel.innerHTML = p.sources.map(function (m) {
+                  return '<option value="' + escapeHtml(m.prefix || '') + '">' + escapeHtml(m.name) + '</option>';
+                }).join('');
+                sel.value = keep;
+                if (sel.value !== keep) sel.value = '';
+              }
               const ph = document.getElementById('cfgDownloadProxy');
               if (ph && p.defaultProxy) ph.placeholder = p.defaultProxy;
             } catch (e) { }
@@ -1952,10 +1958,7 @@
           case 'settings.save': {
             const g = function (id) { return document.getElementById(id); };
             sendCmd('settings.save', {
-              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value.trim() : '',
-              updateManifestUrl: g('cfgUpdateUrl') ? g('cfgUpdateUrl').value.trim() : '',
-              proxyMode: g('cfgProxyMode') ? g('cfgProxyMode').value : 'system',
-              proxyAddress: g('cfgProxyAddress') ? g('cfgProxyAddress').value.trim() : ''
+              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value : ''
             }, target);
             break;
           }
