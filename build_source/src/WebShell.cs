@@ -639,6 +639,26 @@ namespace CMP90HXToolbox
                     LogInfo("已删除系统快照: " + snapId);
                     PostToPage(HardwareBridge.SnapshotsEvt());
                 }
+                else if (action == "dual.scanGames")
+                {
+                    LogInfo("开始扫描本机游戏目录（Steam / Epic，只读）…");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        System.Collections.Generic.List<GameScanner.GameEntry> games = null;
+                        try { games = GameScanner.Scan(); }
+                        catch (Exception ex) { LogCrash("扫描游戏目录失败", ex); }
+                        if (games == null) games = new System.Collections.Generic.List<GameScanner.GameEntry>();
+
+                        for (int i = 0; i < games.Count && i < 40; i++)
+                            LogInfo("  发现 " + games[i].Source + " 游戏: " + games[i].Name + " → " + games[i].Path);
+
+                        LogInfo("游戏扫描完成，共 " + games.Count + " 个");
+                        PostToPage(HardwareBridge.DualStateEvt());
+                        ReplyDataJson(rid, action, "{\"count\":" + games.Count + "}");
+                    }));
+                    return;
+                }
                 else if (action == "overlay.unlock")
                 {
                     LogInfo("开始解锁 NVIDIA App 覆盖层…");

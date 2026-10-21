@@ -68,6 +68,32 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
+        /// <summary>双卡拓扑状态。用真实检测结果，不再占位。</summary>
+        public static string DualStateEvt()
+        {
+            NativeCore.DualGpuTopology t = null;
+            try { t = NativeCore.DetectDualGpuTopology(); }
+            catch { }
+            if (t == null) t = new NativeCore.DualGpuTopology();
+
+            StringBuilder sb = new StringBuilder(600);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"dual.state\",\"payload\":{");
+            sb.Append("\"detected\":").Append(Bool(t.HasRenderGpu && t.HasDisplayGpu)).Append(',');
+            sb.Append("\"hagsActive\":").Append(Bool(t.HagsActive)).Append(',');
+            sb.Append("\"boundGames\":").Append(t.BoundGamesCount).Append(',');
+            sb.Append("\"render\":{\"present\":").Append(Bool(t.HasRenderGpu))
+              .Append(",\"name\":").Append(Quote(t.RenderGpuName))
+              .Append(",\"pciId\":").Append(Quote(t.RenderGpuPciId)).Append("},");
+            sb.Append("\"display\":{\"present\":").Append(Bool(t.HasDisplayGpu))
+              .Append(",\"name\":").Append(Quote(t.DisplayGpuName))
+              .Append(",\"pciId\":").Append(Quote(t.DisplayGpuPciId)).Append("},");
+            sb.Append("\"virtual\":{\"present\":").Append(Bool(t.HasVirtualGpu))
+              .Append(",\"name\":").Append(Quote(t.VirtualGpuName)).Append("},");
+            sb.Append("\"gpus\":[],\"bindings\":[]");
+            sb.Append("}}");
+            return sb.ToString();
+        }
+
         /// <summary>覆盖层状态（NVIDIA App 补丁）。单独成方法，解锁/还原后可直接重推。</summary>
         public static string OverlayStateEvt()
         {
@@ -108,12 +134,8 @@ namespace CMP90HXToolbox
             outList.Add(sb.ToString());
             sb = new StringBuilder(600);
 
-            // 双卡拓扑
-            sb.Append("{\"kind\":\"evt\",\"action\":\"dual.state\",\"payload\":{");
-            sb.Append("\"gpus\":[],\"bindings\":[],\"detected\":").Append(Bool(false));
-            sb.Append("}}");
-            outList.Add(sb.ToString());
-            sb = new StringBuilder(600);
+            // 双卡拓扑改用 DualStateEvt()，扫描后可单独重推
+            outList.Add(DualStateEvt());
 
             // 快照列表改由 SnapshotsEvt() 统一提供（创建/删除后可直接复用）
             outList.Add(sb.ToString());
