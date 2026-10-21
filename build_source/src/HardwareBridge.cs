@@ -42,6 +42,127 @@ namespace CMP90HXToolbox
                    Esc(v) + "\"}}";
         }
 
+        /// <summary>显卡槽位列表。设备页的「显卡列表」表格靠它填充。</summary>
+        public static string GpuListEvt()
+        {
+            System.Collections.Generic.List<NativeCore.InstalledMiningGpu> list = null;
+            try { list = NativeCore.DetectAllMiningGpus(); }
+            catch { }
+            if (list == null) list = new System.Collections.Generic.List<NativeCore.InstalledMiningGpu>();
+
+            StringBuilder sb = new StringBuilder(600);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"gpu.list\",\"payload\":{\"gpus\":[");
+            for (int i = 0; i < list.Count; i++)
+            {
+                NativeCore.InstalledMiningGpu g = list[i];
+                if (i > 0) sb.Append(',');
+                sb.Append("{\"slot\":").Append(g.SlotIndex).Append(',');
+                sb.Append("\"detectedModel\":\"").Append(Esc(g.DetectedModel)).Append("\",");
+                sb.Append("\"chip\":\"").Append(Esc(g.ChipArchitecture)).Append("\",");
+                sb.Append("\"vram\":\"").Append(Esc(g.VramCapacity)).Append("\",");
+                sb.Append("\"currentDesc\":\"").Append(Esc(g.CurrentDesc)).Append("\",");
+                sb.Append("\"targetName\":\"").Append(Esc(g.TargetGeForceName)).Append("\",");
+                sb.Append("\"isSpoofed\":").Append(Bool(g.IsSpoofed)).Append("}");
+            }
+            sb.Append("]}}");
+            return sb.ToString();
+        }
+
+        /// <summary>一次性构建全部首屏状态（快照 + 显卡列表 + 三个页面状态）。</summary>
+        public static string[] AllInitialEvents()
+        {
+            System.Collections.Generic.List<string> list = new System.Collections.Generic.List<string>();
+            try { list.Add(DeviceSnapshotEvt()); } catch { }
+            try { list.Add(GpuListEvt()); } catch { }
+            try { list.Add(SpoofStateEvt()); } catch { }
+            try { list.Add(PowerStateEvt()); } catch { }
+            try { list.Add(UnlockStateEvt()); } catch { }
+            return list.ToArray();
+        }
+
+        /// <summary>JSON 字符串字面量（带引号），供宿主侧拼装应答用。</summary>
+        public static string Quote(string s)
+        {
+            return "\"" + Esc(s) + "\"";
+        }
+
+        /// <summary>伪装页状态：与显卡列表同源，外加当前伪装目标。</summary>
+        public static string SpoofStateEvt()
+        {
+            string gpuList = GpuListEvt();
+            int a = gpuList.IndexOf("\"gpus\":[", StringComparison.Ordinal);
+            string arr = (a >= 0) ? gpuList.Substring(a + 8) : "[]}}";
+            // arr 形如 [ ... ]}} ，截到匹配的 ]}}
+            arr = arr.Substring(0, arr.Length - 2);
+            return "{\"kind\":\"evt\",\"action\":\"spoof.state\",\"payload\":{\"gpus\":" + arr + "}}";
+        }
+
+        /// <summary>节能页状态：守护进程 / 任务 / 功耗墙，全部取实测值。</summary>
+        public static string PowerStateEvt()
+        {
+            NativeCore.GpuPowerRange range = null;
+            try { range = NativeCore.QueryGpuPowerRange(); }
+            catch { }
+            if (range == null) range = new NativeCore.GpuPowerRange();
+
+            NativeCore.GpuSensorSnapshot s = null;
+            try { s = NativeCore.QueryGpuSensors(); }
+            catch { }
+            if (s == null) s = new NativeCore.GpuSensorSnapshot();
+
+            bool running = false, saveActive = false, taskInstalled = false;
+            try { running = NativeCore.IsPowerSaverRunning(); } catch { }
+            try { saveActive = NativeCore.IsGpuIdleSaveActive(); } catch { }
+            try { taskInstalled = NativeCore.IsPowerSaverTaskInstalled(); } catch { }
+
+            StringBuilder sb = new StringBuilder(360);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"power.state\",\"payload\":{");
+            sb.Append("\"enabled\":").Append(Bool(saveActive || running)).Append(",");
+            sb.Append("\"running\":").Append(Bool(running)).Append(",");
+            sb.Append("\"preset\":\"").Append(saveActive ? "adaptive" : "manual").Append("\",");
+            sb.Append("\"idleSeconds\":0,");
+            sb.Append("\"currentPstate\":\"").Append(Esc(s.PState)).Append("\",");
+            sb.Append("\"powerRange\":{\"min\":").Append(F1(range.MinLimit))
+              .Append(",\"default\":").Append(F1(range.DefaultLimit))
+              .Append(",\"max\":").Append(F1(range.MaxLimit))
+              .Append(",\"current\":").Append(F1(range.CurrentLimit)).Append("},");
+            sb.Append("\"taskInstalled\":").Append(Bool(taskInstalled)).Append(",");
+            sb.Append("\"lastTrigger\":\"\"");
+            sb.Append("}}");
+            return sb.ToString();
+        }
+
+        /// <summary>固件解锁页状态：引导模式、UEFI/SecureBoot、通道可用性。</summary>
+        public static string UnlockStateEvt()
+        {
+            SystemStatus st = null;
+            try { st = SystemDetector.DetectAll(); }
+            catch { }
+            if (st == null) st = new SystemStatus();
+
+            bool unlocked = false;
+            try { unlocked = st.PcieMode != NativeCore.PcieUnlockMode.None; } catch { }
+            string modeLabel = string.IsNullOrEmpty(st.PcieModeDesc) ? "未检测到引导状态" : st.PcieModeDesc;
+
+            StringBuilder sb = new StringBuilder(520);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"unlock.state\",\"payload\":{");
+            sb.Append("\"mode\":\"").Append(unlocked ? "Mode1_DirectBoot" : "Mode0_Locked").Append("\",");
+            sb.Append("\"modeLabel\":").Append(Quote(modeLabel)).Append(",");
+            sb.Append("\"detail\":").Append(Quote(unlocked ? "已注入引导载荷" : "使用官方引导，未注入")).Append(",");
+            sb.Append("\"hasBackup\":false,");
+            sb.Append("\"isUefi\":").Append(Bool(st.IsUefi)).Append(",");
+            sb.Append("\"secureBoot\":").Append(Bool(st.SecureBootEnabled)).Append(",");
+            sb.Append("\"espMounted\":false,");
+            sb.Append("\"channels\":[");
+            sb.Append("{\"id\":\"A\",\"label\":\"UEFI 直启\",\"available\":").Append(Bool(st.IsUefi)).Append(",\"installed\":").Append(Bool(unlocked)).Append("},");
+            sb.Append("{\"id\":\"B\",\"label\":\"UEFI Shell 链启\",\"available\":").Append(Bool(st.IsUefi)).Append(",\"installed\":false},");
+            sb.Append("{\"id\":\"C\",\"label\":\"U 盘引导\",\"available\":true,\"installed\":false},");
+            sb.Append("{\"id\":\"D\",\"label\":\"恢复官方引导\",\"available\":true,\"installed\":false}");
+            sb.Append("],\"usbDrives\":[]");
+            sb.Append("}}");
+            return sb.ToString();
+        }
+
         /// <summary>设备快照：显卡身份、传感器初值、系统信息、环境标志。</summary>
         public static string DeviceSnapshotEvt()
         {

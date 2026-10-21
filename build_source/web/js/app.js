@@ -214,7 +214,16 @@
 
       function handleIncomingEnvelope(raw) {
         if (!raw) return;
-        const msg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        let msg = raw;
+        if (typeof raw === 'string') {
+          try {
+            msg = JSON.parse(raw);
+          } catch (err) {
+            // 单条消息格式错误不能把整条通道弄断
+            console.error('[HX] 无法解析宿主消息:', err, String(raw).slice(0, 200));
+            return;
+          }
+        }
         if (!msg || !msg.kind) return;
 
         if (msg.kind === 'evt') {

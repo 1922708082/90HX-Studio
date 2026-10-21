@@ -293,6 +293,7 @@ namespace CMP90HXToolbox
 
         private DispatcherTimer _sensorTimer;
         private bool _handshakeSent;
+        private string _theme = "light";
 
         /// <summary>
         /// 握手时机尽量早：DOMContentLoaded 早于页面里的 800ms 看门狗，
@@ -315,10 +316,10 @@ namespace CMP90HXToolbox
             // SystemDetector.DetectAll 会走 WMI，比较慢，放后台线程，避免卡界面
             Task.Run(new Action(delegate
             {
-                string json;
-                try { json = HardwareBridge.DeviceSnapshotEvt(); }
-                catch (Exception ex) { LogCrash("构建设备快照失败", ex); return; }
-                PostToPage(json);
+                string[] events;
+                try { events = HardwareBridge.AllInitialEvents(); }
+                catch (Exception ex) { LogCrash("构建首屏状态失败", ex); return; }
+                for (int i = 0; i < events.Length; i++) PostToPage(events[i]);
             }));
 
             StartSensorTimer();
@@ -328,7 +329,7 @@ namespace CMP90HXToolbox
         {
             if (_handshakeSent) return;
             _handshakeSent = true;
-            PostToPage(HardwareBridge.ThemeEvt("light"));
+            PostToPage(HardwareBridge.ThemeEvt(_theme));
             PostToPage(HardwareBridge.VersionEvt());
             LogInfo("已发送握手事件 theme.apply / app.version");
         }
@@ -410,11 +411,39 @@ namespace CMP90HXToolbox
                     // 页面主动要数据：重新采集并推一次快照
                     Task.Run(new Action(delegate
                     {
-                        string snapshotJson;
-                        try { snapshotJson = HardwareBridge.DeviceSnapshotEvt(); }
+                        string[] events;
+                        try { events = HardwareBridge.AllInitialEvents(); }
                         catch { return; }
-                        PostToPage(snapshotJson);
+                        for (int i = 0; i < events.Length; i++) PostToPage(events[i]);
                     }));
+                }
+                else if (action == "app.ready")
+                {
+                    // 首帧就绪信号，仅记录
+                }
+                else if (action == "theme.set")
+                {
+                    string t = ExtractPayloadString(json, "theme");
+                    _theme = (t == "dark") ? "dark" : "light";
+                }
+                else if (action == "dialog.browse")
+                {
+                    string kind = ExtractPayloadString(json, "kind");
+                    string picked = ShowBrowseDialog(kind);
+                    if (!string.IsNullOrEmpty(picked))
+                    {
+                        ReplyWithPath(id, action, picked);
+                        return;
+                    }
+                    ReplyFail(id, action, "CANCELLED", "已取消选择");
+                    return;
+                }
+                else
+                {
+                    // 关键：未接入的动作绝不假装成功。
+                    // 否则用户看到「操作成功」，实际什么都没发生——比报错更危险。
+                    ReplyFail(id, action, "NOT_SUPPORTED", "该功能尚未接入新版界面，请暂用旧界面（--legacy）");
+                    return;
                 }
 
                 // 必须回 res：页面 sendCmd 时会把触发按钮置 disabled + is-loading，
@@ -454,6 +483,86 @@ namespace CMP90HXToolbox
             catch (Exception ex)
             {
                 LogCrash("回复网页消息失败", ex);
+            }
+        }
+
+        /// <summary>失败应答。页面会弹「[错误码] 原因」并把对应页面置为错误态。</summary>
+        private void ReplyFail(string id, string action, string code, string message)
+        {
+            try
+            {
+                if (_webView == null || _webView.CoreWebView2 == null) return;
+
+                StringBuilder sb = new StringBuilder(220);
+                sb.Append("{\"kind\":\"res\",\"id\":\"").Append(id == null ? string.Empty : id)
+                  .Append("\",\"action\":\"").Append(action)
+                  .Append("\",\"payload\":{\"ok\":false,\"data\":null,\"error\":{\"code\":\"").Append(code)
+                  .Append("\",\"message\":").Append(HardwareBridge.Quote(message)).Append("}}}");
+                _webView.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogCrash("回复失败消息出错", ex);
+            }
+        }
+
+        private void ReplyWithPath(string id, string action, string path)
+        {
+            try
+            {
+                if (_webView == null || _webView.CoreWebView2 == null) return;
+
+                StringBuilder sb = new StringBuilder(320);
+                sb.Append("{\"kind\":\"res\",\"id\":\"").Append(id == null ? string.Empty : id)
+                  .Append("\",\"action\":\"").Append(action)
+                  .Append("\",\"payload\":{\"ok\":true,\"data\":{\"path\":")
+                  .Append(HardwareBridge.Quote(path)).Append("}}}");
+                _webView.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogCrash("回复路径出错", ex);
+            }
+        }
+
+        /// <summary>只在 payload 段里找字段，避免命中信封自身的 "kind":"cmd"。</summary>
+        private static string ExtractPayloadString(string json, string key)
+        {
+            int p = json.IndexOf("\"payload\"", StringComparison.Ordinal);
+            if (p < 0) return null;
+            string pat = "\"" + key + "\":\"";
+            int i = json.IndexOf(pat, p, StringComparison.Ordinal);
+            if (i < 0) return null;
+            i += pat.Length;
+            int j = json.IndexOf('"', i);
+            if (j < 0) return null;
+            return json.Substring(i, j - i);
+        }
+
+        private string ShowBrowseDialog(string kind)
+        {
+            try
+            {
+                if (string.Equals(kind, "file", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (System.Windows.Forms.OpenFileDialog dlg = new System.Windows.Forms.OpenFileDialog())
+                    {
+                        dlg.Title = "选择游戏主程序";
+                        dlg.Filter = "可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*";
+                        dlg.CheckFileExists = true;
+                        return (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK) ? dlg.FileName : null;
+                    }
+                }
+                using (System.Windows.Forms.FolderBrowserDialog dlg2 = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    dlg2.Description = "选择目录";
+                    return (dlg2.ShowDialog() == System.Windows.Forms.DialogResult.OK) ? dlg2.SelectedPath : null;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogCrash("打开文件选择框失败", ex);
+                return null;
             }
         }
 
