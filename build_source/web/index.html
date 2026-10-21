@@ -43,6 +43,7 @@
        THEME 1: 曜石黑夜 (Titanium Dark) - SECONDARY TEXT RAISED TO #94a3b8
        ========================================================================= */
     body.theme-dark {
+      color-scheme: dark;
       --bg-desk: #07090e;
       --bg-desk-grad: radial-gradient(ellipse 90% 60% at 50% -10%, #131c2e 0%, #07090e 65%, #050609 100%);
       --frame-bg: rgba(15, 19, 28, 0.94);
@@ -98,11 +99,11 @@
       --btn-primary-shadow: 0 4px 16px var(--accent-glow);
       --btn-danger-bg: linear-gradient(135deg, #f43f5e 0%, #e11d48 55%, #9f1239 100%);
       --hero-gradient: linear-gradient(135deg, rgba(24, 31, 46, 0.94) 0%, rgba(15, 20, 30, 0.94) 100%);
-      --table-header-bg: rgba(0, 0, 0, 0.28);
+      --table-header-bg: rgba(255, 255, 255, 0.035);
       --modal-bg: #141824;
       --overlay-mask: rgba(4, 6, 10, 0.72);
-      --input-bg: rgba(8, 11, 17, 0.82);
-      --input-border: rgba(255, 255, 255, 0.12);
+      --input-bg: #0d131c;
+      --input-border: rgba(255, 255, 255, 0.16);
       --code-bg: rgba(0, 0, 0, 0.42);
       --turbo-glow: rgba(244, 63, 94, 0.28);
       --turbo-border: #f43f5e;
@@ -116,12 +117,21 @@
       --gpu-metal-light: #cbd5e1;
       --hazard-red: rgba(239, 68, 68, 0.92);
       --hazard-dark: rgba(18, 22, 31, 0.96);
+      /* 芯片俯视图配色（暗夜：深蓝基板 + 冰蓝走线 + 金脚） */
+      --chip-substrate: #0b1320;
+      --chip-frame: #38bdf8;
+      --chip-vram: #1e293b;
+      --chip-vram-line: #64748b;
+      --chip-die-edge: #e0f2fe;
+      --chip-gpc: #090d16;
+      --chip-pin: #fbbf24;
     }
 
     /* =========================================================================
        THEME 2: 极简白昼 (Titanium Light)
        ========================================================================= */
     body.theme-light {
+      color-scheme: light;
       --bg-desk: #e9eef5;
       --bg-desk-grad: radial-gradient(ellipse 90% 60% at 50% -10%, #dbeafe 0%, #e9eef5 65%, #e2e8f0 100%);
       --frame-bg: rgba(255, 255, 255, 0.96);
@@ -177,7 +187,7 @@
       --btn-primary-shadow: 0 4px 14px var(--accent-glow);
       --btn-danger-bg: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
       --hero-gradient: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%);
-      --table-header-bg: #e2e8f0;
+      --table-header-bg: #f1f5f9;
       --modal-bg: #ffffff;
       --overlay-mask: rgba(15, 23, 42, 0.45);
       --input-bg: #ffffff;
@@ -195,10 +205,46 @@
       --gpu-metal-light: #94a3b8;
       --hazard-red: rgba(225, 29, 72, 0.90);
       --hazard-dark: rgba(15, 23, 42, 0.95);
+      /* 芯片俯视图配色（白昼：石板灰基板 + 蓝走线，对比更克制） */
+      --chip-substrate: #1e293b;
+      --chip-frame: #0284c7;
+      --chip-vram: #475569;
+      --chip-vram-line: #cbd5e1;
+      --chip-die-edge: #ffffff;
+      --chip-gpc: #0b1220;
+      --chip-pin: #f59e0b;
     }
 
     body {
       background: var(--bg-desk-grad);
+    }
+
+    /* =========================================================================
+       UNIFIED SCROLLBAR (thin, themed, unobtrusive)
+       ========================================================================= */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(var(--accent-rgb), 0.18);
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(var(--accent-rgb), 0.42);
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(var(--accent-rgb), 0.24) transparent;
     }
 
     /* =========================================================================
@@ -294,12 +340,37 @@
       width: 22px;
       height: 22px;
     }
+    /* -------------------------------------------------------------------------
+       DUOTONE COLOR ENGINE (v6.2)
+       图标填充改为语义渐变：默认蓝紫，按 data-tone 切换色系。
+       保留了 6.0 的「彩色硬件图标」语言，同时维持统一描边粗细。
+       ------------------------------------------------------------------------- */
     svg .svg-tone {
-      fill: currentColor;
-      fill-opacity: 0.10;
+      fill: var(--icon-tone, url(#hxCyberGrad));
+      fill-opacity: 0.24;
       stroke: none;
-      transition: fill-opacity var(--dur-fast) var(--ease-std), fill var(--dur-fast) var(--ease-std);
+      transition: fill-opacity var(--dur-mid) var(--ease-std), fill var(--dur-mid) var(--ease-std);
     }
+    /* 实心点缀：用于锁芯、指示灯、闪电等需要"亮起来"的局部 */
+    svg .svg-dot {
+      fill: var(--icon-tone, url(#hxCyberGrad));
+      fill-opacity: 1;
+      stroke: none;
+      transition: fill-opacity var(--dur-mid) var(--ease-std);
+    }
+    /* 彩色笔触：用于提示符、连接线、箭头等需要"通电"的线条 */
+    svg .svg-line {
+      fill: none;
+      stroke: var(--icon-tone, url(#hxCyberGrad));
+      stroke-width: 2.1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    svg[data-tone="fire"]    { --icon-tone: url(#hxFireGrad); }
+    svg[data-tone="emerald"] { --icon-tone: url(#hxEmeraldGrad); }
+    svg[data-tone="violet"]  { --icon-tone: url(#hxVioletGrad); }
+    svg[data-tone="amber"]   { --icon-tone: url(#hxAmberGrad); }
+
     .nav-item.active svg .svg-tone,
     .seg-btn.active svg .svg-tone,
     .channel-card.active svg .svg-tone,
@@ -307,8 +378,8 @@
     .node-icon.active svg .svg-tone,
     .matrix-icon-box.pass svg .svg-tone,
     .btn-primary svg .svg-tone {
-      fill: var(--accent);
-      fill-opacity: 0.18;
+      fill: var(--icon-tone, url(#hxCyberGrad));
+      fill-opacity: 0.34;
     }
 
     button:focus-visible,
@@ -327,9 +398,6 @@
       display: flex;
       width: 100%;
       height: 100vh;
-      /* 留出外圈：让应用框从窗口边缘浮起来，看起来像一个窗口而不是一张网页 */
-      padding: 10px 12px 12px;
-      box-sizing: border-box;
       position: relative;
       z-index: 1;
     }
@@ -341,11 +409,6 @@
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: var(--frame-border);
-      border-radius: 14px;
-      box-shadow:
-        0 26px 64px rgba(0, 0, 0, 0.52),
-        0 2px 10px rgba(0, 0, 0, 0.28),
-        inset 0 1px 0 rgba(255, 255, 255, 0.07);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -395,30 +458,43 @@
       align-items: center;
       gap: 8px;
     }
+    /* LOGO：沿用 6.0 的蓝→靛方块 + 常驻横扫高光 */
     .logo-diamond {
       width: 24px;
       height: 24px;
-      background: var(--btn-primary-bg);
-      border-radius: 8px;
+      background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+      border-radius: 7px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--text-on-accent);
+      color: #ffffff;
       font-size: 11.5px;
       font-weight: 900;
+      letter-spacing: 0.3px;
       position: relative;
       overflow: hidden;
+      box-shadow: 0 0 14px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.38);
+      flex-shrink: 0;
     }
     .logo-diamond::after {
       content: "";
       position: absolute;
       inset: -50%;
-      background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.45) 50%, transparent 60%);
-      transform: translateX(-100%) rotate(25deg);
-      transition: transform var(--dur-slow) var(--ease-std);
+      background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.75) 50%, transparent 60%);
+      animation: logoShine 3.6s linear infinite;
+      pointer-events: none;
     }
-    .app-logo-badge:hover .logo-diamond::after {
-      transform: translateX(100%) rotate(25deg);
+    /* 一扫而过，然后留一段空档，节奏更像"反光"而不是频闪 */
+    @keyframes logoShine {
+      0%   { transform: translateX(-100%) rotate(25deg); }
+      52%  { transform: translateX(100%) rotate(25deg); }
+      100% { transform: translateX(100%) rotate(25deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .logo-diamond::after {
+        animation: none;
+        opacity: 0;
+      }
     }
     .titlebar-text {
       font-size: 14px;
@@ -556,7 +632,7 @@
       text-align: left;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
       padding: 8px 12px;
       border-radius: 12px;
       color: var(--sidebar-btn);
@@ -564,20 +640,32 @@
       font-weight: 600;
       cursor: pointer;
       position: relative;
-      transition: background var(--dur-fast) var(--ease-std), color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+      transition:
+        background 0.24s var(--ease-std),
+        color 0.24s var(--ease-std),
+        transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.28s var(--ease-std);
       font-family: inherit;
+    }
+    .nav-icon {
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.24s var(--ease-std), filter 0.24s var(--ease-std);
     }
     .nav-item:hover {
       color: var(--sidebar-btn-hover);
       background: var(--sidebar-btn-hover-bg);
+      transform: translateX(3px);
+    }
+    .nav-item:hover .nav-icon {
+      transform: scale(1.1);
     }
     .nav-item:active {
-      transform: scale(0.98);
+      transform: scale(0.975) translateX(2px);
     }
     .nav-item.active {
       color: var(--sidebar-btn-active);
       background: var(--sidebar-btn-active-bg);
       font-weight: 700;
+      box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.10);
     }
     .nav-item.active::before {
       content: "";
@@ -585,13 +673,25 @@
       left: 0;
       top: 8px;
       bottom: 8px;
-      width: 3px;
+      width: 3.5px;
       border-radius: 0 4px 4px 0;
       background: var(--sidebar-btn-indicator);
-      box-shadow: 0 0 8px var(--sidebar-btn-indicator);
+      box-shadow: 0 0 12px var(--sidebar-btn-indicator);
     }
     .nav-item.active .nav-icon {
       color: var(--accent);
+      filter: drop-shadow(0 0 6px var(--accent-glow));
+      transform: scale(1.04);
+    }
+    /* 点击瞬间：图标下压再回弹，强化"按下去了"的物理反馈 */
+    .nav-item.is-popping .nav-icon {
+      animation: navIconPop 460ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes navIconPop {
+      0%   { transform: scale(1) rotate(0deg); }
+      34%  { transform: scale(0.84) rotate(-5deg); }
+      68%  { transform: scale(1.18) rotate(3deg); }
+      100% { transform: scale(1.04) rotate(0deg); }
     }
 
     .sidebar-footer {
@@ -640,14 +740,43 @@
       display: none;
       flex-direction: column;
       gap: 12px;
-      animation: panelSlideIn var(--dur-page) var(--ease-std) forwards;
+      animation: panelSlideIn 300ms var(--ease-std) forwards;
     }
     .view-panel.active {
       display: flex;
     }
     @keyframes panelSlideIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(10px) scale(0.992); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    /* 页面切换时卡片轻微错峰浮入，层次比整块平移更耐看 */
+    .view-panel.active > .card,
+    .view-panel.active > .two-col-grid,
+    .view-panel.active > .hero-banner,
+    .view-panel.active > .latch-box,
+    .view-panel.active > .pcie-lane-container,
+    .view-panel.active > .telemetry-grid {
+      animation: cardFloatIn 380ms var(--ease-std) backwards;
+    }
+    .view-panel.active > :nth-child(3) { animation-delay: 30ms; }
+    .view-panel.active > :nth-child(4) { animation-delay: 60ms; }
+    .view-panel.active > :nth-child(5) { animation-delay: 90ms; }
+    .view-panel.active > :nth-child(6) { animation-delay: 120ms; }
+    .view-panel.active > :nth-child(7) { animation-delay: 150ms; }
+    @keyframes cardFloatIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .view-panel,
+      .view-panel.active > .card,
+      .view-panel.active > .two-col-grid,
+      .view-panel.active > .hero-banner,
+      .view-panel.active > .latch-box,
+      .view-panel.active > .pcie-lane-container,
+      .view-panel.active > .telemetry-grid {
+        animation: none !important;
+      }
     }
 
     /* =========================================================================
@@ -866,24 +995,47 @@
       gap: 16px;
       z-index: 2;
     }
+    /* 芯片标识：移植 6.0 的实体感，昼夜两套配色 */
     .gpu-chip-box {
       width: 56px;
       height: 56px;
-      border-radius: 12px;
-      background: var(--card-sub-bg);
-      border: 1.5px solid var(--accent);
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      box-shadow: 0 0 16px var(--accent-glow);
+      perspective: 400px;
       flex-shrink: 0;
+      transition: background 420ms var(--ease-std), border-color 420ms var(--ease-std), box-shadow 420ms var(--ease-std);
+    }
+    /* 曜石黑夜：深色玻璃芯片 + 冰蓝内发光 */
+    body.theme-dark .gpu-chip-box {
+      background: radial-gradient(circle at 30% 28%, rgba(56, 189, 248, 0.36) 0%, rgba(8, 12, 20, 0.94) 72%);
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 0 26px var(--accent-glow), inset 0 0 16px rgba(56, 189, 248, 0.24);
+    }
+    body.theme-dark .gpu-chip-box .svg-icon {
+      color: #7dd3fc;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.60));
+    }
+    /* 极简白昼：珍珠白玻璃芯片 + 清晰蓝描边 */
+    body.theme-light .gpu-chip-box {
+      background: radial-gradient(circle at 30% 28%, rgba(2, 132, 199, 0.18) 0%, #ffffff 78%);
+      border: 1.5px solid rgba(2, 132, 199, 0.55);
+      box-shadow: 0 8px 20px rgba(2, 132, 199, 0.16), inset 0 1px 0 #ffffff;
+    }
+    body.theme-light .gpu-chip-box .svg-icon {
+      color: #0369a1;
+    }
+    .chip-die-svg {
+      display: block;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
     }
     .die-pulse-ring {
       position: absolute;
-      inset: -4px;
+      inset: -5px;
       border: 1.5px dashed var(--accent);
-      border-radius: 12px;
+      border-radius: 15px;
       opacity: 0.78;
       animation: diePulseSpin 10s linear infinite;
     }
@@ -906,8 +1058,8 @@
       transition: width var(--dur-slow) var(--ease-std), height var(--dur-slow) var(--ease-std);
     }
     .gpu-3d-stage.is-exploded {
-      width: 560px;
-      height: 268px;
+      width: 520px;
+      height: 184px;
     }
     .gpu-3d-stage::before {
       content: "";
@@ -955,25 +1107,11 @@
       position: relative;
       transform-style: preserve-3d;
       transform: rotateY(-14deg) rotateX(8deg);
-      /* 常驻缓慢自转：让模型看起来是"立起来"的，而不是一张贴图 */
-      animation: gpuIdleSpin 18s ease-in-out infinite alternate;
-      will-change: transform;
       transition: transform var(--dur-slow) var(--ease-std);
       z-index: 2;
     }
-    /* 自转：幅度收窄，拆解态与常态的角度区间重叠，切换时几乎看不出跳变 */
-    @keyframes gpuIdleSpin {
-      from { transform: rotateY(-20deg) rotateX(10deg) rotateZ(-1deg); }
-      to   { transform: rotateY(-8deg)  rotateX(4deg)  rotateZ(1deg); }
-    }
     .gpu-3d-card.exploded {
       transform: rotateY(-18deg) rotateX(14deg) rotateZ(-2deg);
-      /* 拆解态继续自转，只是倾角更大，整体向左下敞开 */
-      animation: gpuExplodedSpin 18s ease-in-out infinite alternate;
-    }
-    @keyframes gpuExplodedSpin {
-      from { transform: rotateY(-22deg) rotateX(16deg) rotateZ(-4deg); }
-      to   { transform: rotateY(-10deg) rotateX(8deg)  rotateZ(-1deg); }
     }
 
     /* Exploded layer callout badge */
@@ -1018,7 +1156,7 @@
       padding: 0 16px;
     }
     .gpu-3d-card.exploded .gpu-3d-back {
-      transform: translate3d(-52px, -44px, -84px) scale(0.80);
+      transform: translate3d(-168px, -36px, -76px) scale(0.82);
       border-color: var(--accent);
       transition-delay: 0ms;
     }
@@ -1088,7 +1226,7 @@
       padding: 0 12px;
     }
     .gpu-3d-card.exploded .gpu-3d-pcb {
-      transform: translate3d(-66px, -30px, -60px) scale(0.82);
+      transform: translate3d(-88px, -18px, -40px) scale(0.84);
       transition-delay: 40ms;
     }
     .gpu-vrm-bank {
@@ -1167,7 +1305,7 @@
       pointer-events: none;
     }
     .gpu-3d-card.exploded .gpu-3d-heatpipes {
-      transform: translate3d(-90px, 2px, -12px) scale(0.86);
+      transform: translate3d(-4px, 0px, 0px) scale(0.84);
       background: rgba(15, 23, 42, 0.72);
       border: 1px dashed var(--warning);
       border-radius: 8px;
@@ -1216,7 +1354,7 @@
       transition: transform var(--dur-slow) var(--ease-std) 80ms, border-color var(--dur-mid) var(--ease-std);
     }
     .gpu-3d-card.exploded .gpu-3d-heatsink {
-      transform: translate3d(-102px, 18px, 12px) scale(0.86);
+      transform: translate3d(80px, 16px, 36px) scale(0.84);
       border-color: var(--warning);
       transition-delay: 120ms;
     }
@@ -1239,7 +1377,7 @@
       padding: 0 8px;
     }
     .gpu-3d-card.exploded .gpu-3d-edge-top {
-      transform: translate3d(-112px, 34px, 34px) rotateX(62deg) scale(0.86);
+      transform: translate3d(4px, -44px, 16px) rotateX(68deg) scale(0.86);
       border-color: var(--accent);
       transition-delay: 140ms;
     }
@@ -1305,7 +1443,7 @@
       display: block;
     }
     .gpu-3d-card.exploded .gpu-3d-io-bracket {
-      transform: translate3d(-124px, 50px, 58px) rotateY(-24deg) scale(0.88);
+      transform: translate3d(-96px, -12px, -28px) rotateY(-28deg) scale(0.86);
       transition-delay: 140ms;
     }
 
@@ -1321,7 +1459,7 @@
       border-radius: 0 0 4px 4px;
     }
     .gpu-3d-card.exploded .gpu-3d-pins {
-      transform: translate3d(-78px, -14px, -36px) scale(0.84);
+      transform: translate3d(-76px, 24px, -36px) scale(0.86);
       transition-delay: 40ms;
     }
 
@@ -1360,7 +1498,7 @@
       z-index: 3;
     }
     .gpu-3d-card.exploded .gpu-3d-front {
-      transform: translate3d(-136px, 66px, 82px) scale(0.90);
+      transform: translate3d(164px, 34px, 76px) scale(0.84);
       transition-delay: 160ms;
     }
 
@@ -1498,33 +1636,6 @@
       display: flex;
       gap: 4px;
       align-items: center;
-      position: relative;
-      overflow: hidden;
-      padding: 2px 1px;
-    }
-    /* 连续扫光：一条高光从左到右贯穿整排引脚，弥补逐针脉冲之间的视觉空隙 */
-    .pcie-lanes-grid::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background: linear-gradient(90deg,
-                  transparent 0%,
-                  rgba(56, 189, 248, 0.10) 30%,
-                  rgba(56, 189, 248, 0.55) 50%,
-                  rgba(56, 189, 248, 0.10) 70%,
-                  transparent 100%);
-      width: 46%;
-      left: -46%;
-      opacity: 0;
-    }
-    .view-panel.active .pcie-lanes-grid::after {
-      opacity: 1;
-      animation: laneSweep 1.6s linear infinite;
-    }
-    @keyframes laneSweep {
-      0%   { left: -46%; }
-      100% { left: 100%; }
     }
     .lane-pin {
       width: 5px;
@@ -1534,48 +1645,37 @@
       opacity: 0.72;
       transition: transform var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std);
     }
-    /* 延迟按引脚序号线性递增，首尾在 1.6s 周期内无缝衔接，
-       取代原先把 16 针拆成 4 组同相位脉冲的写法（那会看成 4 团光块） */
     .view-panel.active .lane-pin:not(.inactive) {
       animation: laneFlow 1.6s var(--ease-std) infinite;
     }
-    .lane-pin:nth-child(1)  { animation-delay: 0ms; }
-    .lane-pin:nth-child(2)  { animation-delay: 100ms; }
-    .lane-pin:nth-child(3)  { animation-delay: 200ms; }
-    .lane-pin:nth-child(4)  { animation-delay: 300ms; }
-    .lane-pin:nth-child(5)  { animation-delay: 400ms; }
-    .lane-pin:nth-child(6)  { animation-delay: 500ms; }
-    .lane-pin:nth-child(7)  { animation-delay: 600ms; }
-    .lane-pin:nth-child(8)  { animation-delay: 700ms; }
-    .lane-pin:nth-child(9)  { animation-delay: 800ms; }
-    .lane-pin:nth-child(10) { animation-delay: 900ms; }
-    .lane-pin:nth-child(11) { animation-delay: 1000ms; }
-    .lane-pin:nth-child(12) { animation-delay: 1100ms; }
-    .lane-pin:nth-child(13) { animation-delay: 1200ms; }
-    .lane-pin:nth-child(14) { animation-delay: 1300ms; }
-    .lane-pin:nth-child(15) { animation-delay: 1400ms; }
-    .lane-pin:nth-child(16) { animation-delay: 1500ms; }
+    .lane-pin:nth-child(4n+1) { animation-delay: 0ms; }
+    .lane-pin:nth-child(4n+2) { animation-delay: 120ms; }
+    .lane-pin:nth-child(4n+3) { animation-delay: 240ms; }
+    .lane-pin:nth-child(4n+4) { animation-delay: 360ms; }
     .lane-pin.inactive {
       animation: none !important;
       opacity: 0.18;
       background: var(--text-muted);
     }
     @keyframes laneFlow {
-      0%, 100% { opacity: 0.34; transform: scaleY(0.72); }
-      45%      { opacity: 1;    transform: scaleY(1.22); }
+      0%, 100% { opacity: 0.42; transform: scaleY(0.76); }
+      50% { opacity: 1; transform: scaleY(1.16); }
     }
 
     /* =========================================================================
-       4 TELEMETRY GAUGES
-       明细行常驻占位、仅悬停自身卡片时才显示，
-       不再使用 max-height 展开 + 下移邻近卡片的做法（那会顶开下方内容造成遮挡）
+       4 TELEMETRY GAUGES (NO OVERLAP: FLOW EXPANSION + LOWER WINDOW SHIFT)
        ========================================================================= */
     .telemetry-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       align-items: start;
+      transition: margin-bottom var(--dur-mid) var(--ease-std);
     }
+    #telemetryGaugesGrid ~ .card {
+      transition: transform var(--dur-mid) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
+    }
+    
     .gauge-card {
       background: var(--card-bg);
       border: var(--card-border);
@@ -1664,28 +1764,18 @@
       font-family: ui-monospace, monospace;
       text-align: center;
       width: 100%;
-      min-height: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 8px;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      box-sizing: border-box;
+      max-height: 0;
       opacity: 0;
-      transform: translateY(-3px);
-      pointer-events: none;
-      transition: opacity var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std),
-                  background-color var(--dur-fast) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
-    }
-    /* 只显示当前悬停这一张卡片的明细，同一时刻最多一条 */
-    .gauge-card:hover .gauge-sub,
-    .gauge-card:focus-within .gauge-sub {
-      opacity: 1;
-      transform: none;
+      overflow: hidden;
+      margin-top: 0;
+      padding: 0 8px;
       background: var(--card-sub-bg);
-      border-color: rgba(255, 255, 255, 0.06);
+      border: 0px solid transparent;
+      border-radius: 8px;
+      pointer-events: none;
+      transition: max-height var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std), margin-top var(--dur-mid) var(--ease-std), padding var(--dur-mid) var(--ease-std);
     }
+    
 
     .matrix-grid {
       display: grid;
@@ -1863,6 +1953,8 @@
       background: var(--card-sub-bg);
       gap: 16px;
       flex-wrap: wrap;
+      box-shadow: inset 0 0 30px rgba(244, 63, 94, 0.07);
+      position: relative;
     }
     .latch-desc h3 {
       font-size: 14px;
@@ -1882,6 +1974,7 @@
       display: inline-block;
       perspective: 900px;
     }
+    /* 红黑警示斜纹机械翻盖：顶部为铰链，向上翻开 */
     .safety-cover {
       position: absolute;
       inset: -4px;
@@ -1900,29 +1993,104 @@
       cursor: pointer;
       z-index: 10;
       transform-origin: top center;
-      transition: transform var(--dur-mid) var(--ease-std), opacity var(--dur-mid) var(--ease-std);
+      transition:
+        transform 0.52s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        opacity 0.35s ease,
+        box-shadow 0.3s ease;
+      box-shadow:
+        0 12px 26px rgba(0, 0, 0, 0.40),
+        0 0 18px rgba(244, 63, 94, 0.30),
+        inset 0 2px 0 rgba(255, 255, 255, 0.26),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.42);
     }
-    .safety-cover.open {
-      transform: rotateX(120deg);
-      opacity: 0.16;
+    /* 铰链金属反光 */
+    .safety-cover::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10px;
+      right: 10px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+      opacity: 0.75;
       pointer-events: none;
     }
+    /* 闭合状态的危险呼吸光，提示"这里有个盖子" */
+    .safety-cover::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: 12px;
+      pointer-events: none;
+      animation: hazardBreath 2.8s ease-in-out infinite;
+    }
+    @keyframes hazardBreath {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.34); }
+      50%      { box-shadow: 0 0 20px 2px rgba(244, 63, 94, 0.20); }
+    }
+    .safety-cover:hover {
+      transform: rotateX(16deg);
+      box-shadow:
+        0 16px 32px rgba(0, 0, 0, 0.48),
+        0 0 30px rgba(244, 63, 94, 0.55),
+        inset 0 2px 0 rgba(255, 255, 255, 0.32);
+    }
+    /* 翻开后盖板停在原位（rotateX 120°），保留半透明可见，和 6.0 完全一致 */
+    .safety-cover.open {
+      transform: rotateX(120deg);
+      opacity: 0.22;
+      pointer-events: none;
+    }
+    .safety-cover.open::after {
+      animation: none;
+      box-shadow: none;
+    }
     .safety-cover-label {
-      background: var(--hazard-dark);
-      border: 1px solid var(--danger-border);
-      color: var(--text-on-accent);
+      background: rgba(10, 12, 18, 0.92);
+      border: 1px solid rgba(239, 68, 68, 0.60);
+      color: #ffffff;
       font-size: 11.5px;
-      font-weight: 800;
-      padding: 4px 8px;
-      border-radius: 8px;
+      font-weight: 900;
+      padding: 5px 11px;
+      border-radius: 7px;
+      letter-spacing: 0.8px;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
     }
     .latch-trigger-btn {
       padding: 12px 24px;
       font-size: 12.5px;
       font-weight: 800;
+    }
+    /* 掀盖后整块保险区域进入"已解除"状态：虚线转实线并泛红 */
+    .latch-box:has(.safety-cover-container.armed) {
+      border-style: solid;
+      border-color: rgba(244, 63, 94, 0.55);
+      box-shadow: inset 0 0 38px rgba(244, 63, 94, 0.10);
+    }
+    /* 夜间模式：掀盖后按钮进入"已上膛"呼吸发光（用户最爱的那个高光时刻） */
+    body.theme-dark .safety-cover-container.armed .latch-trigger-btn {
+      animation: dangerArmed 2.6s ease-in-out infinite;
+    }
+    body.theme-dark .safety-cover-container.armed .latch-trigger-btn:hover {
+      animation-play-state: paused;
+      filter: brightness(1.12);
+      box-shadow: 0 10px 34px rgba(244, 63, 94, 0.78), 0 0 0 4px rgba(244, 63, 94, 0.14) !important;
+    }
+    @keyframes dangerArmed {
+      0%, 100% {
+        box-shadow: 0 6px 20px rgba(244, 63, 94, 0.42), 0 0 0 0 rgba(244, 63, 94, 0.28);
+      }
+      50% {
+        box-shadow: 0 10px 32px rgba(244, 63, 94, 0.72), 0 0 0 6px rgba(244, 63, 94, 0.09);
+      }
+    }
+    /* 亮色模式：用清晰的描边代替霓虹光晕 */
+    body.theme-light .safety-cover-container.armed .latch-trigger-btn {
+      box-shadow: 0 6px 16px rgba(225, 29, 72, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.24);
     }
 
     /* =========================================================================
@@ -1980,17 +2148,6 @@
       100% { left: 92%; opacity: 0; }
     }
 
-    /* 3D 拆解错位节奏：由背板到装甲每层延后 45ms，
-       形成"一层层推开"的空间层次，而不是整体平移 */
-    .gpu-3d-back       { transition-delay: 0ms; }
-    .gpu-3d-pcb        { transition-delay: 45ms; }
-    .gpu-3d-pins       { transition-delay: 90ms; }
-    .gpu-3d-heatpipes  { transition-delay: 135ms; }
-    .gpu-3d-heatsink   { transition-delay: 180ms; }
-    .gpu-3d-edge-top   { transition-delay: 225ms; }
-    .gpu-3d-io-bracket { transition-delay: 270ms; }
-    .gpu-3d-front      { transition-delay: 315ms; }
-
     .two-col-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -2007,11 +2164,210 @@
       font-weight: 600;
       outline: none;
       font-family: inherit;
-      transition: border-color var(--dur-fast) var(--ease-std);
+      transition: border-color var(--dur-fast) var(--ease-std), background var(--dur-fast) var(--ease-std);
     }
-    .select-input:hover, .text-input:hover,
+    /* 下拉框：干掉原生按钮条与滚动条，换成自绘箭头 + 主题化列表 */
+    select.select-input {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 34px;
+      cursor: pointer;
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      background-size: 13px 13px;
+      scrollbar-width: none;
+    }
+    select.select-input::-ms-expand {
+      display: none;
+    }
+    select.select-input::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    body.theme-light select.select-input {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+    body.theme-dark select.select-input {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+    select.select-input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    /* 展开的下拉列表本身（Windows 原生弹层）跟随主题配色 */
+    select.select-input option,
+    select.select-input optgroup {
+      background: var(--frame-bg-solid);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 8px;
+    }
+    select.select-input option:checked {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .select-input:hover, .text-input:hover {
+      border-color: var(--accent);
+      background: var(--card-sub-bg);
+    }
     .select-input:focus, .text-input:focus {
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+    }
+    /* 下拉展开时把当前项高亮出来 */
+    select.select-input option:checked,
+    select.select-input option:hover {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    /* =========================================================================
+       CUSTOM SELECT (自绘下拉：原生弹层由系统绘制，无法主题化，这里整体替换)
+       ========================================================================= */
+    .hx-select {
+      position: relative;
+      width: 100%;
+    }
+    .hx-select-native {
+      position: absolute !important;
+      left: 0;
+      top: 0;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    .hx-select-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-main);
+      padding: 8px 11px 8px 12px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 160ms var(--ease-std), background 160ms var(--ease-std), box-shadow 160ms var(--ease-std);
+    }
+    .hx-select-trigger:hover {
+      border-color: var(--accent);
+    }
+    .hx-select.open .hx-select-trigger,
+    .hx-select-trigger:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+      outline: none;
+    }
+    .hx-select-value {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .hx-select-caret {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      fill: none;
+      stroke: var(--text-sub);
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 200ms var(--ease-std), stroke 160ms var(--ease-std);
+    }
+    .hx-select.open .hx-select-caret {
+      transform: rotate(180deg);
+      stroke: var(--accent);
+    }
+    .hx-select-menu {
+      position: fixed;
+      z-index: 900;
+      display: none;
+      max-height: 268px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 6px;
+      background: var(--frame-bg-solid);
+      border: 1px solid var(--input-border);
+      border-radius: 12px;
+      box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.30),
+        0 2px 8px rgba(0, 0, 0, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+    body.theme-dark .hx-select-menu {
+      box-shadow:
+        0 20px 48px rgba(0, 0, 0, 0.62),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .hx-select-menu.is-open {
+      display: block;
+      animation: selectMenuIn 160ms var(--ease-std);
+    }
+    @keyframes selectMenuIn {
+      from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+      to   { opacity: 1; transform: none; }
+    }
+    .hx-select-menu::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    .hx-select-option {
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 120ms var(--ease-std), color 120ms var(--ease-std);
+    }
+    .hx-select-option:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .hx-select-option.is-selected {
+      background: rgba(var(--accent-rgb), 0.14);
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .hx-select-option.is-selected::after {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-left: 8px;
+      vertical-align: middle;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .hx-select-empty {
+      padding: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
     }
     .data-table {
       width: 100%;
@@ -2020,11 +2376,18 @@
     }
     .data-table th {
       text-align: left;
-      padding: 8px 12px;
-      background: var(--table-header-bg);
+      padding: 7px 12px;
+      background: transparent;
       color: var(--text-sub);
-      font-weight: 700;
-      font-size: 11.5px;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--card-border-color);
+    }
+    body.theme-dark .data-table th {
+      color: #b6c2d1;
+      border-bottom-color: rgba(255, 255, 255, 0.10);
     }
     .data-table td {
       padding: 8px 12px;
@@ -2035,6 +2398,14 @@
     }
     .diff-old { color: var(--danger); text-decoration: line-through; }
     .diff-new { color: var(--success); font-weight: 800; }
+    /* 键值型表格：标签列按内容收缩、永不折行（修「当前版/本」断字问题） */
+    .kv-table td:first-child {
+      white-space: nowrap;
+      width: 1%;
+      color: var(--text-sub);
+      font-weight: 700;
+      font-family: inherit;
+    }
 
     /* =========================================================================
        PAGE 4: DYNAMIC ECO POWER & REACTOR STAGE
@@ -2100,31 +2471,64 @@
       border: 1.5px solid var(--danger);
       background: linear-gradient(135deg, rgba(244, 63, 94, 0.24) 0%, rgba(249, 115, 22, 0.10) 100%);
     }
+    /* 注册色标变量，让渐变本身也能插值 —— 否则换挡时背景会硬跳 */
+    @property --power-tint-a {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: rgba(56, 189, 248, 0.14);
+    }
+    @property --power-tint-b {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: rgba(56, 189, 248, 0.02);
+    }
     .animation-stage {
       border: 1.5px solid var(--badge-border);
       border-radius: 12px;
       padding: 16px;
-      background: var(--card-sub-bg);
+      --power-tint-a: rgba(56, 189, 248, 0.14);
+      --power-tint-b: rgba(56, 189, 248, 0.02);
+      background: linear-gradient(135deg, var(--power-tint-a) 0%, var(--power-tint-b) 46%, var(--card-sub-bg) 88%);
       display: flex;
       align-items: center;
       justify-content: space-between;
       position: relative;
       overflow: hidden;
       gap: 16px;
-      transition: border-color var(--dur-mid) var(--ease-std), background var(--dur-mid) var(--ease-std);
+      transition:
+        --power-tint-a 560ms var(--ease-std),
+        --power-tint-b 560ms var(--ease-std),
+        border-color 560ms var(--ease-std);
     }
     .animation-stage.preset-sleep {
+      --power-tint-a: rgba(16, 185, 129, 0.13);
+      --power-tint-b: rgba(16, 185, 129, 0.02);
       border-color: var(--success-border);
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.10) 0%, var(--card-sub-bg) 70%);
     }
     .animation-stage.preset-adaptive {
+      --power-tint-a: rgba(56, 189, 248, 0.14);
+      --power-tint-b: rgba(56, 189, 248, 0.02);
       border-color: var(--badge-border);
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, var(--card-sub-bg) 70%);
     }
     .animation-stage.preset-turbo {
+      --power-tint-a: rgba(244, 63, 94, 0.24);
+      --power-tint-b: rgba(249, 115, 22, 0.12);
       border-color: var(--danger);
-      background: linear-gradient(135deg, rgba(244, 63, 94, 0.22) 0%, rgba(249, 115, 22, 0.12) 48%, var(--card-sub-bg) 95%);
     }
+    /* 换挡时数字与文案做一次短促的"滚动换值"，而不是硬替换 */
+    @keyframes readoutSwap {
+      0%   { opacity: 0; transform: translateY(7px) scale(0.94); filter: blur(2px); }
+      100% { opacity: 1; transform: none; filter: none; }
+    }
+    .turbo-data-readout.swapping .turbo-mhz,
+    .turbo-data-readout.swapping .turbo-tag {
+      animation: readoutSwap 420ms var(--ease-std) both;
+    }
+    .anim-left.swapping .anim-title,
+    .anim-left.swapping .anim-sub {
+      animation: readoutSwap 420ms var(--ease-std) both;
+    }
+    /* 画布与卡片同尺寸（逃逸效果已按需求回退） */
     #turboFireCanvas {
       position: absolute;
       inset: 0;
@@ -2200,7 +2604,25 @@
       height: 82px;
       border-radius: 50%;
       border: 2px solid var(--accent);
-      transition: border-color var(--dur-mid) var(--ease-std), transform var(--dur-mid) var(--ease-std);
+      transition:
+        border-color 560ms var(--ease-std),
+        border-width 560ms var(--ease-std),
+        box-shadow 560ms var(--ease-std),
+        opacity 480ms var(--ease-std),
+        transform var(--dur-mid) var(--ease-std);
+    }
+    /* 换挡时文字与指示灯颜色一起渐变，不做硬切 */
+    .anim-status-badge,
+    .anim-title,
+    .anim-sub,
+    .turbo-mhz,
+    .turbo-tag,
+    .pulse-dot {
+      transition:
+        color 480ms var(--ease-std),
+        background-color 480ms var(--ease-std),
+        border-color 480ms var(--ease-std),
+        box-shadow 480ms var(--ease-std);
     }
     .turbo-fire-ring-2 {
       position: absolute;
@@ -2270,9 +2692,17 @@
       text-align: center;
       font-family: ui-monospace, monospace;
     }
-    .turbo-mhz { font-size: 24px; font-weight: 900; color: var(--text-main); }
+    .turbo-mhz { font-size: 24px; font-weight: 900; color: var(--text-main); line-height: 1.05; }
     .animation-stage.preset-turbo .turbo-mhz { color: #ffffff; }
-    .turbo-tag { font-size: 11.5px; font-weight: 800; color: var(--warning); }
+    /* 副标题必须留在内环里，否则会被圆环切开（原 104px 宽 > 82px 环内径） */
+    .turbo-tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: var(--warning);
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+      line-height: 1.3;
+    }
     .animation-stage.preset-sleep .turbo-tag { color: var(--success); }
     .animation-stage.preset-adaptive .turbo-tag { color: var(--accent); }
 
@@ -2471,6 +2901,2257 @@
       .two-col-grid, .power-preset-group { grid-template-columns: 1fr; }
       .gpu-3d-stage { display: none; }
     }
+
+    /* =========================================================================
+       ROUND 3 UPGRADES:
+       1. Window Frame (12px outer margin, 14px radius, dual shadow, tonal step + 1px dividers)
+       2. Complete Light Theme (default) + Dark Theme + Neutral Grayscale 3D GPU Palette
+       3. Telemetry Gauges (per-card hover only, min-height permanent space, 2-col Label+Value)
+       4. Unified 7-Location Flow System (2.4s cycle, 0/320/640ms delays, bg-position stream,
+          0.15s node arrival pulse, continuous PCIe x16 sweep, 120ms gap packet dispatch)
+       5. 8-Layer 3D GPU Model with slab thickness, X -50->-140 / Y -45->+70 / Z -85->+85,
+          45ms staggered forward/reverse delays, 16s alternate orbit (-24deg..-6deg, 12deg..2deg),
+          <=40px hero height delta.
+       ========================================================================= */
+    :root {
+      --flow-period: 2.4s;
+      --flow-ease: cubic-bezier(0.22, 0.78, 0.22, 1);
+    }
+
+    body.theme-dark {
+      --bg-desk: #06080d;
+      --bg-desk-grad: radial-gradient(ellipse 95% 65% at 50% -10%, #162035 0%, #070a10 62%, #040609 100%);
+      -- divider-line: rgba(255, 255, 255, 0.09);
+      --divider-line: rgba(255, 255, 255, 0.09);
+      --frame-bg: rgba(14, 18, 27, 0.90);
+      --frame-bg-solid: #0e121b;
+      --frame-border: 1px solid rgba(255, 255, 255, 0.11);
+      --frame-shadow: 0 26px 68px rgba(0, 0, 0, 0.82), 0 6px 20px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      --titlebar-bg: rgba(9, 12, 19, 0.96);
+      --titlebar-border: 1px solid rgba(255, 255, 255, 0.09);
+      --sidebar-bg: rgba(11, 15, 23, 0.94);
+      --sidebar-border: 1px solid rgba(255, 255, 255, 0.09);
+      --content-bg: rgba(16, 21, 32, 0.88);
+      --content-fade-top: linear-gradient(180deg, rgba(16, 21, 32, 0.96) 0%, rgba(16, 21, 32, 0) 100%);
+      --content-fade-bot: linear-gradient(0deg, rgba(16, 21, 32, 0.96) 0%, rgba(16, 21, 32, 0) 100%);
+      --card-bg: rgba(22, 28, 42, 0.88);
+      --card-bg-solid: #161c2a;
+      --card-border-color: rgba(255, 255, 255, 0.08);
+      --card-border: 1px solid rgba(255, 255, 255, 0.08);
+      --card-hover-border: rgba(56, 189, 248, 0.52);
+      --card-shadow: 0 10px 26px rgba(0, 0, 0, 0.42), 0 2px 6px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+      --card-sub-bg: rgba(11, 15, 24, 0.72);
+      --gauge-track: rgba(255, 255, 255, 0.12);
+      /* Dark Mode 3D GPU Materials */
+      --gpu-l1-bg: linear-gradient(135deg, #162032 0%, #0b101b 100%);
+      --gpu-l2-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      --gpu-l3-bg: linear-gradient(135deg, #072922 0%, #0a1924 55%, #071f1b 100%);
+      --gpu-l4-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --gpu-l5-bg: linear-gradient(135deg, #b45309 0%, #f59e0b 50%, #78350f 100%);
+      --gpu-l6-bg: rgba(15, 23, 42, 0.84);
+      --gpu-l7-bg: repeating-linear-gradient(90deg, rgba(203, 213, 225, 0.72) 0px, rgba(203, 213, 225, 0.72) 1.5px, #0f172a 1.5px, #0f172a 4px);
+      --gpu-l8-bg: conic-gradient(from 45deg at 50% 50%, #1e293b 0deg, #334155 30deg, #0f172a 60deg, #334155 90deg, #1e293b 120deg, #475569 150deg, #0f172a 180deg, #334155 210deg, #1e293b 240deg, #475569 270deg, #0f172a 300deg, #334155 330deg, #1e293b 360deg);
+      --gpu-fan-well-bg: radial-gradient(circle at 50% 50%, #090d16 0%, #111827 68%, #1e293b 100%);
+      --gpu-fan-hub-bg: radial-gradient(circle, #1e293b 0%, #090d16 100%);
+      --gpu-badge-bg: rgba(11, 15, 25, 0.92);
+      --gpu-slab-edge: #334155;
+      --gpu-slab-deep: #090d16;
+      --gpu-slab-shadow: rgba(0, 0, 0, 0.62);
+      --gpu-tag-bg: rgba(8, 12, 20, 0.94);
+    }
+
+    body.theme-light {
+      --bg-desk: #d8e2ee;
+      --bg-desk-grad: radial-gradient(ellipse 95% 65% at 50% -10%, #c7d6ea 0%, #d8e2ee 60%, #cbd5e1 100%);
+      --divider-line: rgba(15, 23, 42, 0.10);
+      --frame-bg: rgba(248, 250, 252, 0.86);
+      --frame-bg-solid: #f8fafc;
+      --frame-border: 1px solid rgba(15, 23, 42, 0.12);
+      --frame-shadow: 0 22px 52px rgba(15, 23, 42, 0.15), 0 4px 14px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      --titlebar-bg: rgba(232, 239, 247, 0.94);
+      --titlebar-border: 1px solid rgba(15, 23, 42, 0.10);
+      --sidebar-bg: rgba(238, 243, 249, 0.92);
+      --sidebar-border: 1px solid rgba(15, 23, 42, 0.10);
+      --sidebar-btn: #334155;
+      --sidebar-btn-hover: #0f172a;
+      --sidebar-btn-hover-bg: rgba(2, 132, 199, 0.09);
+      --sidebar-btn-active: #0284c7;
+      --sidebar-btn-active-bg: linear-gradient(90deg, rgba(2, 132, 199, 0.15) 0%, rgba(2, 132, 199, 0.02) 100%);
+      --sidebar-btn-indicator: #0284c7;
+      --content-bg: rgba(248, 250, 252, 0.94);
+      --content-fade-top: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(248, 250, 252, 0) 100%);
+      --content-fade-bot: linear-gradient(0deg, rgba(248, 250, 252, 0.96) 0%, rgba(248, 250, 252, 0) 100%);
+      --card-bg: rgba(255, 255, 255, 0.90);
+      --card-bg-solid: #ffffff;
+      --card-border-color: rgba(15, 23, 42, 0.10);
+      --card-border: 1px solid rgba(15, 23, 42, 0.10);
+      --card-hover-border: #0284c7;
+      --card-shadow: 0 6px 18px rgba(15, 23, 42, 0.06), 0 1px 4px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+      --card-sub-bg: rgba(241, 245, 249, 0.88);
+      --accent: #0284c7;
+      --accent-secondary: #4f46e5;
+      --accent-rgb: 2, 132, 199;
+      --accent-glow: rgba(2, 132, 199, 0.18);
+      --accent-soft: rgba(2, 132, 199, 0.10);
+      --text-main: #0f172a;
+      --text-sub: #334155;
+      --text-muted: #475569;
+      --text-on-accent: #ffffff;
+      --gauge-track: #cbd5e1;
+      --badge-bg: rgba(2, 132, 199, 0.10);
+      --badge-border: rgba(2, 132, 199, 0.32);
+      --badge-text: #0369a1;
+      --btn-primary-shadow: 0 2px 6px rgba(2, 132, 199, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      --hero-gradient: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 247, 255, 0.92) 100%);
+      --input-border: #94a3b8;
+      --gpu-metal-dark: #475569;
+      --gpu-metal-mid: #94a3b8;
+      --gpu-metal-light: #e2e8f0;
+      /* Light Mode Neutral Grayscale 3D GPU Materials (No Pure Dark) */
+      --gpu-l1-bg: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+      --gpu-l2-bg: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+      --gpu-l3-bg: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 55%, #cbd5e1 100%);
+      --gpu-l4-bg: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+      --gpu-l5-bg: linear-gradient(135deg, #cbd5e1 0%, #f8fafc 50%, #94a3b8 100%);
+      --gpu-l6-bg: rgba(226, 232, 240, 0.90);
+      --gpu-l7-bg: repeating-linear-gradient(90deg, #f8fafc 0px, #f8fafc 1.5px, #94a3b8 1.5px, #94a3b8 4px);
+      --gpu-l8-bg: conic-gradient(from 45deg at 50% 50%, #e2e8f0 0deg, #f8fafc 30deg, #cbd5e1 60deg, #f1f5f9 90deg, #e2e8f0 120deg, #f8fafc 150deg, #cbd5e1 180deg, #f1f5f9 210deg, #e2e8f0 240deg, #f8fafc 270deg, #cbd5e1 300deg, #f1f5f9 330deg, #e2e8f0 360deg);
+      --gpu-fan-well-bg: radial-gradient(circle at 50% 50%, #cbd5e1 0%, #e2e8f0 68%, #94a3b8 100%);
+      --gpu-fan-hub-bg: radial-gradient(circle, #f8fafc 0%, #cbd5e1 100%);
+      --gpu-badge-bg: rgba(248, 250, 252, 0.94);
+      --gpu-slab-edge: #94a3b8;
+      --gpu-slab-deep: #64748b;
+      --gpu-slab-shadow: rgba(15, 23, 42, 0.18);
+      --gpu-tag-bg: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Light-mode: replace fuzzy neon glow with crisp border highlight */
+    body.theme-light .nav-item.active::before {
+      box-shadow: none;
+    }
+    body.theme-light .card:hover,
+    body.theme-light .gauge-card:hover,
+    body.theme-light .hero-banner:hover,
+    body.theme-light .pcie-lane-container:hover {
+      border-color: var(--accent);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(2, 132, 199, 0.24), inset 0 1px 0 #ffffff;
+    }
+    body.theme-light .tag,
+    body.theme-light .pill,
+    body.theme-light .tool-chip-btn,
+    body.theme-light .channel-card {
+      border-color: var(--divider-line);
+    }
+    body.theme-light .data-table td,
+    body.theme-light .page-header,
+    body.theme-light .global-busy-bar {
+      border-bottom-color: var(--divider-line);
+    }
+
+    /* =========================================================================
+       REQUIREMENT 3: FLOATING WINDOW FRAME (12px outer margin, 14px radius,
+       dual-layer shadow, titlebar/sidebar/content tonal steps + 1px dividers)
+       ========================================================================= */
+    .viewport {
+      padding: 12px;
+    }
+    .app-frame {
+      border-radius: 14px;
+      box-shadow: var(--frame-shadow);
+      border: var(--frame-border);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+    }
+    .titlebar {
+      background: var(--titlebar-bg);
+      border-bottom: var(--titlebar-border);
+    }
+    .sidebar {
+      background: var(--sidebar-bg);
+      border-right: var(--sidebar-border);
+    }
+
+    /* =========================================================================
+       REQUIREMENT 1: 4 TELEMETRY GAUGES
+       - Only hovered card shows detail row (at most 1 at a time)
+       - Permanent min-height space reservation -> 0px vertical shift below
+       - 2-column "Label + Value" layout, no gray pill background
+       ========================================================================= */
+    #telemetryGaugesGrid ~ .card,
+    #telemetryGaugesGrid:hover ~ .card {
+      transform: none !important;
+    }
+    .gauge-card {
+      padding: 14px 16px 12px;
+      gap: 6px;
+    }
+    .gauge-sub {
+      width: 100%;
+      min-height: 38px;
+      max-height: none;
+      overflow: visible;
+      margin-top: 4px;
+      padding: 6px 4px 0;
+      background: transparent;
+      border: none;
+      border-top: 1px dashed var(--divider-line);
+      border-radius: 0;
+      display: grid;
+      grid-template-columns: auto auto;
+      justify-content: space-between;
+      align-items: center;
+      row-gap: 2px;
+      column-gap: 8px;
+      opacity: 0;
+      transform: translateY(2px);
+      pointer-events: none;
+      transition: opacity var(--dur-mid) var(--ease-std), transform var(--dur-mid) var(--ease-std);
+    }
+    .gauge-card:hover .gauge-sub,
+    .gauge-card.is-hovered .gauge-sub {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .gauge-card.is-hovered {
+      border-color: var(--card-hover-border);
+      transform: translateY(-1px);
+    }
+    .gauge-sub .gs-k {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-sub);
+      text-align: left;
+      font-family: inherit;
+    }
+    .gauge-sub .gs-v {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* =========================================================================
+       REQUIREMENT 2: UNIFIED 7-LOCATION DATA FLOW & CONNECTION LINES
+       Shared Period: 2.4s (--flow-period), Shared Easing: --flow-ease
+       (a) Sequential arrow delays: 0ms, 320ms, 640ms
+       (b) Node arrival brighten pulse (border + halo for ~0.15s) on same 2.4s clock
+       (c) Continuous gradient + background-position shift (no left reflow)
+       (d) Unified 2.4s rhythm across all pages
+       (e) PCIe 16 pins: single continuous light band sweeping left-to-right,
+           sequentially lighting pins with seamless wrap-around
+       (f) Dual-GPU / Spoof packets: fade-in at start, fade-out at end, 120ms gap
+       ========================================================================= */
+    .chain-link-arrow {
+      flex: 1;
+      height: 3px;
+      background: var(--gauge-track);
+      margin: 0 8px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 999px;
+    }
+    .chain-link-arrow.active {
+      background: var(--accent-soft);
+    }
+    .view-panel.active .boot-chain-stage .chain-link-arrow::after,
+    .view-panel.active .chain-link-arrow.active::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 24%,
+        rgba(var(--accent-rgb), 0.28) 38%,
+        var(--accent) 50%,
+        #ffffff 54%,
+        var(--accent) 58%,
+        transparent 72%,
+        transparent 100%
+      );
+      background-size: 240% 100%;
+      background-position: 120% 0;
+      animation: unifiedStreamFlow var(--flow-period) var(--flow-ease) infinite;
+    }
+    /* Sequential arrow delays within every .boot-chain-stage */
+    .boot-chain-stage > .chain-link-arrow:nth-child(2)::after {
+      animation-delay: 0ms !important;
+    }
+    .boot-chain-stage > .chain-link-arrow:nth-child(4)::after {
+      animation-delay: 320ms !important;
+    }
+    .boot-chain-stage > .chain-link-arrow:nth-child(6)::after {
+      animation-delay: 640ms !important;
+    }
+
+    @keyframes unifiedStreamFlow {
+      0% { background-position: 120% 0; opacity: 0.15; }
+      6% { opacity: 1; }
+      34% { background-position: -35% 0; opacity: 1; }
+      44%, 100% { background-position: -35% 0; opacity: 0.15; }
+    }
+
+    /* Node arrival brighten pulse (border heavier + halo for 0.15s = 6.25% of 2.4s) */
+    .view-panel.active .boot-chain-stage > .chain-node .node-icon {
+      animation: unifiedNodeArrival var(--flow-period) var(--flow-ease) infinite;
+    }
+    .boot-chain-stage > .chain-node:nth-child(1) .node-icon {
+      animation-delay: 0ms !important;
+    }
+    .boot-chain-stage > .chain-node:nth-child(3) .node-icon {
+      animation-delay: 320ms !important;
+    }
+    .boot-chain-stage > .chain-node:nth-child(5) .node-icon {
+      animation-delay: 640ms !important;
+    }
+    .boot-chain-stage > .chain-node:nth-child(7) .node-icon {
+      animation-delay: 960ms !important;
+    }
+
+    @keyframes unifiedNodeArrival {
+      0%, 100% {
+        border-color: var(--badge-border);
+        box-shadow: none;
+        transform: scale(1);
+      }
+      2% {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-soft), 0 0 12px var(--accent-glow);
+        transform: scale(1.05);
+      }
+      8.25% {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-soft), 0 0 12px var(--accent-glow);
+        transform: scale(1.05);
+      }
+      16% {
+        border-color: var(--badge-border);
+        box-shadow: none;
+        transform: scale(1);
+      }
+    }
+
+    /* (e) PCIe 16 pins: continuous sweeping light band across the entire row */
+    .pcie-lanes-grid {
+      position: relative;
+      padding: 2px 4px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .view-panel.active .pcie-lanes-grid::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--accent-rgb), 0.18) 35%,
+        rgba(var(--accent-rgb), 0.45) 50%,
+        rgba(var(--accent-rgb), 0.18) 65%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: pcieBandSweep var(--flow-period) linear infinite;
+    }
+    @keyframes pcieBandSweep {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    .lane-pin {
+      width: 5px;
+      height: 16px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-secondary) 100%);
+      opacity: 0.36;
+      position: relative;
+      z-index: 1;
+    }
+    .view-panel.active .lane-pin:not(.inactive) {
+      animation: pciePinWave var(--flow-period) linear infinite !important;
+    }
+    /* 16 pins evenly spaced across 2400ms (150ms step) -> seamless loop at 2400ms! */
+    .lane-pin:nth-child(1)  { animation-delay: -2400ms !important; }
+    .lane-pin:nth-child(2)  { animation-delay: -2250ms !important; }
+    .lane-pin:nth-child(3)  { animation-delay: -2100ms !important; }
+    .lane-pin:nth-child(4)  { animation-delay: -1950ms !important; }
+    .lane-pin:nth-child(5)  { animation-delay: -1800ms !important; }
+    .lane-pin:nth-child(6)  { animation-delay: -1650ms !important; }
+    .lane-pin:nth-child(7)  { animation-delay: -1500ms !important; }
+    .lane-pin:nth-child(8)  { animation-delay: -1350ms !important; }
+    .lane-pin:nth-child(9)  { animation-delay: -1200ms !important; }
+    .lane-pin:nth-child(10) { animation-delay: -1050ms !important; }
+    .lane-pin:nth-child(11) { animation-delay: -900ms !important; }
+    .lane-pin:nth-child(12) { animation-delay: -750ms !important; }
+    .lane-pin:nth-child(13) { animation-delay: -600ms !important; }
+    .lane-pin:nth-child(14) { animation-delay: -450ms !important; }
+    .lane-pin:nth-child(15) { animation-delay: -300ms !important; }
+    .lane-pin:nth-child(16) { animation-delay: -150ms !important; }
+
+    @keyframes pciePinWave {
+      0%, 100% {
+        opacity: 0.32;
+        transform: scaleY(0.78);
+        filter: brightness(0.95);
+      }
+      14% {
+        opacity: 1;
+        transform: scaleY(1.18);
+        filter: brightness(1.25);
+      }
+      32% {
+        opacity: 0.36;
+        transform: scaleY(0.80);
+        filter: brightness(0.95);
+      }
+    }
+
+    /* (f) Dual-GPU & Spoof CASO Pipes + Flying Packets:
+       Continuous gradient stream on pipe + packet fade-in at start, fade-out at end,
+       120ms (5% of 2.4s) empty gap, sequential 0ms / 320ms delay, and card arrival pulse */
+    .caso-pipe {
+      flex: 1;
+      height: 4px;
+      background: var(--gauge-track);
+      margin: 0 8px;
+      position: relative;
+      border-radius: 999px;
+      overflow: visible;
+    }
+    .view-panel.active .caso-pipe::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 24%,
+        rgba(var(--accent-rgb), 0.24) 40%,
+        var(--accent) 52%,
+        transparent 70%,
+        transparent 100%
+      );
+      background-size: 240% 100%;
+      background-position: 120% 0;
+      animation: unifiedStreamFlow var(--flow-period) var(--flow-ease) infinite;
+    }
+    .caso-flow-box > .caso-pipe:nth-child(2)::before {
+      animation-delay: 0ms !important;
+    }
+    .caso-flow-box > .caso-pipe:nth-child(4)::before {
+      animation-delay: 320ms !important;
+    }
+    .caso-packet {
+      position: absolute;
+      top: -3.5px;
+      left: 0;
+      width: 18px;
+      height: 11px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent) 70%, #ffffff 100%);
+      box-shadow: 0 0 8px var(--accent-glow);
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+    .view-panel.active .caso-packet {
+      animation: packetContinuousDispatch var(--flow-period) var(--flow-ease) infinite !important;
+    }
+    .caso-flow-box > .caso-pipe:nth-child(2) .caso-packet {
+      animation-delay: 0ms !important;
+    }
+    .caso-flow-box > .caso-pipe:nth-child(4) .caso-packet {
+      animation-delay: 320ms !important;
+    }
+    /* 0%..5% (120ms) empty gap -> 5%..15% fade in at start -> 15%..78% travel -> 78%..92% fade out at end -> 92%..100% gap */
+    @keyframes packetContinuousDispatch {
+      0%, 5% {
+        left: 0%;
+        opacity: 0;
+        transform: scaleX(0.55);
+      }
+      15% {
+        left: 8%;
+        opacity: 1;
+        transform: scaleX(1);
+      }
+      76% {
+        left: 82%;
+        opacity: 1;
+        transform: scaleX(1);
+      }
+      90% {
+        left: 93%;
+        opacity: 0;
+        transform: scaleX(0.55);
+      }
+      90.01%, 100% {
+        left: 0%;
+        opacity: 0;
+        transform: scaleX(0.55);
+      }
+    }
+    .view-panel.active .caso-flow-box > .caso-card {
+      animation: unifiedNodeArrival var(--flow-period) var(--flow-ease) infinite;
+    }
+    .caso-flow-box > .caso-card:nth-child(1) { animation-delay: 0ms !important; }
+    .caso-flow-box > .caso-card:nth-child(3) { animation-delay: 320ms !important; }
+    .caso-flow-box > .caso-card:nth-child(5) { animation-delay: 640ms !important; }
+
+    /* =========================================================================
+       REQUIREMENT 4: 8-LAYER 3D GPU MODEL OVERHAUL
+       - Every layer has real 3D slab thickness (multi-step box-shadow + side rim)
+       - 8 layers from Backplate (L1) to Shroud Armor (L8) exploding diagonally
+         down-left: X -50 -> -140, Y -45 -> +70, Z -85 -> +85
+       - Staggered delay +45ms per layer (0ms..315ms expand, 315ms..0ms collapse)
+       - Continuous orbit rotateY -24deg <-> -6deg, rotateX 12deg <-> 2deg, 16s alternate
+       - Exploded state shares the exact same orbit animation -> zero angle jump
+       - Hero height delta on explode <= 40px (stage height 118px -> 146px = +28px)
+       - Light mode uses neutral silver/slate grayscale materials
+       ========================================================================= */
+    .gpu-3d-stage {
+      width: 340px;
+      height: 118px;
+      perspective: 1200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 5;
+      cursor: pointer;
+      overflow: visible;
+      transition: width var(--dur-slow) var(--ease-std), height var(--dur-slow) var(--ease-std);
+    }
+    .gpu-3d-stage.is-exploded {
+      width: 440px;
+      height: 146px; /* +28px height delta (strictly <= 40px) */
+    }
+    .gpu-3d-stage::after {
+      content: "点击 8 层全维透视拆解";
+      bottom: -6px;
+    }
+    .gpu-3d-stage.is-exploded::after {
+      content: "点击合拢显卡装甲 (8层斜向展开)";
+      opacity: 0.98;
+      right: 0;
+      bottom: -8px;
+    }
+
+    .gpu-3d-card,
+    .gpu-3d-card.exploded {
+      width: 224px;
+      height: 82px;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: gpuAutoOrbit16s 16s ease-in-out infinite alternate !important;
+      transition: left var(--dur-slow) var(--ease-std), top var(--dur-slow) var(--ease-std);
+      left: 0;
+      top: 0;
+      z-index: 2;
+    }
+    .gpu-3d-card.exploded {
+      left: 96px;
+      top: -20px;
+    }
+    @keyframes gpuAutoOrbit16s {
+      0% {
+        transform: rotateY(-24deg) rotateX(12deg);
+      }
+      100% {
+        transform: rotateY(-6deg) rotateX(2deg);
+      }
+    }
+
+    /* Shared 3D Slab Thickness for all 8 layers */
+    .gpu-layer {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      transform-style: preserve-3d;
+      box-shadow:
+        1px 1px 0 var(--gpu-slab-edge),
+        2px 2px 0 var(--gpu-slab-edge),
+        3px 3px 0 var(--gpu-slab-deep),
+        4px 4px 0 var(--gpu-slab-deep),
+        6px 10px 18px var(--gpu-slab-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.32);
+      transition-property: transform, border-color, box-shadow;
+      transition-duration: 360ms;
+      transition-timing-function: var(--ease-std);
+    }
+    /* Side thickness bevel on every 3D layer */
+    .gpu-layer::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      border-right: 3px solid var(--gpu-slab-edge);
+      border-bottom: 3px solid var(--gpu-slab-deep);
+      opacity: 0.85;
+    }
+
+    .gpu-layer-tag {
+      position: absolute;
+      top: -15px;
+      left: 6px;
+      font-size: 11.5px;
+      transform: scale(0.66);
+      transform-origin: left bottom;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--gpu-tag-bg);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur-mid) var(--ease-std);
+      font-family: ui-monospace, monospace;
+      z-index: 12;
+      box-shadow: 0 2px 6px var(--gpu-slab-shadow);
+    }
+    .gpu-3d-card.exploded .gpu-layer-tag {
+      opacity: 1;
+    }
+
+    /* =========================================================================
+       8 LAYERS: NORMAL COMPACT STACK vs EXPLODED DOWN-LEFT CASCADE
+       Vector: X -50 -> -140, Y -45 -> +70, Z -85 -> +85
+       Delays: Expand 0ms -> 315ms (+45ms step), Collapse 315ms -> 0ms (reverse)
+       ========================================================================= */
+
+    /* L1: 金属背板 (Backplate) */
+    .gpu-layer-1 {
+      background: var(--gpu-l1-bg);
+      border: 1.5px solid var(--badge-border);
+      transform: translate3d(0, 0, -14px);
+      transition-delay: 315ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+    }
+    .gpu-3d-card.exploded .gpu-layer-1 {
+      transform: translate3d(-50px, -45px, -85px) scale(0.60);
+      border-color: var(--accent);
+      transition-delay: 0ms;
+    }
+
+    /* L2: 核心背板支架与导热硅胶垫 (Core Retention Bracket & Thermal Pads) */
+    .gpu-layer-2 {
+      inset: 3px 6px;
+      background: var(--gpu-l2-bg);
+      border: 1.5px solid var(--input-border);
+      transform: translate3d(0, 0, -10px);
+      transition-delay: 270ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 12px;
+    }
+    .gpu-3d-card.exploded .gpu-layer-2 {
+      transform: translate3d(-63px, -29px, -61px) scale(0.60);
+      border-color: var(--accent);
+      transition-delay: 45ms;
+    }
+
+    /* L3: 12相高频PCB电路板 (12-Phase Custom PCB) */
+    .gpu-layer-3 {
+      inset: 2px 4px;
+      background: var(--gpu-l3-bg);
+      border: 1.5px solid var(--success);
+      transform: translate3d(0, 0, -6px);
+      transition-delay: 225ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+    .gpu-3d-card.exploded .gpu-layer-3 {
+      transform: translate3d(-76px, -12px, -36px) scale(0.60);
+      transition-delay: 90ms;
+    }
+
+    /* L4: GA102核心与10颗GDDR6X显存阵列 (GA102 Die & GDDR6X Array + Dual 8-Pin) */
+    .gpu-layer-4 {
+      inset: 4px 8px;
+      background: var(--gpu-l4-bg);
+      border: 1.5px solid var(--warning);
+      transform: translate3d(0, 0, -2px);
+      transition-delay: 180ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+    }
+    .gpu-3d-card.exploded .gpu-layer-4 {
+      transform: translate3d(-89px, 4px, -12px) scale(0.60);
+      transition-delay: 135ms;
+    }
+
+    /* L5: VC真空腔均热板 (Vapor Chamber Plate) */
+    .gpu-layer-5 {
+      inset: 6px 12px;
+      background: var(--gpu-l5-bg);
+      border: 1.5px solid var(--warning);
+      transform: translate3d(0, 0, 2px);
+      transition-delay: 135ms;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-3d-card.exploded .gpu-layer-5 {
+      transform: translate3d(-101px, 21px, 12px) scale(0.60);
+      transition-delay: 180ms;
+    }
+
+    /* L6: 4根复合镀镍热管阵列 (4x Nickel-Plated Copper Heatpipes) */
+    .gpu-layer-6 {
+      inset: 6px 8px;
+      background: var(--gpu-l6-bg);
+      border: 1.5px dashed var(--warning);
+      transform: translate3d(0, 0, 6px);
+      transition-delay: 90ms;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      padding: 6px 8px;
+    }
+    .gpu-3d-card.exploded .gpu-layer-6 {
+      transform: translate3d(-114px, 37px, 36px) scale(0.60);
+      transition-delay: 225ms;
+    }
+
+    /* L7: 高密度穿Fin散热鳍片 (High-Density Fin Heatsink Array) */
+    .gpu-layer-7 {
+      inset: 3px 6px;
+      background: var(--gpu-l7-bg);
+      border: 1.5px solid var(--input-border);
+      transform: translate3d(0, 0, 10px);
+      transition-delay: 45ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+    .gpu-3d-card.exploded .gpu-layer-7 {
+      transform: translate3d(-127px, 54px, 61px) scale(0.60);
+      border-color: var(--accent);
+      transition-delay: 270ms;
+    }
+
+    /* L8: 金属导流装甲与双9叶轴流风扇 (Brushed Shroud Armor & Dual Fans) */
+    .gpu-layer-8 {
+      inset: 0;
+      background: var(--gpu-l8-bg);
+      border: 1.5px solid var(--accent);
+      transform: translate3d(0, 0, 14px);
+      transition-delay: 0ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      overflow: visible;
+    }
+    .gpu-3d-card.exploded .gpu-layer-8 {
+      transform: translate3d(-140px, 70px, 85px) scale(0.60);
+      transition-delay: 315ms;
+    }
+
+    .gpu-fan-well {
+      background: var(--gpu-fan-well-bg);
+    }
+    .gpu-fan-hub {
+      background: var(--gpu-fan-hub-bg);
+    }
+    .gpu-shroud-badge {
+      background: var(--gpu-badge-bg);
+    }
+    .gpu-fan-hub span {
+      color: var(--text-main);
+    }
+
+
+    /* =========================================================================
+       FINAL UPGRADE ON OUR BASE (hx_v6_1.html):
+       1. 4 Telemetry Cards: Reference File 1's Sleek Horizontal Progress-Bar Card
+          Design + Hover Detail Unfold & Smooth Lower Window Push-Down
+       2. Unconstrained 3D GPU Model: Bold Pop-Out + Smooth Left<->Right Swing
+          + Mouse-Tracking Face-Cursor Rotation + Seamless Blending
+       3. Panoramic 6-Part Exploded View: L-Shaped ("一竖一横") Leader Lines
+          + Full-Size 13.5px/11.5px High-Contrast Labels (Zero Overlap)
+       4. Silky 60fps GPU-Composited translate3d Flow Lines Across All 7 Locations
+       ========================================================================= */
+    :root {
+      --spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* 1. FOUR TELEMETRY CARDS (Sleek Horizontal Progress-Bar Design from File 1 + Hover Unfold) */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .gauge-svg-hidden {
+      display: none !important;
+    }
+    .gauge-card {
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px !important;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch !important;
+      justify-content: flex-start;
+      gap: 8px !important;
+      position: relative;
+      box-shadow: var(--card-shadow);
+      transition:
+        transform 220ms var(--spring-ease),
+        border-color 150ms var(--ease-std),
+        background-color 150ms var(--ease-std),
+        box-shadow 220ms var(--ease-std);
+    }
+    .gauge-card:hover,
+    .gauge-card.is-hovered {
+      transform: translateY(-2px);
+      border-color: var(--card-hover-border);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+    body.theme-light .gauge-card:hover,
+    body.theme-light .gauge-card.is-hovered {
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08), inset 0 1px 0 #ffffff;
+    }
+    .gauge-num-row {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .gauge-val {
+      position: static !important;
+      font-size: 26px !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.4px;
+      line-height: 1.15;
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .gauge-unit {
+      font-size: 12px !important;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+    .gauge-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-sub);
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .gauge-label-row .svg-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--text-sub);
+      transition: color 150ms var(--ease-std), transform 200ms var(--spring-ease);
+    }
+    .gauge-card:hover .gauge-label-row .svg-icon,
+    .gauge-card.is-hovered .gauge-label-row .svg-icon {
+      color: var(--accent);
+      transform: scale(1.08);
+    }
+    .gauge-bar-track {
+      height: 4px;
+      width: 100%;
+      border-radius: 4px;
+      background: var(--gauge-track);
+      overflow: hidden;
+    }
+    .gauge-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 300ms var(--ease-std), background-color 300ms var(--ease-std);
+    }
+    .gauge-bar-fill.bar-temp { background: var(--accent); }
+    .gauge-bar-fill.bar-fan { background: var(--warning); }
+    .gauge-bar-fill.bar-power { background: var(--success); }
+    .gauge-bar-fill.bar-mem { background: var(--accent-secondary); }
+
+    /* Hover-expandable detail drawer inside each of the 4 cards */
+    .gauge-sub {
+      width: 100%;
+      min-height: 0 !important;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      margin-top: 0;
+      padding: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      border-top: 1px dashed transparent !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: var(--text-sub);
+      transform: translateY(-2px);
+      pointer-events: none;
+      transition:
+        max-height 240ms var(--spring-ease),
+        opacity 180ms var(--ease-std),
+        margin-top 240ms var(--spring-ease),
+        padding-top 240ms var(--spring-ease),
+        transform 220ms var(--spring-ease),
+        border-color 180ms var(--ease-std);
+    }
+    .gauge-card:hover .gauge-sub,
+    .gauge-card.is-hovered .gauge-sub,
+    .gauge-card:focus-within .gauge-sub {
+      max-height: 32px;
+      opacity: 1;
+      margin-top: 2px;
+      padding-top: 6px !important;
+      border-top-color: var(--divider-line) !important;
+      transform: translateY(0);
+    }
+    .gauge-sub .gs-pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11.5px;
+      color: var(--text-sub);
+    }
+    .gauge-sub .gs-pair strong {
+      color: var(--text-main);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 700;
+    }
+
+    /* Smooth downward shift of lower cards when hovering over a gauge card */
+    #telemetryGaugesGrid ~ .card {
+      transition:
+        transform 240ms var(--spring-ease),
+        border-color var(--dur-fast) var(--ease-std) !important;
+    }
+    #telemetryGaugesGrid:hover ~ .card,
+    #telemetryGaugesGrid:has(.gauge-card.is-hovered) ~ .card {
+      transform: translateY(6px) !important;
+    }
+
+    /* 2. UNCONSTRAINED 3D GPU HERO & PANORAMIC 6-PART L-SHAPED CALLOUT EXPLODED VIEW */
+    .hero-banner,
+    #deviceHeroBanner {
+      overflow: visible !important;
+      position: relative;
+      z-index: 25;
+      padding: 18px 24px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      border: var(--card-border);
+      transition:
+        padding 420ms var(--spring-ease),
+        border-color var(--dur-fast) var(--ease-std),
+        background 420ms var(--ease-std);
+    }
+    .hero-left {
+      order: 1;
+      z-index: 5;
+    }
+    .gpu-3d-stage {
+      order: 2;
+      width: 330px !important;
+      height: 112px !important;
+      perspective: 1200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 30;
+      cursor: grab;
+      overflow: visible !important;
+      margin: -8px 0;
+      transition:
+        width 460ms var(--spring-ease),
+        height 460ms var(--spring-ease),
+        margin 460ms var(--spring-ease);
+    }
+    .gpu-3d-stage:active {
+      cursor: grabbing;
+    }
+    .hero-actions-right {
+      order: 3;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 5;
+    }
+    .hero-banner.hero-exploded {
+      padding: 20px 24px 28px;
+      border-color: var(--badge-border);
+    }
+    .hero-banner.hero-exploded .hero-actions-right {
+      order: 2;
+    }
+    .hero-banner.hero-exploded .gpu-3d-stage,
+    .gpu-3d-stage.is-exploded {
+      order: 3;
+      flex: 0 0 100%;
+      width: 100% !important;
+      height: 348px !important;
+      margin: 8px 0 6px;
+    }
+
+    .gpu-3d-stage::before {
+      content: "";
+      position: absolute;
+      bottom: -12px;
+      left: 50%;
+      width: 260px;
+      height: 20px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(var(--accent-rgb), 0.28) 0%, rgba(0, 0, 0, 0.45) 48%, transparent 76%);
+      pointer-events: none;
+      transition: width 460ms var(--spring-ease), bottom 460ms var(--spring-ease), opacity 300ms var(--ease-std);
+    }
+    .gpu-3d-stage.is-exploded::before {
+      width: 84%;
+      height: 28px;
+      bottom: 6px;
+      opacity: 0.85;
+    }
+    .gpu-3d-stage::after {
+      content: "支持鼠标追踪转动 · 点击展开工程拆解图" !important;
+      position: absolute;
+      bottom: -20px !important;
+      left: 50%;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--card-bg-solid);
+      border: 1px solid var(--badge-border);
+      padding: 2px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 180ms var(--ease-std), transform 180ms var(--ease-std);
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+      z-index: 45;
+    }
+    .gpu-3d-stage:hover::after,
+    .gpu-3d-stage:focus-visible::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-2px) !important;
+    }
+    .gpu-3d-stage.is-exploded::after {
+      content: "已展开 6 大核心模组工程拆解图 · 移动鼠标可 3D 环视 · 点击任意处合拢" !important;
+      bottom: -6px !important;
+      opacity: 0.95;
+    }
+
+    .gpu-3d-card,
+    .gpu-3d-card.exploded {
+      width: 264px !important;
+      height: 96px !important;
+      left: 0 !important;
+      top: 0 !important;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: none !important;
+      transition: none;
+      will-change: transform;
+    }
+
+    .gpu-part {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      transform-style: preserve-3d;
+      overflow: visible !important;
+      transition:
+        transform 520ms var(--spring-ease),
+        box-shadow 420ms var(--ease-std),
+        border-color 320ms var(--ease-std),
+        opacity 320ms var(--ease-std);
+      will-change: transform;
+    }
+
+    .gpu-mouse-glare {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 6;
+      background: radial-gradient(
+        circle 110px at var(--glare-x, 50%) var(--glare-y, 50%),
+        rgba(255, 255, 255, 0.30) 0%,
+        rgba(var(--accent-rgb), 0.14) 40%,
+        transparent 75%
+      );
+      opacity: 0;
+      transition: opacity 200ms var(--ease-std);
+    }
+    .gpu-3d-stage:hover .gpu-mouse-glare {
+      opacity: 1;
+    }
+
+    /* PART 1: Anodized Backplate */
+    .gpu-part-backplate {
+      background:
+        repeating-linear-gradient(135deg, rgba(56, 189, 248, 0.06) 0px, rgba(56, 189, 248, 0.06) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #162032 0%, #090d16 100%);
+      border: 1.5px solid rgba(56, 189, 248, 0.42);
+      transform: translate3d(0, 0, -18px);
+      transition-delay: 200ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+    body.theme-light .gpu-part-backplate {
+      background:
+        repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.04) 0px, rgba(15, 23, 42, 0.04) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+      border-color: #64748b;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .gpu-back-brand {
+      font-size: 12.5px;
+      font-weight: 900;
+      color: #e2e8f0;
+      font-family: ui-monospace, monospace;
+      padding: 3px 8px;
+      border-radius: 5px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .gpu-back-vents {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .gpu-back-vents i {
+      width: 4px;
+      height: 34px;
+      border-radius: 2px;
+      background: rgba(56, 189, 248, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transform: skewX(-18deg);
+      display: block;
+    }
+
+    /* PART 2: Frame & Thermal Pads */
+    .gpu-part-frame {
+      inset: 3px 6px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1.5px solid rgba(148, 163, 184, 0.45);
+      transform: translate3d(0, 0, -11px);
+      transition-delay: 160ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    }
+    body.theme-light .gpu-part-frame {
+      background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+      border-color: #64748b;
+    }
+    .gpu-x-bracket {
+      width: 46px;
+      height: 46px;
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11.5px;
+      font-weight: 900;
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+      background: rgba(15, 23, 42, 0.55);
+    }
+    body.theme-light .gpu-x-bracket {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    /* PART 3: GA102 Die & 12-Phase PCB */
+    .gpu-part-pcb {
+      inset: 2px 4px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.22) 0%, transparent 68%),
+        linear-gradient(135deg, #062820 0%, #091926 55%, #051d18 100%);
+      border: 1.5px solid var(--success);
+      transform: translate3d(0, 0, -4px);
+      transition-delay: 120ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+    }
+    body.theme-light .gpu-part-pcb {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.18) 0%, transparent 68%),
+        linear-gradient(135deg, #0f392f 0%, #132a3e 55%, #0c2b24 100%);
+    }
+    .gpu-die-package {
+      position: relative;
+      width: 84px;
+      height: 66px;
+      border: 1.5px dashed rgba(251, 191, 36, 0.65);
+      border-radius: 6px;
+      background: rgba(6, 78, 59, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-part-pcb .gpu-silicon-die {
+      width: 44px;
+      height: 38px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #38bdf8 0%, #0f172a 42%, #1e293b 62%, #818cf8 100%);
+      border: 1.5px solid var(--warning);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-part-pcb .gpu-silicon-die span {
+      transform: none !important;
+      font-size: 10.5px !important;
+      font-weight: 900;
+      color: #ffffff;
+      font-family: ui-monospace, monospace;
+      line-height: 1.1;
+    }
+    .gpu-vram-chip.vl1 { left: 4px; top: 6px; }
+    .gpu-vram-chip.vl2 { left: 4px; top: 20px; }
+    .gpu-vram-chip.vl3 { left: 4px; bottom: 20px; }
+    .gpu-vram-chip.vl4 { left: 4px; bottom: 6px; }
+    .gpu-vram-chip.vr1 { right: 4px; top: 6px; }
+    .gpu-vram-chip.vr2 { right: 4px; top: 20px; }
+    .gpu-vram-chip.vr3 { right: 4px; bottom: 20px; }
+    .gpu-vram-chip.vr4 { right: 4px; bottom: 6px; }
+    .gpu-part-pcb .gpu-3d-pins {
+      position: absolute;
+      bottom: -8px;
+      left: 28px;
+      width: 144px;
+      height: 7px;
+      background: repeating-linear-gradient(90deg, #fbbf24 0px, #fbbf24 2.5px, #0f172a 2.5px, #0f172a 4.5px);
+      border-radius: 0 0 3px 3px;
+      border: 1px solid rgba(251, 191, 36, 0.6);
+      transform: none !important;
+    }
+
+    /* PART 4: Vapor Chamber & 4x Heatpipes */
+    .gpu-part-vapor {
+      inset: 6px 10px;
+      background: rgba(15, 23, 42, 0.84);
+      border: 1.5px dashed var(--warning);
+      transform: translate3d(0, 0, 3px);
+      transition-delay: 80ms;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      padding: 8px 10px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.48);
+    }
+    body.theme-light .gpu-part-vapor {
+      background: rgba(30, 41, 59, 0.90);
+    }
+    .gpu-heatpipe-tube {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #b45309 0%, #f59e0b 24%, #fef08a 50%, #f59e0b 76%, #cbd5e1 100%);
+      border: 1px solid rgba(254, 240, 138, 0.75);
+    }
+    .gpu-vapor-chamber-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 72px;
+      height: 50px;
+      transform: translate(-50%, -50%);
+      border-radius: 6px;
+      background: linear-gradient(135deg, #d97706 0%, #fbbf24 50%, #92400e 100%);
+      border: 1.5px solid #fef3c7;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .gpu-vapor-chamber-core span {
+      font-size: 11px;
+      font-weight: 900;
+      color: #0f172a;
+      font-family: ui-monospace, monospace;
+      line-height: 1.15;
+    }
+
+    /* PART 5: Fin Heatsink Array + I/O Bracket + Top Lightbar */
+    .gpu-part-heatsink {
+      inset: 3px 6px;
+      background:
+        linear-gradient(90deg, transparent 45%, rgba(15, 23, 42, 0.85) 47%, rgba(15, 23, 42, 0.85) 53%, transparent 55%),
+        repeating-linear-gradient(90deg, rgba(226, 232, 240, 0.65) 0px, rgba(226, 232, 240, 0.65) 1.5px, #0f172a 1.5px, #0f172a 4.5px);
+      border: 1.5px solid rgba(148, 163, 184, 0.6);
+      transform: translate3d(0, 0, 10px);
+      transition-delay: 40ms;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+    }
+    body.theme-light .gpu-part-heatsink {
+      background:
+        linear-gradient(90deg, transparent 45%, rgba(51, 65, 85, 0.75) 47%, rgba(51, 65, 85, 0.75) 53%, transparent 55%),
+        repeating-linear-gradient(90deg, #f8fafc 0px, #f8fafc 1.5px, #64748b 1.5px, #64748b 4.5px);
+      border-color: #475569;
+    }
+    .gpu-part-heatsink .gpu-3d-io-bracket {
+      position: absolute;
+      left: -8px;
+      top: -3px;
+      bottom: -5px;
+      width: 9px;
+      background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 50%, #64748b 100%);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 4px 1px 1px 4px;
+      transform: rotateY(-20deg) !important;
+    }
+    .gpu-part-heatsink .gpu-3d-edge-top {
+      position: absolute;
+      top: -1px;
+      left: 6px;
+      right: 6px;
+      height: 16px;
+      background: #1e293b;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      transform-origin: top center;
+      transform: rotateX(90deg) !important;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+    }
+    .gpu-part-heatsink .gpu-lightbar {
+      font-size: 10.5px;
+      transform: none !important;
+      font-weight: 900;
+      color: #ffffff;
+      padding: 1px 6px;
+    }
+
+    /* PART 6: Dual-Fan Shroud */
+    .gpu-part-shroud {
+      inset: 0;
+      background:
+        conic-gradient(from 45deg at 50% 50%, #0f172a 0deg, #334155 60deg, #0f172a 120deg, #475569 180deg, #0f172a 240deg, #334155 300deg, #0f172a 360deg);
+      border: 1.5px solid rgba(56, 189, 248, 0.55);
+      transform: translate3d(0, 0, 18px);
+      transition-delay: 0ms;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    body.theme-light .gpu-part-shroud {
+      background:
+        conic-gradient(from 45deg at 50% 50%, #1e293b 0deg, #475569 60deg, #0f172a 120deg, #64748b 180deg, #1e293b 240deg, #475569 300deg, #1e293b 360deg);
+      border-color: #0284c7;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+    .gpu-part-shroud .gpu-fan-well {
+      width: 68px;
+      height: 68px;
+      background: radial-gradient(circle at center, #090d16 0%, #111827 72%, #1e293b 100%) !important;
+    }
+    .gpu-part-shroud .gpu-3d-fan {
+      width: 60px;
+      height: 60px;
+    }
+    .gpu-part-shroud .gpu-fan-hub {
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, #1e293b 0%, #090d16 100%) !important;
+    }
+    .gpu-part-shroud .gpu-fan-hub span {
+      transform: none !important;
+      font-size: 9px !important;
+      color: #38bdf8 !important;
+    }
+    .gpu-part-shroud .gpu-shroud-badge {
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: rgba(9, 13, 22, 0.92) !important;
+      border: 1px solid rgba(56, 189, 248, 0.48);
+    }
+    .gpu-part-shroud .gpu-shroud-badge span:first-child {
+      transform: none !important;
+      font-size: 11.5px !important;
+      line-height: 1.2 !important;
+      color: #38bdf8 !important;
+    }
+    .gpu-part-shroud .gpu-shroud-badge span:last-child {
+      transform: none !important;
+      font-size: 10.5px !important;
+      line-height: 1.2 !important;
+      color: #e2e8f0 !important;
+    }
+
+    /* EXPLODED POSITIONS (Fitted for 1160px inner width with left sidebar) */
+    .gpu-3d-card.exploded .gpu-part-backplate {
+      transform: translate3d(-425px, -8px, -50px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 0ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-frame {
+      transform: translate3d(-271px, 8px, -30px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 45ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-pcb {
+      transform: translate3d(-117px, -8px, -10px) rotateY(-22deg) scale(0.64);
+      border-color: var(--success);
+      transition-delay: 90ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-vapor {
+      transform: translate3d(37px, 8px, 10px) rotateY(-22deg) scale(0.64);
+      border-color: var(--warning);
+      transition-delay: 135ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-heatsink {
+      transform: translate3d(191px, -8px, 30px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 180ms;
+    }
+    .gpu-3d-card.exploded .gpu-part-shroud {
+      transform: translate3d(345px, 8px, 50px) rotateY(-22deg) scale(0.64);
+      border-color: var(--accent);
+      transition-delay: 225ms;
+    }
+
+    /* L-Shaped ("一竖一横") Engineering Callouts with positive bounds */
+    .gpu-callout {
+      position: absolute;
+      width: 360px;
+      height: 120px;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 80;
+      transform-origin: 16px 104px;
+      transform: rotateY(26deg) rotateX(-6deg) rotateZ(2.6deg) scale(1.48);
+      transition: opacity 220ms var(--ease-std);
+    }
+    .gpu-callout.callout-top {
+      left: calc(50% - 16px);
+      top: -102px;
+      transform-origin: 16px 104px;
+    }
+    .gpu-callout.callout-bottom {
+      left: calc(50% - 16px);
+      bottom: -102px;
+      transform-origin: 16px 10px;
+    }
+    .gpu-3d-card.exploded .gpu-callout {
+      opacity: 1;
+      transition-delay: 200ms;
+    }
+    .callout-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .callout-top .callout-dot { left: 11px; top: 98px; }
+    .callout-bottom .callout-dot { left: 11px; top: 6px; }
+
+    .callout-v {
+      position: absolute;
+      width: 2.5px;
+      height: 52px;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      transform: scaleY(0);
+      transition: transform 240ms var(--spring-ease);
+    }
+    .callout-top .callout-v { left: 15px; top: 48px; transform-origin: bottom center; }
+    .callout-bottom .callout-v { left: 15px; top: 14px; transform-origin: top center; }
+    .gpu-3d-card.exploded .callout-v { transform: scaleY(1); transition-delay: 250ms; }
+
+    .callout-elbow {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .callout-top .callout-elbow { left: 13px; top: 45px; }
+    .callout-bottom .callout-elbow { left: 13px; top: 63px; }
+
+    .callout-h {
+      position: absolute;
+      width: 30px;
+      height: 2.5px;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      transform: scaleX(0);
+      transition: transform 240ms var(--spring-ease);
+    }
+    .callout-top .callout-h { left: 16px; top: 47px; transform-origin: left center; }
+    .callout-bottom .callout-h { left: 16px; top: 65px; transform-origin: left center; }
+    .gpu-3d-card.exploded .callout-h { transform: scaleX(1); transition-delay: 390ms; }
+
+    .callout-box {
+      position: absolute;
+      width: max-content;
+      min-width: 192px;
+      background: var(--frame-bg-solid);
+      border: 1.5px solid var(--accent);
+      border-radius: 10px;
+      padding: 7px 14px;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      opacity: 0;
+      transform: translateX(-6px);
+      transition: opacity 220ms var(--ease-std), transform 240ms var(--spring-ease);
+      text-align: left;
+      white-space: nowrap;
+    }
+    body.theme-light .callout-box {
+      background: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+    }
+    .callout-top .callout-box { left: 46px; top: 18px; }
+    .callout-bottom .callout-box { left: 46px; top: 38px; }
+    .gpu-3d-card.exploded .callout-box { opacity: 1; transform: translateX(0); transition-delay: 450ms; }
+
+    .callout-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .callout-idx {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      color: var(--accent);
+      font-size: 10.5px;
+      font-weight: 900;
+      font-family: ui-monospace, monospace;
+    }
+    .callout-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-top: 2px;
+      font-family: ui-monospace, monospace;
+    }
+
+
+    /* =========================================================================
+       UPGRADE V6:
+       1. ZERO-STUTTER CONSTANT-VELOCITY LINEAR FLOW ANIMATIONS ACROSS ALL PAGES
+          (Fixes "走到快要完的时候它会卡一下" on Spoof, DualGPU, Unlock, DLSS, Overlay, etc.)
+       2. FLAGSHIP TRIPLE-FAN (三风扇) 3D GRAPHICS CARD MODEL
+          - Night Mode (theme-dark): "暗夜黑金 · 赛博霓虹版" (Obsidian Carbon + Molten Gold + Cyber Cyan)
+          - Day Mode (theme-light): "白昼冰魄 · 钛白银翼版" (Pearl White + Brushed Silver + Ice Blue)
+          - Smooth Left<->Right Auto-Rotation + Mouse-Tracking 3D Tilt
+       ========================================================================= */
+
+    /* -------------------------------------------------------------------------
+       PART A: SILKY 100% LINEAR CONSTANT-SPEED FLOW PIPES & ARROWS (ZERO BRAKING)
+       ------------------------------------------------------------------------- */
+    /* 1. Spoof & Dual-GPU CASO Pipes (.caso-pipe & .caso-packet) */
+    .caso-pipe {
+      flex: 1;
+      height: 5px !important;
+      background: var(--gauge-track) !important;
+      margin: 0 10px !important;
+      position: relative !important;
+      border-radius: 999px !important;
+      overflow: hidden !important;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+    /* Disable the conflicting ::before animation that paused at 34% */
+    .view-panel.active .caso-pipe::before,
+    .caso-pipe::before {
+      display: none !important;
+      animation: none !important;
+    }
+    /* Pure constant-speed linear comet: 0% (-110%) -> 100% (+250%) with NO intermediate stops! */
+    .caso-packet {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 44% !important;
+      height: 100% !important;
+      border-radius: 999px !important;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--accent-rgb), 0.18) 22%,
+        var(--accent-secondary) 55%,
+        var(--accent) 82%,
+        #ffffff 96%,
+        transparent 100%
+      ) !important;
+      box-shadow: 0 0 10px var(--accent-glow) !important;
+      opacity: 0;
+      transform: translate3d(-110%, 0, 0);
+      will-change: transform, opacity;
+    }
+    /* -------------------------------------------------------------------------
+       RELAY FLOW (v6.2)
+       光点接力：A→B 跑完，B→C 才出发；同一时刻只有一段管线在传输。
+       周期 = 段数 × 1.3s，每段速度恒定，段与段之间无缝衔接。
+       ------------------------------------------------------------------------- */
+    @keyframes cometRelay2 {
+      0%    { transform: translate3d(-110%, 0, 0); opacity: 0; }
+      14%   { opacity: 1; }
+      50%   { transform: translate3d(240%, 0, 0); opacity: 1; }
+      55%   { opacity: 0; }
+      100%  { transform: translate3d(-110%, 0, 0); opacity: 0; }
+    }
+    @keyframes cometRelay3 {
+      0%     { transform: translate3d(-110%, 0, 0); opacity: 0; }
+      9%     { opacity: 1; }
+      33.33% { transform: translate3d(240%, 0, 0); opacity: 1; }
+      37%    { opacity: 0; }
+      100%   { transform: translate3d(-110%, 0, 0); opacity: 0; }
+    }
+    /* 节点在光点抵达的那一刻亮起 */
+    @keyframes nodeIgnite {
+      0%   { border-color: var(--accent); box-shadow: 0 0 14px var(--accent-glow); }
+      26%  { border-color: var(--badge-border); box-shadow: none; }
+      100% { border-color: var(--badge-border); box-shadow: none; }
+    }
+
+    .view-panel.active .caso-packet {
+      animation: cometRelay2 2.6s linear infinite !important;
+    }
+    /* 第 1 段 0s；第 2 段在 1.3s 出发（相位写进简写，避免被上面的声明重置） */
+    .view-panel.active .caso-flow-box > .caso-pipe:nth-child(2) .caso-packet {
+      animation: cometRelay2 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .caso-flow-box > .caso-pipe:nth-child(4) .caso-packet {
+      animation: cometRelay2 2.6s linear -1.3s infinite !important;
+    }
+    @keyframes linearPipeComet {
+      0% {
+        transform: translate3d(-110%, 0, 0);
+      }
+      100% {
+        transform: translate3d(240%, 0, 0);
+      }
+    }
+
+    /* 2. Boot Chain / DLSS / Overlay / Maintenance / Update Arrows (.chain-link-arrow) */
+    .chain-link-arrow {
+      flex: 1;
+      height: 4px !important;
+      background: var(--gauge-track) !important;
+      margin: 0 10px !important;
+      position: relative !important;
+      overflow: hidden !important;
+      border-radius: 999px !important;
+    }
+    .chain-link-arrow.active {
+      background: var(--accent-soft) !important;
+    }
+    .view-panel.active .boot-chain-stage .chain-link-arrow::after,
+    .view-panel.active .chain-link-arrow.active::after {
+      content: "" !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 46% !important;
+      height: 100% !important;
+      border-radius: 999px !important;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--accent-rgb), 0.20) 25%,
+        var(--accent-secondary) 58%,
+        var(--accent) 85%,
+        #ffffff 96%,
+        transparent 100%
+      ) !important;
+      background-size: 100% 100% !important;
+      opacity: 0;
+      transform: translate3d(-110%, 0, 0);
+      will-change: transform, opacity;
+      animation: cometRelay2 2.6s linear infinite !important;
+    }
+    /* 相位必须写进 animation 简写：上面那条 .view-panel.active 优先级更高，
+       单独的 animation-delay 会被简写里的默认 0s 重置掉 */
+    .view-panel.active .boot-chain-stage > .chain-link-arrow:nth-child(2)::after {
+      animation: cometRelay2 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .boot-chain-stage > .chain-link-arrow:nth-child(4)::after {
+      animation: cometRelay2 2.6s linear -1.3s infinite !important;
+    }
+    /* DLSS 插帧管线是「4 节点 / 3 段」：A→B→C→D */
+    #view-dlss.active .boot-chain-stage .chain-link-arrow::after {
+      animation: cometRelay3 3.9s linear 0s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-link-arrow:nth-child(2)::after {
+      animation: cometRelay3 3.9s linear 0s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-link-arrow:nth-child(4)::after {
+      animation: cometRelay3 3.9s linear -2.6s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-link-arrow:nth-child(6)::after {
+      animation: cometRelay3 3.9s linear -1.3s infinite !important;
+    }
+
+    /* -------------------------------------------------------------------------
+       JELLY NODES
+       光点抵达的一刻，节点被"撞"一下：压扁 → 回弹 → 余震，像果冻一样。
+       ------------------------------------------------------------------------- */
+    @keyframes jellyNodeTick {
+      0%   { transform: scale(1.28, 0.78); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+      5%   { transform: scale(0.88, 1.16); border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+      10%  { transform: scale(1.10, 0.93); box-shadow: 0 0 11px var(--accent-glow); }
+      15%  { transform: scale(0.96, 1.04); }
+      20%  { transform: scale(1.02, 0.99); box-shadow: none; border-color: var(--badge-border); }
+      26%  { transform: scale(1); }
+      100% { transform: scale(1); border-color: var(--badge-border); box-shadow: none; }
+    }
+    @keyframes jellyCardTick {
+      0%   { transform: scale(1.045) translateY(-2px); border-color: var(--accent); box-shadow: 0 0 24px var(--accent-glow); }
+      7%   { transform: scale(0.985) translateY(0); }
+      14%  { transform: scale(1.015); }
+      22%  { transform: scale(1); border-color: var(--badge-border); box-shadow: none; }
+      100% { transform: scale(1); border-color: var(--badge-border); box-shadow: none; }
+    }
+
+    /* 2 段链路：固件解锁 / 游戏覆盖 / 系统维护 / 软件更新 —— 节点在 0s → 1.3s → 0s 被点亮 */
+    .view-panel.active .boot-chain-stage > .chain-node:nth-child(1) .node-icon {
+      animation: jellyNodeTick 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .boot-chain-stage > .chain-node:nth-child(3) .node-icon {
+      animation: jellyNodeTick 2.6s linear -1.3s infinite !important;
+    }
+    .view-panel.active .boot-chain-stage > .chain-node:nth-child(5) .node-icon {
+      animation: jellyNodeTick 2.6s linear 0s infinite !important;
+    }
+    /* 3 段链路（DLSS）：节点在 0s → 1.3s → 2.6s → 0s 被点亮 */
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(1) .node-icon {
+      animation: jellyNodeTick 3.9s linear 0s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(3) .node-icon {
+      animation: jellyNodeTick 3.9s linear -2.6s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(5) .node-icon {
+      animation: jellyNodeTick 3.9s linear -1.3s infinite !important;
+    }
+    #view-dlss.active .boot-chain-stage > .chain-node:nth-child(7) .node-icon {
+      animation: jellyNodeTick 3.9s linear 0s infinite !important;
+    }
+    /* 显卡伪装 / 双卡协同的卡片节点 */
+    .view-panel.active .caso-flow-box > .caso-card:nth-child(1) {
+      animation: jellyCardTick 2.6s linear 0s infinite !important;
+    }
+    .view-panel.active .caso-flow-box > .caso-card:nth-child(3) {
+      animation: jellyCardTick 2.6s linear -1.3s infinite !important;
+    }
+    .view-panel.active .caso-flow-box > .caso-card:nth-child(5) {
+      animation: jellyCardTick 2.6s linear 0s infinite !important;
+    }
+
+    /* 3. PCIe 16 Lanes: pure linear phase wave without background-position stutter */
+    .view-panel.active .pcie-lanes-grid::after {
+      display: none !important;
+    }
+    .view-panel.active .lane-pin:not(.inactive) {
+      animation: linearPcieWave 1.6s ease-in-out infinite !important;
+    }
+    @keyframes linearPcieWave {
+      0%, 100% { opacity: 0.35; transform: scaleY(0.76); }
+      50% { opacity: 1; transform: scaleY(1.20); }
+    }
+    .lane-pin:nth-child(1)  { animation-delay: -1.60s !important; }
+    .lane-pin:nth-child(2)  { animation-delay: -1.50s !important; }
+    .lane-pin:nth-child(3)  { animation-delay: -1.40s !important; }
+    .lane-pin:nth-child(4)  { animation-delay: -1.30s !important; }
+    .lane-pin:nth-child(5)  { animation-delay: -1.20s !important; }
+    .lane-pin:nth-child(6)  { animation-delay: -1.10s !important; }
+    .lane-pin:nth-child(7)  { animation-delay: -1.00s !important; }
+    .lane-pin:nth-child(8)  { animation-delay: -0.90s !important; }
+    .lane-pin:nth-child(9)  { animation-delay: -0.80s !important; }
+    .lane-pin:nth-child(10) { animation-delay: -0.70s !important; }
+    .lane-pin:nth-child(11) { animation-delay: -0.60s !important; }
+    .lane-pin:nth-child(12) { animation-delay: -0.50s !important; }
+    .lane-pin:nth-child(13) { animation-delay: -0.40s !important; }
+    .lane-pin:nth-child(14) { animation-delay: -0.30s !important; }
+    .lane-pin:nth-child(15) { animation-delay: -0.20s !important; }
+    .lane-pin:nth-child(16) { animation-delay: -0.10s !important; }
+
+    /* -------------------------------------------------------------------------
+       PART B: FLAGSHIP TRIPLE-FAN (三风扇) 3D GPU MODEL
+       Distinct Day Mode ("白昼冰魄版") vs Night Mode ("暗夜黑金版") Models!
+       ------------------------------------------------------------------------- */
+    body.theme-dark {
+      /* Night Mode: Obsidian Black-Gold & Cyber Cyan Flagship Triple-Fan GPU */
+      --gpu-shroud-bg:
+        radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.10) 0%, transparent 65%),
+        conic-gradient(from 45deg at 50% 50%, #090d16 0deg, #1e293b 55deg, #0b111e 120deg, #283548 180deg, #090d16 240deg, #1e293b 305deg, #090d16 360deg);
+      --gpu-shroud-border: rgba(251, 191, 36, 0.65);
+      --gpu-shroud-shadow: 0 16px 36px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      --gpu-armor-mid-bg: linear-gradient(135deg, #1e293b 0%, #090d16 50%, #334155 100%);
+      --gpu-armor-mid-border: rgba(56, 189, 248, 0.45);
+      --gpu-well-bg: radial-gradient(circle at center, #04070d 0%, #0b111e 68%, #1e293b 100%);
+      --gpu-well-border: rgba(251, 191, 36, 0.42);
+      --gpu-well-center-border: rgba(56, 189, 248, 0.75);
+      --gpu-blade-inner: #0f172a;
+      --gpu-blade-mid: #334155;
+      --gpu-blade-outer: #fbbf24;
+      --gpu-blade-stroke: rgba(251, 191, 36, 0.58);
+      --gpu-fan-ring: rgba(251, 191, 36, 0.55);
+      --gpu-fan-ring-inner: rgba(56, 189, 248, 0.40);
+      --gpu-hub-bg: radial-gradient(circle at 35% 35%, #334155 0%, #090d16 85%);
+      --gpu-hub-border: #fbbf24;
+      --gpu-hub-text: #fbbf24;
+      --gpu-hub-center-border: #38bdf8;
+      --gpu-hub-center-text: #38bdf8;
+      --gpu-strip-a: linear-gradient(90deg, transparent, #fbbf24, #38bdf8, transparent);
+      --gpu-strip-b: linear-gradient(90deg, transparent, #38bdf8, #fbbf24, transparent);
+      --gpu-strip-glow: 0 0 10px rgba(251, 191, 36, 0.65);
+      --gpu-mech-line: rgba(251, 191, 36, 0.35);
+      --gpu-accent-line: rgba(56, 189, 248, 0.65);
+      --gpu-plate-bg: rgba(9, 13, 22, 0.92);
+      --gpu-plate-border: rgba(251, 191, 36, 0.55);
+      --gpu-plate-text: #fbbf24;
+      --gpu-backplate-bg:
+        repeating-linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0px, rgba(251, 191, 36, 0.05) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #111827 0%, #070a12 100%);
+      --gpu-backplate-border: rgba(251, 191, 36, 0.45);
+      --gpu-heatsink-fins: repeating-linear-gradient(90deg, rgba(203, 213, 225, 0.55) 0px, rgba(203, 213, 225, 0.55) 1.5px, #0b0f19 1.5px, #0b0f19 4px);
+      --gpu-heatpipe-grad: linear-gradient(90deg, #b45309 0%, #fbbf24 50%, #d97706 100%);
+      --gpu-shoulder-bg: linear-gradient(90deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      --gpu-edition-bg: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+      --gpu-edition-text: #090d16;
+      --gpu-floor-glow: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.26) 0%, rgba(56, 189, 248, 0.18) 38%, rgba(0, 0, 0, 0.6) 65%, transparent 80%);
+    }
+
+    body.theme-light {
+      /* Day Mode: White Frost & Titanium Silver Flagship Triple-Fan GPU ("白天模式专属模型配色") */
+      --gpu-shroud-bg:
+        radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.14) 0%, transparent 65%),
+        conic-gradient(from 45deg at 50% 50%, #ffffff 0deg, #e2e8f0 55deg, #f8fafc 120deg, #cbd5e1 180deg, #ffffff 240deg, #e2e8f0 305deg, #ffffff 360deg);
+      --gpu-shroud-border: #0284c7;
+      --gpu-shroud-shadow: 0 16px 32px rgba(15, 23, 42, 0.20), 0 4px 10px rgba(2, 132, 199, 0.12), inset 0 1px 0 #ffffff;
+      --gpu-armor-mid-bg: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #e2e8f0 100%);
+      --gpu-armor-mid-border: #64748b;
+      --gpu-well-bg: radial-gradient(circle at center, #cbd5e1 0%, #e2e8f0 68%, #f8fafc 100%);
+      --gpu-well-border: #64748b;
+      --gpu-well-center-border: #0284c7;
+      --gpu-blade-inner: #ffffff;
+      --gpu-blade-mid: #bae6fd;
+      --gpu-blade-outer: #0284c7;
+      --gpu-blade-stroke: rgba(2, 132, 199, 0.65);
+      --gpu-fan-ring: rgba(2, 132, 199, 0.65);
+      --gpu-fan-ring-inner: rgba(79, 70, 229, 0.45);
+      --gpu-hub-bg: radial-gradient(circle at 35% 35%, #ffffff 0%, #cbd5e1 85%);
+      --gpu-hub-border: #0284c7;
+      --gpu-hub-text: #0f172a;
+      --gpu-hub-center-border: #4f46e5;
+      --gpu-hub-center-text: #0284c7;
+      --gpu-strip-a: linear-gradient(90deg, transparent, #0284c7, #6366f1, transparent);
+      --gpu-strip-b: linear-gradient(90deg, transparent, #38bdf8, #0284c7, transparent);
+      --gpu-strip-glow: 0 0 8px rgba(2, 132, 199, 0.45);
+      --gpu-mech-line: rgba(100, 116, 139, 0.45);
+      --gpu-accent-line: rgba(2, 132, 199, 0.75);
+      --gpu-plate-bg: rgba(255, 255, 255, 0.94);
+      --gpu-plate-border: #0284c7;
+      --gpu-plate-text: #0284c7;
+      --gpu-backplate-bg:
+        repeating-linear-gradient(135deg, rgba(2, 132, 199, 0.06) 0px, rgba(2, 132, 199, 0.06) 2px, transparent 2px, transparent 8px),
+        linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+      --gpu-backplate-border: #64748b;
+      --gpu-heatsink-fins: repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1.5px, #94a3b8 1.5px, #94a3b8 4px);
+      --gpu-heatpipe-grad: linear-gradient(90deg, #94a3b8 0%, #f8fafc 50%, #cbd5e1 100%);
+      --gpu-shoulder-bg: linear-gradient(90deg, #e2e8f0 0%, #ffffff 50%, #e2e8f0 100%);
+      --gpu-edition-bg: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+      --gpu-edition-text: #ffffff;
+      --gpu-floor-glow: radial-gradient(ellipse at center, rgba(2, 132, 199, 0.22) 0%, rgba(15, 23, 42, 0.18) 52%, transparent 78%);
+    }
+
+    /* Stage & Card Dimensions for the Flagship Triple-Fan 3D Model */
+    .gpu-3d-stage {
+      width: 400px !important;
+      height: 126px !important;
+      perspective: 1200px !important;
+      margin: -10px 0 !important;
+      cursor: grab !important;
+    }
+    .gpu-3d-stage::before {
+      width: 340px !important;
+      height: 22px !important;
+      bottom: -12px !important;
+      background: var(--gpu-floor-glow) !important;
+    }
+    /* 常态不再显示任何提示文字（展开态仍保留状态说明） */
+    .gpu-3d-stage::after {
+      content: none !important;
+      bottom: -18px !important;
+    }
+
+    .gpu-3d-card {
+      width: 356px !important;
+      height: 108px !important;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: none !important;
+      will-change: transform;
+    }
+
+    /* Layer 1: Backplate (Z = -14px) */
+    .gpu3-backplate {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: var(--gpu-backplate-bg);
+      border: 1.5px solid var(--gpu-backplate-border);
+      transform: translate3d(0, 0, -14px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.38);
+    }
+    .gpu3-back-brand {
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--gpu-plate-text);
+      font-family: ui-monospace, monospace;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--gpu-plate-bg);
+      border: 1px solid var(--gpu-plate-border);
+    }
+    .gpu3-back-vents {
+      display: flex;
+      gap: 4px;
+    }
+    .gpu3-back-vents i {
+      width: 4px;
+      height: 40px;
+      border-radius: 2px;
+      background: var(--accent-soft);
+      border: 1px solid var(--badge-border);
+      transform: skewX(-20deg);
+      display: block;
+    }
+
+    /* Layer 2: PCB + Dual-Slot I/O Bracket + Gold PCIe Fingers (Z = -8px) */
+    .gpu3-pcb-layer {
+      position: absolute;
+      inset: 2px 4px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #062820 0%, #0b1928 50%, #062820 100%);
+      border: 1px solid var(--success);
+      transform: translate3d(0, 0, -8px);
+    }
+    body.theme-light .gpu3-pcb-layer {
+      background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 50%, #cbd5e1 100%);
+      border-color: #64748b;
+    }
+    .gpu3-io-bracket {
+      position: absolute;
+      left: -10px;
+      top: -4px;
+      bottom: -8px;
+      width: 10px;
+      background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 50%, #64748b 100%);
+      border: 1px solid #475569;
+      border-radius: 4px 1px 1px 4px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+      padding: 6px 0;
+      box-shadow: -3px 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    .gpu3-io-bracket i {
+      width: 4px;
+      height: 8px;
+      background: #0f172a;
+      border-radius: 1px;
+      display: block;
+    }
+    .gpu3-pcie-fingers {
+      position: absolute;
+      bottom: -8px;
+      left: 34px;
+      width: 196px;
+      height: 7px;
+      background: repeating-linear-gradient(90deg, #fbbf24 0px, #fbbf24 3px, #0f172a 3px, #0f172a 5px);
+      border-radius: 0 0 3px 3px;
+      border: 1px solid rgba(245, 158, 11, 0.65);
+    }
+
+    /* Layer 3: Full-Length Fin Heatsink & Heatpipes + Top Shoulder (Z = -2px) */
+    .gpu3-heatsink-layer {
+      position: absolute;
+      inset: 3px 6px;
+      border-radius: 10px;
+      background: var(--gpu-heatsink-fins);
+      border: 1px solid var(--gpu-armor-mid-border);
+      transform: translate3d(0, 0, -2px);
+    }
+    .gpu3-heatpipe-row {
+      position: absolute;
+      inset: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .gpu3-heatpipe-row span {
+      display: block;
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--gpu-heatpipe-grad);
+      opacity: 0.85;
+    }
+    .gpu3-top-shoulder {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      right: 16px;
+      height: 11px;
+      border-radius: 5px 5px 0 0;
+      background: var(--gpu-shoulder-bg);
+      border: 1px solid var(--gpu-shroud-border);
+      border-bottom: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+    }
+    .gpu3-lightbar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .gpu3-edition-tag {
+      font-size: 9.5px;
+      font-weight: 900;
+      padding: 1px 6px;
+      border-radius: 3px;
+      background: var(--gpu-edition-bg);
+      color: var(--gpu-edition-text);
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.4px;
+    }
+    .gpu3-power-bank {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Layer 4: Sculpted Die-Cast Armor Mid-Plate (Z = +4px) */
+    .gpu3-armor-mid {
+      position: absolute;
+      inset: 2px;
+      border-radius: 11px;
+      background: var(--gpu-armor-mid-bg);
+      border: 1.5px solid var(--gpu-armor-mid-border);
+      transform: translate3d(0, 0, 4px);
+    }
+
+    /* Layer 5: Flagship Triple-Fan Shroud Front (Z = +12px) */
+    .gpu3-shroud-front {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: var(--gpu-shroud-bg);
+      border: 1.8px solid var(--gpu-shroud-border);
+      box-shadow: var(--gpu-shroud-shadow);
+      transform: translate3d(0, 0, 12px);
+      transform-style: flat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      overflow: visible;
+    }
+    .gpu-screw.tm-l { top: 4px; left: 114px; }
+    .gpu-screw.tm-r { top: 4px; right: 114px; }
+    .gpu-screw.bm-l { bottom: 4px; left: 114px; }
+    .gpu-screw.bm-r { bottom: 4px; right: 114px; }
+
+    /* Neon / Ice Accent Light Strips on Shroud */
+    .gpu3-accent-strip {
+      position: absolute;
+      height: 2.5px;
+      width: 78px;
+      border-radius: 999px;
+      box-shadow: var(--gpu-strip-glow);
+      z-index: 3;
+      pointer-events: none;
+    }
+    .gpu3-accent-strip.strip-top-left  { top: 3px; left: 24px; background: var(--gpu-strip-a); }
+    .gpu3-accent-strip.strip-top-right { top: 3px; right: 24px; background: var(--gpu-strip-b); }
+    .gpu3-accent-strip.strip-bot-left  { bottom: 3px; left: 24px; background: var(--gpu-strip-b); }
+    .gpu3-accent-strip.strip-bot-right { bottom: 3px; right: 24px; background: var(--gpu-strip-a); }
+
+    .gpu3-mech-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Triple Axial Fans Row (3 Fans Side by Side) */
+    .gpu3-fans-row {
+      position: relative;
+      z-index: 4;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      gap: 8px;
+    }
+    .gpu3-fan-well {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      background: var(--gpu-well-bg);
+      border: 1.8px solid var(--gpu-well-border);
+      box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    body.theme-light .gpu3-fan-well {
+      box-shadow: inset 0 3px 8px rgba(15, 23, 42, 0.16);
+    }
+    .gpu3-fan-well.fan-well-center {
+      width: 92px;
+      height: 92px;
+      border: 2px solid var(--gpu-well-center-border);
+      box-shadow: 0 0 14px var(--accent-glow), inset 0 4px 12px rgba(0, 0, 0, 0.45);
+    }
+    body.theme-light .gpu3-fan-well.fan-well-center {
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.22), inset 0 3px 8px rgba(15, 23, 42, 0.16);
+    }
+    .gpu3-fan-well .gpu-3d-fan {
+      width: 80px;
+      height: 80px;
+      background: none !important;
+      animation: fanSpinSlow 5.2s linear infinite;
+    }
+    .gpu3-fan-well.fan-well-center .gpu-3d-fan {
+      width: 86px;
+      height: 86px;
+    }
+    .gpu3-fan-well .fan-svg {
+      width: 100%;
+      height: 100%;
+    }
+    .gpu3-fan-hub {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gpu-hub-bg);
+      border: 1.5px solid var(--gpu-hub-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+    .gpu3-fan-hub span {
+      font-size: 9px;
+      font-weight: 900;
+      color: var(--gpu-hub-text);
+      font-family: ui-monospace, monospace;
+      letter-spacing: -0.2px;
+      line-height: 1;
+    }
+    .gpu3-fan-hub.hub-center {
+      width: 28px;
+      height: 28px;
+      border-color: var(--gpu-hub-center-border);
+    }
+    .gpu3-fan-hub.hub-center span {
+      font-size: 9.5px;
+      color: var(--gpu-hub-center-text);
+    }
+
+    /* Bottom Center Nameplate Pill on Triple-Fan Shroud */
+    .gpu3-bottom-plate {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      background: var(--gpu-plate-bg);
+      border: 1px solid var(--gpu-plate-border);
+      padding: 1px 10px;
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
+    .gpu3-bottom-plate span {
+      font-size: 9px;
+      font-weight: 900;
+      color: var(--gpu-plate-text);
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.6px;
+      white-space: nowrap;
+      display: block;
+    }
+
   </style>
 </head>
 
@@ -2492,11 +5173,37 @@
         <stop offset="0%" style="stop-color:var(--success)" />
         <stop offset="100%" style="stop-color:var(--emerald-deep)" />
       </linearGradient>
+      <linearGradient id="hxVioletGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#a78bfa" />
+        <stop offset="55%" style="stop-color:var(--accent-secondary)" />
+        <stop offset="100%" style="stop-color:#4f46e5" />
+      </linearGradient>
+      <linearGradient id="hxAmberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:var(--warning)" />
+        <stop offset="60%" style="stop-color:#f59e0b" />
+        <stop offset="100%" style="stop-color:var(--fire-mid)" />
+      </linearGradient>
       <radialGradient id="hxFanBladeGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style="stop-color:var(--gpu-metal-dark);stop-opacity:0.9" />
-        <stop offset="55%" style="stop-color:var(--accent);stop-opacity:0.35" />
-        <stop offset="100%" style="stop-color:var(--gpu-metal-light);stop-opacity:0.85" />
+        <stop offset="0%" style="stop-color:var(--gpu-blade-inner);stop-opacity:0.95" />
+        <stop offset="58%" style="stop-color:var(--gpu-blade-mid);stop-opacity:0.88" />
+        <stop offset="100%" style="stop-color:var(--gpu-blade-outer);stop-opacity:0.95" />
       </radialGradient>
+      <!-- 9-Blade Precision Axial Fan Rotor Symbol -->
+      <g id="hxTripleFanRotor">
+        <circle cx="50" cy="50" r="46.5" fill="none" stroke="var(--gpu-fan-ring)" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="var(--gpu-fan-ring-inner)" stroke-width="1"/>
+        <g fill="url(#hxFanBladeGrad)" stroke="var(--gpu-blade-stroke)" stroke-width="0.9">
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(40 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(80 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(120 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(160 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(200 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(240 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(280 50 50)"/>
+          <path d="M50 32 C54 18, 65 9, 75 13 C70 23, 62 33, 55 40 Z" transform="rotate(320 50 50)"/>
+        </g>
+      </g>
     </defs>
   </svg>
 
@@ -2546,61 +5253,61 @@
             <ul class="nav-list" id="sidebarNavList">
               <li>
                 <button class="nav-item active" data-action="nav.switch" data-page="device">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="12" rx="2"/><rect x="3" y="4" width="18" height="12" rx="2"/><circle cx="8.5" cy="10" r="2"/><circle cx="15.5" cy="10" r="2"/><path d="M7 20h10M12 16v4"/></svg>
+                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="12" rx="2"/><rect x="3" y="4" width="18" height="12" rx="2"/><circle class="svg-dot" cx="8.5" cy="10" r="2"/><circle class="svg-dot" cx="15.5" cy="10" r="2"/><path d="M7 20h10M12 16v4"/></svg>
                   <span>硬件总览</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="unlock">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><path d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><circle cx="12" cy="11" r="2"/><path d="M12 13v3"/></svg>
+                  <svg class="nav-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><path d="M12 3L4 6.5v5.5c0 5 3.4 9.3 8 10.5 4.6-1.2 8-5.5 8-10.5V6.5L12 3z"/><circle class="svg-dot" cx="12" cy="11" r="2"/><path class="svg-line" d="M12 13v3"/></svg>
                   <span>固件解锁</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="spoof">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
+                  <svg class="nav-icon" data-tone="violet" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
                   <span>显卡伪装</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="power">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
+                  <svg class="nav-icon" data-tone="fire" viewBox="0 0 24 24"><polygon class="svg-dot" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
                   <span>动态节能</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="dlss">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="6" width="20" height="12" rx="5"/><rect x="2" y="6" width="20" height="12" rx="5"/><path d="M7 12h4M9 10v4"/><circle cx="16.5" cy="12" r="1.5"/></svg>
+                  <svg class="nav-icon" data-tone="violet" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="6" width="20" height="12" rx="5"/><rect x="2" y="6" width="20" height="12" rx="5"/><path class="svg-line" d="M7 12h4M9 10v4"/><circle class="svg-dot" cx="16.5" cy="12" r="1.6"/></svg>
                   <span>DLSS 5 / 帧生成</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="overlay">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="11" y="6" width="8" height="6" rx="1"/><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="11" y="6" width="8" height="6" rx="1"/></svg>
+                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="11" y="6" width="8" height="6" rx="1"/><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect class="svg-dot" x="11" y="6" width="8" height="6" rx="1"/></svg>
                   <span>游戏覆盖</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="dualgpu">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="7" height="16" rx="2"/><rect x="2.5" y="4" width="7" height="16" rx="2"/><rect x="14.5" y="4" width="7" height="16" rx="2"/><path d="M9.5 9h5M9.5 15h5"/></svg>
+                  <svg class="nav-icon" data-tone="emerald" viewBox="0 0 24 24"><rect class="svg-tone" x="2.5" y="4" width="7" height="16" rx="2"/><rect x="2.5" y="4" width="7" height="16" rx="2"/><rect x="14.5" y="4" width="7" height="16" rx="2"/><path class="svg-line" d="M9.5 9h5M9.5 15h5"/></svg>
                   <span>双卡协同</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="maintenance">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/></svg>
+                  <svg class="nav-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/><circle class="svg-dot" cx="12" cy="12" r="1.5"/></svg>
                   <span>系统维护</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="logs">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="16" rx="2.5"/><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7.5 9.5l3 2.5-3 2.5M12.5 15h4"/></svg>
+                  <svg class="nav-icon" data-tone="amber" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="4" width="18" height="16" rx="2.5"/><rect x="3" y="4" width="18" height="16" rx="2.5"/><path class="svg-line" d="M7.5 9.5l3 2.5-3 2.5"/><path d="M12.5 15h4"/></svg>
                   <span>审计日志</span>
                 </button>
               </li>
               <li>
                 <button class="nav-item" data-action="nav.switch" data-page="update">
-                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="14" width="16" height="6" rx="2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 10l4 4 4-4M12 14V4"/></svg>
+                  <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="4" y="14" width="16" height="6" rx="2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path class="svg-line" d="M8 10l4 4 4-4M12 14V4"/></svg>
                   <span>软件更新</span>
                 </button>
               </li>
@@ -2644,12 +5351,43 @@
 
             <div id="deviceStateBanner"></div>
 
-            <!-- HERO GPU BANNER + 3D MODEL -->
+            <!-- HERO GPU BANNER + 3D MODEL (TRIPLE-FAN FLAGSHIP EDITION · DISTINCT DAY & NIGHT MODELS) -->
             <div class="hero-banner" id="deviceHeroBanner">
               <div class="hero-left">
                 <div class="gpu-chip-box">
                   <div class="die-pulse-ring"></div>
-                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="5" width="14" height="14" rx="2.5"/><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                  <svg class="chip-die-svg" width="44" height="44" viewBox="0 0 48 48" aria-label="GA102 芯片俯视图">
+                    <!-- BGA 基板 -->
+                    <rect x="4" y="4" width="40" height="40" rx="5" fill="var(--chip-substrate)" stroke="var(--chip-frame)" stroke-width="1.5"/>
+                    <!-- 10 颗 GDDR6X 显存颗粒 -->
+                    <g fill="var(--chip-vram)" stroke="var(--chip-vram-line)" stroke-width="0.8">
+                      <rect x="7" y="11" width="5" height="6" rx="0.8"/>
+                      <rect x="7" y="19" width="5" height="6" rx="0.8"/>
+                      <rect x="7" y="27" width="5" height="6" rx="0.8"/>
+                      <rect x="36" y="11" width="5" height="6" rx="0.8"/>
+                      <rect x="36" y="19" width="5" height="6" rx="0.8"/>
+                      <rect x="36" y="27" width="5" height="6" rx="0.8"/>
+                      <rect x="14" y="6.5" width="6" height="4.5" rx="0.8"/>
+                      <rect x="28" y="6.5" width="6" height="4.5" rx="0.8"/>
+                      <rect x="14" y="37" width="6" height="4.5" rx="0.8"/>
+                      <rect x="28" y="37" width="6" height="4.5" rx="0.8"/>
+                    </g>
+                    <!-- 中央 GA102 硅晶片 + 6 组 GPC -->
+                    <rect x="14" y="13" width="20" height="22" rx="2" fill="url(#hxCyberGrad)" stroke="var(--chip-die-edge)" stroke-width="1"/>
+                    <g fill="var(--chip-gpc)" opacity="0.65">
+                      <rect x="16" y="15" width="7" height="5" rx="0.6"/>
+                      <rect x="25" y="15" width="7" height="5" rx="0.6"/>
+                      <rect x="16" y="21.5" width="7" height="5" rx="0.6"/>
+                      <rect x="25" y="21.5" width="7" height="5" rx="0.6"/>
+                      <rect x="16" y="28" width="7" height="5" rx="0.6"/>
+                      <rect x="25" y="28" width="7" height="5" rx="0.6"/>
+                    </g>
+                    <!-- 四角 SMD 金脚 -->
+                    <circle cx="8" cy="8" r="1.2" fill="var(--chip-pin)"/>
+                    <circle cx="40" cy="8" r="1.2" fill="var(--chip-pin)"/>
+                    <circle cx="8" cy="40" r="1.2" fill="var(--chip-pin)"/>
+                    <circle cx="40" cy="40" r="1.2" fill="var(--chip-pin)"/>
+                  </svg>
                 </div>
                 <div>
                   <div class="hero-gpu-name">
@@ -2663,110 +5401,105 @@
                 </div>
               </div>
 
-              <!-- INTERACTIVE 3D GRAPHICS CARD MODEL (6-LAYER ISOMETRIC EXPLODED VIEW) -->
-              <div class="gpu-3d-stage" id="gpu3dStage" tabindex="0" role="button" aria-label="3D显卡模型：点击切换透视拆解" data-action="ui.toggle3dExplode">
+              <!-- INTERACTIVE TRIPLE-FAN 3D GRAPHICS CARD MODEL (LEFT<->RIGHT SWING + MOUSE TRACKING) -->
+              <div class="gpu-3d-stage" id="gpu3dStage" aria-label="三风扇 3D 显卡模型：支持左右平滑自转与鼠标朝向追踪">
                 <div class="gpu-3d-card" id="gpu3dCard">
-                  <!-- LAYER 1: ANODIZED BACKPLATE + THERMAL PADS + MLCC ARRAY -->
-                  <div class="gpu-3d-back">
-                    <span class="gpu-layer-tag">L1 · 阳极金属背板</span>
+                  <!-- 3D LAYER 1 (Z: -14px): Anodized Metal Backplate with Flow-Through Vents & Core Capacitor Window -->
+                  <div class="gpu3-backplate">
                     <i class="gpu-screw tl"></i><i class="gpu-screw tr"></i><i class="gpu-screw bl"></i><i class="gpu-screw br"></i>
-                    <div style="font-size: 11.5px; transform: scale(0.65); transform-origin: left center; font-weight: 800; color: var(--text-sub); font-family: ui-monospace, monospace;" id="gpu3dBackText">CMP 90HX</div>
-                    <div class="gpu-thermal-pad" title="高导热硅胶垫"></div>
-                    <div class="gpu-back-core" title="背部核心聚合物电容阵列">
+                    <div class="gpu3-back-brand" id="gpu3dBackText">GA102</div>
+                    <div class="gpu3-back-vents"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="gpu-back-core">
                       <span></span><span></span><span></span>
                       <span></span><span></span><span></span>
                       <span></span><span></span><span></span>
                     </div>
-                    <div class="gpu-thermal-pad" title="显存导热硅胶垫"></div>
                   </div>
 
-                  <!-- LAYER 2: 12-PHASE PCB + GA102 SILICON DIE + 10x GDDR6X VRAM -->
-                  <div class="gpu-3d-pcb">
-                    <span class="gpu-layer-tag">L2 · GA102核心与PCB</span>
-                    <div class="gpu-vrm-bank" title="左侧6相DrMOS供电电感">
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
+                  <!-- 3D LAYER 2 (Z: -8px): Multi-Layer PCB + Bottom Gold PCIe x16 Fingers + Left Silver Dual-Slot I/O Bracket -->
+                  <div class="gpu3-pcb-layer">
+                    <div class="gpu3-io-bracket"><i></i><i></i><i></i><i></i></div>
+                    <div class="gpu3-pcie-fingers"></div>
+                  </div>
+
+                  <!-- 3D LAYER 3 (Z: -2px): Full-Length High-Density Aluminum Fin Stack & 5x Copper/Nickel Heatpipes -->
+                  <div class="gpu3-heatsink-layer">
+                    <div class="gpu3-heatpipe-row">
+                      <span></span><span></span><span></span><span></span>
                     </div>
-                    <div class="gpu-die-complex" title="GA102核心与10颗GDDR6X显存阵列">
-                      <i class="gpu-vram-chip v-l1"></i><i class="gpu-vram-chip v-l2"></i><i class="gpu-vram-chip v-l3"></i><i class="gpu-vram-chip v-l4"></i>
-                      <i class="gpu-vram-chip v-t1"></i><i class="gpu-vram-chip v-t2"></i>
-                      <div class="gpu-silicon-die">
-                        <span>GA102</span>
-                        <span>300-A1</span>
+                    <!-- Top Side Shoulder: Illuminated RGB/Ice Lightbar + Triple 8-Pin Power Connectors -->
+                    <div class="gpu3-top-shoulder">
+                      <div class="gpu3-lightbar-wrap">
+                        <span class="gpu3-edition-tag" id="gpu3dEditionTag">OBSIDIAN 3X</span>
+                        <span class="gpu-lightbar" id="gpu3dLightbarText">CMP 90HX</span>
                       </div>
-                      <i class="gpu-vram-chip v-r1"></i><i class="gpu-vram-chip v-r2"></i><i class="gpu-vram-chip v-r3"></i><i class="gpu-vram-chip v-r4"></i>
-                    </div>
-                    <div class="gpu-vrm-bank" title="右侧6相DrMOS供电电感">
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                      <i class="gpu-vrm-choke"></i><i class="gpu-vrm-choke"></i>
-                    </div>
-                  </div>
-
-                  <!-- LAYER 3: 4x COPPER HEATPIPES + VAPOR CHAMBER -->
-                  <div class="gpu-3d-heatpipes">
-                    <span class="gpu-layer-tag">L3 · 四热管与均热板</span>
-                    <div class="gpu-heatpipe-bar"></div>
-                    <div class="gpu-heatpipe-bar"></div>
-                    <div class="gpu-heatpipe-bar"></div>
-                    <div class="gpu-heatpipe-bar"></div>
-                    <div class="gpu-vapor-plate"><span>VC均热</span></div>
-                  </div>
-
-                  <!-- LAYER 4: HIGH-DENSITY FIN HEATSINK -->
-                  <div class="gpu-3d-heatsink">
-                    <span class="gpu-layer-tag">L4 · 穿Fin散热鳍片</span>
-                  </div>
-
-                  <!-- LAYER 5: TOP ARMOR & DUAL 8-PIN POWER -->
-                  <div class="gpu-3d-edge-top">
-                    <span class="gpu-lightbar" id="gpu3dLightbarText">CMP 90HX</span>
-                    <div style="display: flex; gap: 4px;">
-                      <div class="gpu-power-8pin" title="8-Pin 供电接口">
-                        <div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div>
-                        <div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div>
-                      </div>
-                      <div class="gpu-power-8pin" title="8-Pin 供电接口">
-                        <div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div>
-                        <div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div>
+                      <div class="gpu3-power-bank">
+                        <div class="gpu-power-8pin"><div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div><div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div></div>
+                        <div class="gpu-power-8pin"><div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div><div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div></div>
+                        <div class="gpu-power-8pin"><div class="gpu-power-sub4 p4-a"><i></i><i></i><i></i><i></i></div><div class="gpu-power-sub4 p4-b"><i></i><i></i><i></i><i></i></div></div>
                       </div>
                     </div>
                   </div>
-                  <div class="gpu-3d-io-bracket" title="金属排气挡板">
-                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-                  </div>
-                  <div class="gpu-3d-front">
-                    <span class="gpu-layer-tag">L6 · 导流罩与双风扇</span>
+
+                  <!-- 3D LAYER 4 (Z: +4px): Sculpted Die-Cast Armor Mid-Plate & Geometric X-Bridges -->
+                  <div class="gpu3-armor-mid"></div>
+
+                  <!-- 3D LAYER 5 (Z: +10px): Flagship Triple-Fan Shroud Armor (Left / Center / Right 9-Blade Axial Fans) -->
+                  <div class="gpu3-shroud-front">
+                    <div class="gpu-mouse-glare" id="gpuMouseGlare"></div>
                     <i class="gpu-screw tl"></i><i class="gpu-screw tr"></i><i class="gpu-screw bl"></i><i class="gpu-screw br"></i>
-                    <svg class="gpu-shroud-xframe" viewBox="0 0 24 24" preserveAspectRatio="none">
-                      <path d="M0 3.5 L3 0 L9.2 0 L12 6.5 L14.8 0 L21 0 L24 3.5 L24 20.5 L21 24 L14.8 24 L12 17.5 L9.2 24 L3 24 L0 20.5 Z" fill="none" stroke="var(--card-border-color)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M9 1.2 L12 7.8 L15 1.2 M9 22.8 L12 16.2 L15 22.8" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                    <i class="gpu-screw tm-l"></i><i class="gpu-screw tm-r"></i><i class="gpu-screw bm-l"></i><i class="gpu-screw bm-r"></i>
+
+                    <!-- Top & Bottom Neon/Ice Accent Strips on Shroud -->
+                    <div class="gpu3-accent-strip strip-top-left"></div>
+                    <div class="gpu3-accent-strip strip-top-right"></div>
+                    <div class="gpu3-accent-strip strip-bot-left"></div>
+                    <div class="gpu3-accent-strip strip-bot-right"></div>
+
+                    <!-- Geometric Mech Bevel Overlay SVG -->
+                    <svg class="gpu3-mech-lines" viewBox="0 0 356 108" preserveAspectRatio="none">
+                      <path d="M108 6 L122 24 L122 84 L108 102 M248 6 L234 24 L234 84 L248 102" fill="none" stroke="var(--gpu-mech-line)" stroke-width="1.5"/>
+                      <path d="M14 6 L44 6 L54 14 M302 14 L312 6 L342 6 M14 102 L44 102 L54 94 M302 94 L312 102 L342 102" fill="none" stroke="var(--gpu-accent-line)" stroke-width="1.6"/>
                     </svg>
-                    <div class="gpu-fan-well">
-                      <div class="gpu-3d-fan">
-                        <svg class="fan-svg" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="10.2" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(0 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(40 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(80 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(120 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(160 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(200 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(240 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(280 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(320 12 12)"/></svg>
+
+                    <!-- TRIPLE AXIAL FANS ROW (FAN #1 LEFT, FAN #2 CENTER REVERSE, FAN #3 RIGHT) -->
+                    <div class="gpu3-fans-row">
+                      <!-- Fan 1 (Left) -->
+                      <div class="gpu3-fan-well">
+                        <div class="gpu-3d-fan">
+                          <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
+                        </div>
+                        <div class="gpu3-fan-hub"><span>HX</span></div>
                       </div>
-                      <div class="gpu-fan-hub"><span>HX</span></div>
-                    </div>
-                    <div class="gpu-shroud-badge">
-                      <span id="gpu3dBadgeModel">--</span>
-                      <span id="gpu3dBadgeChip">--</span>
-                    </div>
-                    <div class="gpu-fan-well">
-                      <div class="gpu-3d-fan" style="animation-direction: reverse;">
-                        <svg class="fan-svg" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="10.2" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(0 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(40 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(80 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(120 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(160 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(200 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(240 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(280 12 12)"/><path d="M12 9.2 C13.2 6.8, 15.6 4.8, 17.2 4.2 C16.4 6.8, 14.8 8.8, 13.4 10.2 Z" fill="url(#hxFanBladeGrad)" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" transform="rotate(320 12 12)"/></svg>
+
+                      <!-- Fan 2 (Center Flagship Counter-Rotating Fan) -->
+                      <div class="gpu3-fan-well fan-well-center">
+                        <div class="gpu-3d-fan" style="animation-direction: reverse;">
+                          <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
+                        </div>
+                        <div class="gpu3-fan-hub hub-center">
+                          <span id="gpu3dBadgeModel">90HX</span>
+                        </div>
                       </div>
-                      <div class="gpu-fan-hub"><span>HX</span></div>
+
+                      <!-- Fan 3 (Right) -->
+                      <div class="gpu3-fan-well">
+                        <div class="gpu-3d-fan">
+                          <svg class="fan-svg" viewBox="0 0 100 100"><use href="#hxTripleFanRotor"/></svg>
+                        </div>
+                        <div class="gpu3-fan-hub"><span id="gpu3dBadgeChip">GA102</span></div>
+                      </div>
+                    </div>
+
+                    <!-- Bottom Center Nameplate Pill -->
+                    <div class="gpu3-bottom-plate">
+                      <span id="gpu3dPlateText">GEFORCE RTX · TRIPLE FAN OC</span>
                     </div>
                   </div>
-                  <div class="gpu-3d-pins"></div>
                 </div>
               </div>
 
-              <div style="z-index: 2;">
+              <div class="hero-actions-right">
                 <button class="btn btn-primary" data-action="nav.switch" data-page="spoof">
                   <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
                   <span>显卡伪装</span>
@@ -2788,66 +5521,58 @@
               </div>
             </div>
 
-            <!-- 4 TELEMETRY GAUGES -->
+            <!-- 4 TELEMETRY GAUGES (Sleek Horizontal Progress-Bar Cards per Reference File 1 + Hover Drawer & Push-Down) -->
             <div class="telemetry-grid" id="telemetryGaugesGrid">
               <div class="gauge-card sensor-invalid" id="gaugeCardTemp">
-                <div class="gauge-circle">
-                  <svg class="gauge-svg" viewBox="0 0 24 24">
-                    <circle class="gauge-bg-ring" cx="12" cy="12" r="9.55" />
-                    <circle class="gauge-fill-ring" id="ringGpuTemp" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60" />
-                  </svg>
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringGpuTemp" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
                   <div class="gauge-val" id="textGpuTemp">--</div>
                 </div>
-                <span class="gauge-label">
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">核心温度</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="16.5" r="4"/><path d="M14 13.5V5a2 2 0 0 0-4 0v8.5a4 4 0 1 0 4 0z"/></svg>
-                  <span>核心温度</span>
-                </span>
-                <span class="gauge-sub" id="subGpuTemp">--</span>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-temp" id="barGpuTemp" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subGpuTemp">--</div>
               </div>
 
               <div class="gauge-card sensor-invalid" id="gaugeCardFan">
-                <div class="gauge-circle">
-                  <svg class="gauge-svg" viewBox="0 0 24 24">
-                    <circle class="gauge-bg-ring" cx="12" cy="12" r="9.55" />
-                    <circle class="gauge-fill-ring" id="ringFanPercent" cx="12" cy="12" r="9.55" style="stroke: var(--warning);" stroke-dasharray="60" stroke-dashoffset="60" />
-                  </svg>
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringFanPercent" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
                   <div class="gauge-val" id="textFanPercent">--</div>
                 </div>
-                <span class="gauge-label">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17"/></svg>
-                  <span>风扇转速</span>
-                </span>
-                <span class="gauge-sub" id="subFanUtil">--</span>
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">风扇转速</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5C12 6 15 4 17 6s0 5-2.5 6M14.5 12c3.5 0 5.5 3 3.5 5s-5 0-6-2.5M12 14.5c0 3.5-3 5.5-5 3.5s0-5 2.5-6M9.5 12C6 12 4 9 6 7s5 0 6 2.5"/></svg>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-fan" id="barFanPercent" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subFanUtil">--</div>
               </div>
 
               <div class="gauge-card sensor-invalid" id="gaugeCardPower">
-                <div class="gauge-circle">
-                  <svg class="gauge-svg" viewBox="0 0 24 24">
-                    <circle class="gauge-bg-ring" cx="12" cy="12" r="9.55" />
-                    <circle class="gauge-fill-ring" id="ringBoardPower" cx="12" cy="12" r="9.55" style="stroke: var(--success);" stroke-dasharray="60" stroke-dashoffset="60" />
-                  </svg>
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringBoardPower" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
                   <div class="gauge-val" id="textBoardPower">--</div>
                 </div>
-                <span class="gauge-label">
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">实时功耗</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
-                  <span>实时功耗</span>
-                </span>
-                <span class="gauge-sub" id="subBoardPower">--</span>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-power" id="barBoardPower" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subBoardPower">--</div>
               </div>
 
               <div class="gauge-card sensor-invalid" id="gaugeCardMem">
-                <div class="gauge-circle">
-                  <svg class="gauge-svg" viewBox="0 0 24 24">
-                    <circle class="gauge-bg-ring" cx="12" cy="12" r="9.55" />
-                    <circle class="gauge-fill-ring" id="ringMemUsed" cx="12" cy="12" r="9.55" style="stroke: var(--accent-secondary);" stroke-dasharray="60" stroke-dashoffset="60" />
-                  </svg>
+                <svg class="gauge-svg-hidden" viewBox="0 0 24 24" aria-hidden="true"><circle id="ringMemUsed" cx="12" cy="12" r="9.55" stroke-dasharray="60" stroke-dashoffset="60"/></svg>
+                <div class="gauge-num-row">
                   <div class="gauge-val" id="textMemUsed">--</div>
                 </div>
-                <span class="gauge-label">
+                <div class="gauge-label-row">
+                  <span class="gauge-label-txt">显存占用</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="3" y="6" width="18" height="12" rx="2"/><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7.5 10v4M12 10v4M16.5 10v4"/></svg>
-                  <span>显存占用</span>
-                </span>
-                <span class="gauge-sub" id="subMemClock">--</span>
+                </div>
+                <div class="gauge-bar-track"><div class="gauge-bar-fill bar-mem" id="barMemUsed" style="width:0%"></div></div>
+                <div class="gauge-sub" id="subMemClock">--</div>
               </div>
             </div>
 
@@ -2995,7 +5720,7 @@
                 </div>
                 <button class="btn btn-danger latch-trigger-btn" data-action="modal.confirm" data-confirm-type="unlock.install" id="btnUnlockInstall" title="unlock.install">
                   <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/><polygon points="13 2 4.5 13.5 11.5 13.5 10.5 22 19.5 10.5 12.5 10.5 13 2"/></svg>
-                  <span>执行引导操作</span>
+                  <span>立即执行固件解锁</span>
                 </button>
               </div>
             </div>
@@ -3651,7 +6376,7 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><polygon class="svg-tone" points="12 3 2 8 12 13 22 8 12 3"/><polygon points="12 3 2 8 12 13 22 8 12 3"/><path d="M2 13.5l10 5 10-5M2 18l10 5 10-5"/></svg>
                   </div>
                   <div>
-                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="boundApps">已绑定游戏</div>
+                    <div style="font-size:11.5px;color:var(--text-sub);font-weight:700;" title="hasVirtualGpu">虚拟显示</div>
                     <div style="font-size:12.5px;font-weight:800;color:var(--text-main);" id="dualCardTextVirtual">未知</div>
                     <div style="font-size:11.5px;color:var(--text-sub);" id="dualCardSubVirtual">--</div>
                   </div>
@@ -4016,26 +6741,26 @@
                 <div class="card-title">
                   <span title="update.state">版本状态</span>
                 </div>
-                <table class="data-table">
+                <table class="data-table kv-table">
                   <tbody>
                     <tr>
-                      <td title="currentVersion" style="white-space:nowrap;width:88px;color:var(--text-sub);">当前版本</td>
+                      <td title="currentVersion">当前版本</td>
                       <td id="updateCurrentVerText">--</td>
                     </tr>
                     <tr>
-                      <td title="latestVersion" style="white-space:nowrap;width:88px;color:var(--text-sub);">最新版本</td>
+                      <td title="latestVersion">最新版本</td>
                       <td id="updateLatestVerText" style="color:var(--accent);font-weight:800;">--</td>
                     </tr>
                     <tr>
-                      <td title="assetName" style="white-space:nowrap;width:88px;color:var(--text-sub);">安装包</td>
-                      <td id="updateAssetNameText" style="word-break:break-all;">--</td>
+                      <td title="assetName">安装包</td>
+                      <td id="updateAssetNameText">--</td>
                     </tr>
                     <tr>
-                      <td title="sha256" style="white-space:nowrap;width:88px;color:var(--text-sub);">哈希值</td>
-                      <td id="updateSha256Text" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;font-family:ui-monospace,monospace;font-size:11.5px;">--</td>
+                      <td title="sha256">哈希值</td>
+                      <td id="updateSha256Text" style="word-break:break-all;">--</td>
                     </tr>
                     <tr>
-                      <td title="verified" style="white-space:nowrap;width:88px;color:var(--text-sub);">校验状态</td>
+                      <td title="verified">校验状态</td>
                       <td id="updateVerifiedText">--</td>
                     </tr>
                   </tbody>
@@ -4570,7 +7295,7 @@
         const bChip = document.getElementById('gpu3dBadgeChip');
         const bBack = document.getElementById('gpu3dBackText');
         const bLight = document.getElementById('gpu3dLightbarText');
-        if (bModel) bModel.textContent = gpu && gpu.model ? gpu.model : '--';
+        if (bModel) bModel.textContent = gpu && gpu.model ? String(gpu.model).replace(/^CMP\s+/i, '') : '90HX';
         if (bChip) bChip.textContent = gpu && gpu.chip ? gpu.chip : '--';
         if (bBack) bBack.textContent = gpu && gpu.chip ? gpu.chip : 'CMP';
         if (bLight) bLight.textContent = gpu && gpu.model ? gpu.model : 'CMP 90HX';
@@ -4626,19 +7351,19 @@
         if (!valid) {
           if (ringTemp) ringTemp.style.strokeDashoffset = '60';
           if (txtTemp) txtTemp.textContent = '不可用';
-          if (subTemp) subTemp.textContent = '传感器不可读';
+          if (subTemp) subTemp.innerHTML = '<span class="gs-k">降频阈值</span><span class="gs-v">--</span><span class="gs-k">关断阈值</span><span class="gs-v">--</span>';
 
           if (ringFan) ringFan.style.strokeDashoffset = '60';
           if (txtFan) txtFan.textContent = '不可用';
-          if (subFan) subFan.textContent = '负载不可读';
+          if (subFan) subFan.innerHTML = '<span class="gs-k">核心负载</span><span class="gs-v">--</span><span class="gs-k">性能状态</span><span class="gs-v">--</span>';
 
           if (ringPwr) ringPwr.style.strokeDashoffset = '60';
           if (txtPwr) txtPwr.textContent = '不可用';
-          if (subPwr) subPwr.textContent = '功耗不可读';
+          if (subPwr) subPwr.innerHTML = '<span class="gs-k">功耗上限</span><span class="gs-v">--</span><span class="gs-k">默认上限</span><span class="gs-v">--</span>';
 
           if (ringMem) ringMem.style.strokeDashoffset = '60';
           if (txtMem) txtMem.textContent = '不可用';
-          if (subMem) subMem.textContent = '频率不可读';
+          if (subMem) subMem.innerHTML = '<span class="gs-k">核心频率</span><span class="gs-v">--</span><span class="gs-k">显存频率</span><span class="gs-v">--</span>';
           return;
         }
 
@@ -4651,35 +7376,55 @@
 
         const tempRatio = Math.max(0, Math.min(1, (s.temp || 0) / (s.tempShutdownC || 100)));
         if (ringTemp) ringTemp.style.strokeDashoffset = String(60 * (1 - tempRatio));
+        const barTemp = document.getElementById('barGpuTemp'); if (barTemp) barTemp.style.width = (tempRatio * 100).toFixed(1) + '%';
         if (txtTemp) { txtTemp.innerHTML = escapeHtml(s.temp) + '<span class="gauge-unit">°C</span>'; flashVal(txtTemp); }
         const tempSubStr = '降频 ' + valOrUnknown(s.tempSlowdownC, '°C') + ' / 关断 ' + valOrUnknown(s.tempShutdownC, '°C');
-        if (subTemp) subTemp.textContent = tempSubStr;
+        if (subTemp) {
+          subTemp.innerHTML =
+            '<span class="gs-pair">高温阈值 <strong>' + escapeHtml(valOrUnknown(s.tempSlowdownC, '°C')) + '</strong></span>' +
+            '<span class="gs-pair">保护 <strong>' + escapeHtml(valOrUnknown(s.tempShutdownC, '°C')) + '</strong></span>';
+        }
         const cTemp = document.getElementById('gaugeCardTemp');
         if (cTemp) cTemp.title = tempSubStr;
 
         const fanRatio = Math.max(0, Math.min(1, (s.fanPercent || 0) / 100));
         if (ringFan) ringFan.style.strokeDashoffset = String(60 * (1 - fanRatio));
+        const barFan = document.getElementById('barFanPercent'); if (barFan) barFan.style.width = (fanRatio * 100).toFixed(1) + '%';
         if (txtFan) { txtFan.innerHTML = escapeHtml(s.fanPercent) + '<span class="gauge-unit">%</span>'; flashVal(txtFan); }
         const fanSubStr = '负载 ' + valOrUnknown(s.utilPercent, '%') + ' · ' + valOrUnknown(s.pstate);
-        if (subFan) subFan.textContent = fanSubStr;
+        if (subFan) {
+          subFan.innerHTML =
+            '<span class="gs-pair">核心负载 <strong>' + escapeHtml(valOrUnknown(s.utilPercent, '%')) + '</strong></span>' +
+            '<span class="gs-pair">状态 <strong>' + escapeHtml(valOrUnknown(s.pstate)) + '</strong></span>';
+        }
         const cFan = document.getElementById('gaugeCardFan');
         if (cFan) cFan.title = fanSubStr;
 
         const pwrLimit = s.powerLimit || s.powerDefaultLimit || 300;
         const pwrRatio = Math.max(0, Math.min(1, (s.powerDraw || 0) / pwrLimit));
         if (ringPwr) ringPwr.style.strokeDashoffset = String(60 * (1 - pwrRatio));
+        const barPwr = document.getElementById('barBoardPower'); if (barPwr) barPwr.style.width = (pwrRatio * 100).toFixed(1) + '%';
         if (txtPwr) { txtPwr.innerHTML = escapeHtml(Number(s.powerDraw || 0).toFixed(1)) + '<span class="gauge-unit">W</span>'; flashVal(txtPwr); }
         const pwrSubStr = '上限 ' + valOrUnknown(s.powerLimit, 'W') + ' / 默认 ' + valOrUnknown(s.powerDefaultLimit, 'W');
-        if (subPwr) subPwr.textContent = pwrSubStr;
+        if (subPwr) {
+          subPwr.innerHTML =
+            '<span class="gs-pair">功耗上限 <strong>' + escapeHtml(valOrUnknown(s.powerLimit, 'W')) + '</strong></span>' +
+            '<span class="gs-pair">默认 <strong>' + escapeHtml(valOrUnknown(s.powerDefaultLimit, 'W')) + '</strong></span>';
+        }
         const cPwr = document.getElementById('gaugeCardPower');
         if (cPwr) cPwr.title = pwrSubStr;
 
         const memTotal = s.memTotalMB || 1;
         const memRatio = Math.max(0, Math.min(1, (s.memUsedMB || 0) / memTotal));
         if (ringMem) ringMem.style.strokeDashoffset = String(60 * (1 - memRatio));
+        const barMem = document.getElementById('barMemUsed'); if (barMem) barMem.style.width = (memRatio * 100).toFixed(1) + '%';
         if (txtMem) { txtMem.innerHTML = escapeHtml(s.memUsedMB) + '<span class="gauge-unit">MB</span>'; flashVal(txtMem); }
         const memSubStr = '核心 ' + valOrUnknown(s.coreClock, 'MHz') + ' · 显存 ' + valOrUnknown(s.memClock, 'MHz');
-        if (subMem) subMem.textContent = memSubStr;
+        if (subMem) {
+          subMem.innerHTML =
+            '<span class="gs-pair">核心 <strong>' + escapeHtml(valOrUnknown(s.coreClock, 'MHz')) + '</strong></span>' +
+            '<span class="gs-pair">显存 <strong>' + escapeHtml(valOrUnknown(s.memClock, 'MHz')) + '</strong></span>';
+        }
         const cMem = document.getElementById('gaugeCardMem');
         if (cMem) cMem.title = memSubStr;
 
@@ -5052,8 +7797,25 @@
         const reactorSub = document.getElementById('powerReactorSubText');
 
         if (animStage) {
+          const nextPreset = p.preset || 'adaptive';
+          const presetChanged = !!state._lastPowerPreset && state._lastPowerPreset !== nextPreset;
           animStage.classList.remove('preset-sleep', 'preset-adaptive', 'preset-turbo');
-          animStage.classList.add('preset-' + (p.preset || 'adaptive'));
+          animStage.classList.add('preset-' + nextPreset);
+          state._lastPowerPreset = nextPreset;
+          /* 换挡时数字与文案做一次轻微滚动重排，避免生硬替换 */
+          if (presetChanged) {
+            const swapTargets = [
+              animStage.querySelector('.turbo-data-readout'),
+              animStage.querySelector('.anim-left')
+            ];
+            swapTargets.forEach(el => {
+              if (!el) return;
+              el.classList.remove('swapping');
+              void el.offsetWidth;
+              el.classList.add('swapping');
+              window.setTimeout(() => el.classList.remove('swapping'), 460);
+            });
+          }
         }
 
         if (p.preset === 'turbo') {
@@ -5061,19 +7823,19 @@
           if (animBadgeTxt) animBadgeTxt.textContent = '满血狂暴 · P0 极限超频聚变已激活';
           if (animTitle) animTitle.textContent = '全核高频释放 · 功耗上限解锁至 ' + valOrUnknown(pr.current || pr.max, 'W');
           if (reactorVal) reactorVal.textContent = valOrUnknown(pr.current || 320) + ' W';
-          if (reactorSub) reactorSub.textContent = '2100 MHz · 满血狂暴';
+          if (reactorSub) { reactorSub.textContent = '2100 MHz'; reactorSub.title = '2100 MHz · 满血狂暴'; }
         } else if (p.preset === 'sleep') {
           if (animDot) animDot.style.background = 'var(--success)';
           if (animBadgeTxt) animBadgeTxt.textContent = '极致静音 · P8 冰封待机已锁定';
           if (animTitle) animTitle.textContent = '超低频静音待机 · 状态 ' + valOrUnknown(p.currentPstate);
           if (reactorVal) reactorVal.textContent = valOrUnknown(pr.current || 36.5) + ' W';
-          if (reactorSub) reactorSub.textContent = '310 MHz · 冰封静音';
+          if (reactorSub) { reactorSub.textContent = '310 MHz'; reactorSub.title = '310 MHz · 冰封静音'; }
         } else {
           if (animDot) animDot.style.background = 'var(--accent)';
           if (animBadgeTxt) animBadgeTxt.textContent = '智能动态 · 空闲 ' + valOrUnknown(p.idleSeconds, '秒') + ' 自动切入 P8';
           if (animTitle) animTitle.textContent = '毫秒级自适应变频调度 · 状态 ' + valOrUnknown(p.currentPstate);
           if (reactorVal) reactorVal.textContent = valOrUnknown(pr.current || 148.5) + ' W';
-          if (reactorSub) reactorSub.textContent = '1710 MHz · 智能变频';
+          if (reactorSub) { reactorSub.textContent = '1710 MHz'; reactorSub.title = '1710 MHz · 智能变频'; }
         }
         if (animSub) {
           animSub.textContent = '功耗下限 ' + valOrUnknown(pr.min, 'W') +
@@ -5248,24 +8010,17 @@
             { title: 'Alt+R 性能浮层', sub: ov.altRReady ? '可用' : '未解锁', tone: ov.altRReady ? 'pass' : 'warn' },
             { title: 'Alt+Z 覆盖面板', sub: ov.altZReady ? '可用' : '未解锁', tone: ov.altZReady ? 'pass' : 'warn' }
           ];
-          grid.innerHTML = items.map(c => {
-            // 图标必须跟随状态：通过=对勾，未完成=横杠，异常=叉。
-            // 原来无论状态一律画对勾，「未注入」配绿勾会自相矛盾。
-            const glyph = c.tone === 'pass'
-              ? '<path d="M5.5 12.5l4.5 4.5L19 7.5"/>'
-              : (c.tone === 'danger'
-                  ? '<path d="M8.5 8.7l6.8 6.8M15.3 8.7l-6.8 6.8"/>'
-                  : '<path d="M8 12h8"/>');
-            return '<div class="matrix-item">' +
+          grid.innerHTML = items.map(c =>
+            '<div class="matrix-item">' +
               '<div class="matrix-icon-box ' + c.tone + '">' +
-                '<svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/>' + glyph + '</svg>' +
+                '<svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M5.5 12.5l4.5 4.5L19 7.5"/></svg>' +
               '</div>' +
               '<div>' +
                 '<div class="matrix-title">' + escapeHtml(c.title) + '</div>' +
                 '<div class="matrix-sub">' + escapeHtml(c.sub) + '</div>' +
               '</div>' +
-            '</div>';
-          }).join('');
+            '</div>'
+          ).join('');
         }
       }
 
@@ -5303,11 +8058,9 @@
         if (icHags) icHags.className = 'matrix-icon-box ' + (dl.hagsActive ? 'pass' : 'warn');
         if (txHags) txHags.textContent = dl.hagsActive ? '已开启' : '未开启';
 
-        // 第 4 张卡：已绑定游戏数（原为「虚拟显示」，与副标题的绑定数互相矛盾，已统一为绑定语义）
-        const boundCount = Number(dl.boundGamesCount) || 0;
-        if (icVirt) icVirt.className = 'matrix-icon-box ' + (boundCount > 0 ? 'pass' : '');
-        if (txVirt) txVirt.textContent = boundCount > 0 ? (boundCount + ' 款') : '未绑定';
-        if (sbVirt) sbVirt.textContent = boundCount > 0 ? '已指定到渲染卡' : '尚未绑定任何程序';
+        if (icVirt) icVirt.className = 'matrix-icon-box ' + (dl.hasVirtualGpu ? 'pass' : '');
+        if (txVirt) txVirt.textContent = dl.hasVirtualGpu ? valOrUnknown(dl.virtualGpuName) : '未挂载';
+        if (sbVirt) sbVirt.textContent = '已绑定 ' + valOrUnknown(dl.boundGamesCount, ' 款');
 
         const hagsBadge = document.getElementById('dualHagsBadge');
         const rName = document.getElementById('dualRenderGpuName');
@@ -5506,12 +8259,7 @@
         if (curVer) curVer.textContent = valOrUnknown(u.currentVersion);
         if (latVer) latVer.textContent = valOrUnknown(u.latestVersion);
         if (assetTxt) assetTxt.textContent = valOrUnknown(u.assetName);
-        if (shaTxt) {
-          // 完整 SHA-256 是 64 位，直接铺开会折行破版；显示前 20 位，完整值放 title
-          const sha = valOrUnknown(u.sha256);
-          shaTxt.textContent = sha.length > 20 ? (sha.slice(0, 20) + '…') : sha;
-          shaTxt.title = sha;
-        }
+        if (shaTxt) shaTxt.textContent = valOrUnknown(u.sha256);
 
         // HARD SECURITY GATE: verified === false MUST disable apply button
         if (applyBtn) {
@@ -5536,7 +8284,14 @@
           panel.classList.toggle('active', panel.id === 'view-' + pageId);
         });
         document.querySelectorAll('#sidebarNavList .nav-item').forEach(btn => {
-          btn.classList.toggle('active', btn.dataset.page === pageId);
+          const isActive = btn.dataset.page === pageId;
+          btn.classList.toggle('active', isActive);
+          if (isActive) {
+            btn.classList.remove('is-popping');
+            void btn.offsetWidth; // 强制重排，让每次点击都能重放图标回弹
+            btn.classList.add('is-popping');
+            window.setTimeout(() => btn.classList.remove('is-popping'), 480);
+          }
         });
         if (pageId === 'power' && typeof window.__ensurePowerAnimLoop === 'function') {
           window.__ensurePowerAnimLoop();
@@ -5550,6 +8305,10 @@
         if (isPerfLow) document.body.classList.add('perf-low');
         const lbl = document.getElementById('themeBtnLabel');
         if (lbl) lbl.textContent = theme === 'light' ? '极简白昼' : '曜石黑夜';
+        const edTag = document.getElementById('gpu3dEditionTag');
+        const plateTxt = document.getElementById('gpu3dPlateText');
+        if (edTag) edTag.textContent = theme === 'light' ? 'WHITE FROST 3X' : 'OBSIDIAN 3X';
+        if (plateTxt) plateTxt.textContent = theme === 'light' ? 'WHITE FROST · TRIPLE FAN OC' : 'OBSIDIAN GOLD · TRIPLE FAN OC';
       }
 
       function togglePerfLowMode() {
@@ -5682,6 +8441,161 @@
         });
       }
 
+      // -----------------------------------------------------------------------
+      // CUSTOM SELECT ENHANCER
+      // 原生 <select> 的弹出层由系统绘制，CSS 无法主题化；
+      // 这里把它替换成自绘面板，仍然写回 select.value 并派发 change 事件，
+      // 因此所有既有 [data-action-change] 逻辑保持不变。
+      // -----------------------------------------------------------------------
+      const hxSelectActive = { wrap: null };
+
+      function closeAllHxSelects(except) {
+        document.querySelectorAll('.hx-select.open').forEach(wrap => {
+          if (wrap === except) return;
+          wrap.classList.remove('open');
+          if (wrap.__hxMenu) wrap.__hxMenu.classList.remove('is-open');
+        });
+        if (!except) hxSelectActive.wrap = null;
+      }
+
+      function positionHxSelectMenu(wrap) {
+        const trigger = wrap.querySelector('.hx-select-trigger');
+        const menu = wrap.__hxMenu;
+        if (!trigger || !menu) return;
+        const r = trigger.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const below = vh - r.bottom - 14;
+        const above = r.top - 14;
+        const openUp = below < 190 && above > below;
+        menu.style.left = Math.round(r.left) + 'px';
+        menu.style.width = Math.round(r.width) + 'px';
+        if (openUp) {
+          menu.style.top = 'auto';
+          menu.style.bottom = Math.round(vh - r.top + 6) + 'px';
+          menu.style.maxHeight = Math.max(130, Math.min(268, above)) + 'px';
+        } else {
+          menu.style.bottom = 'auto';
+          menu.style.top = Math.round(r.bottom + 6) + 'px';
+          menu.style.maxHeight = Math.max(130, Math.min(268, below)) + 'px';
+        }
+      }
+
+      function buildHxSelectMenu(wrap) {
+        const sel = wrap.querySelector('select');
+        const menu = wrap.__hxMenu;
+        const trigger = wrap.querySelector('.hx-select-trigger');
+        if (!sel || !menu || !trigger) return;
+        const frag = document.createDocumentFragment();
+        const opts = Array.prototype.slice.call(sel.options);
+        if (!opts.length) {
+          const empty = document.createElement('div');
+          empty.className = 'hx-select-empty';
+          empty.textContent = '暂无可选项';
+          frag.appendChild(empty);
+        } else {
+          opts.forEach((opt, i) => {
+            const item = document.createElement('div');
+            item.className = 'hx-select-option' + (i === sel.selectedIndex ? ' is-selected' : '');
+            item.textContent = opt.textContent;
+            item.dataset.hxIndex = String(i);
+            frag.appendChild(item);
+          });
+        }
+        menu.innerHTML = '';
+        menu.appendChild(frag);
+
+        const cur = sel.options[sel.selectedIndex];
+        const valEl = trigger.querySelector('.hx-select-value');
+        if (valEl) valEl.textContent = cur ? cur.textContent : '—';
+      }
+
+      function openHxSelect(wrap) {
+        closeAllHxSelects(wrap);
+        buildHxSelectMenu(wrap);
+        if (wrap.__hxMenu) wrap.__hxMenu.classList.add('is-open');
+        wrap.classList.add('open');
+        positionHxSelectMenu(wrap);
+        hxSelectActive.wrap = wrap;
+        const cur = wrap.__hxMenu && wrap.__hxMenu.querySelector('.is-selected');
+        if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+      }
+
+      function enhanceHxSelect(sel) {
+        if (!sel || sel.dataset.hxEnhanced === '1') return;
+        sel.dataset.hxEnhanced = '1';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'hx-select';
+        /* 继承原 select 上的宽度约束，避免布局跳变 */
+        if (sel.style.maxWidth) wrap.style.maxWidth = sel.style.maxWidth;
+        if (sel.style.width && sel.style.width !== '100%') wrap.style.width = sel.style.width;
+
+        sel.parentNode.insertBefore(wrap, sel);
+        wrap.appendChild(sel);
+        sel.classList.add('hx-select-native');
+
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'hx-select-trigger';
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.innerHTML = '<span class="hx-select-value"></span>' +
+          '<svg class="hx-select-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+        wrap.appendChild(trigger);
+
+        const menu = document.createElement('div');
+        menu.className = 'hx-select-menu';
+        menu.setAttribute('role', 'listbox');
+        document.body.appendChild(menu);
+        wrap.__hxMenu = menu;
+
+        trigger.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (wrap.classList.contains('open')) closeAllHxSelects();
+          else openHxSelect(wrap);
+        });
+
+        menu.addEventListener('click', (e) => {
+          const item = e.target.closest('.hx-select-option');
+          if (!item) return;
+          const idx = Number(item.dataset.hxIndex);
+          if (Number.isNaN(idx)) return;
+          sel.selectedIndex = idx;
+          buildHxSelectMenu(wrap);
+          closeAllHxSelects();
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        /* 脚本重建 <option> 时同步面板与显示值 */
+        const mo = new MutationObserver(() => buildHxSelectMenu(wrap));
+        mo.observe(sel, { childList: true, subtree: true, characterData: true });
+
+        buildHxSelectMenu(wrap);
+      }
+
+      function enhanceAllHxSelects() {
+        document.querySelectorAll('select.select-input').forEach(enhanceHxSelect);
+      }
+
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('.hx-select') || e.target.closest('.hx-select-menu')) return;
+        closeAllHxSelects();
+      }, true);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAllHxSelects();
+      });
+      window.addEventListener('scroll', (e) => {
+        /* 下拉面板自身的滚动不能触发关闭 */
+        const t = e.target;
+        if (t && t.nodeType === 1 && t.closest && t.closest('.hx-select-menu')) return;
+        closeAllHxSelects();
+      }, true);
+      window.addEventListener('resize', () => closeAllHxSelects());
+      window.addEventListener('blur', () => closeAllHxSelects());
+
+      enhanceAllHxSelects();
+      window.__enhanceHxSelects = enhanceAllHxSelects;
+
       // Global Delegated Click Handler for [data-action]
       document.addEventListener('click', (e) => {
         const target = e.target.closest('[data-action]');
@@ -5710,20 +8624,25 @@
           case 'ui.toggle3dExplode': {
             const card = document.getElementById('gpu3dCard');
             const stage = document.getElementById('gpu3dStage');
+            const banner = document.getElementById('deviceHeroBanner');
+            const lbl = document.getElementById('btnHeroExplodeLabel');
             if (card) {
               const isExp = card.classList.toggle('exploded');
               if (stage) stage.classList.toggle('is-exploded', isExp);
-              if (typeof window.__sync3dExplodeBase === 'function') {
-                window.__sync3dExplodeBase(isExp);
-              }
-              showToast(isExp ? '已展开 6 层全维透视拆解（背板/PCB与GA102核心/四热管均热板/鳍片/供电/双扇导流罩）' : '已合拢 3D 显卡装甲标准姿态', 'info');
+              if (banner) banner.classList.toggle('hero-exploded', isExp);
+              if (lbl) lbl.textContent = isExp ? '合拢显卡模型' : '拆解透视图';
+              showToast(isExp ? '已展开 6 大核心模组工程拆解图（支持鼠标 3D 追踪环视）' : '已合拢 3D 显卡标准结构', 'info');
             }
             break;
           }
           case 'ui.toggleSafetyCover': {
             const cover = document.getElementById('safetyCover');
             state.safetyCoverOpen = !state.safetyCoverOpen;
-            if (cover) cover.classList.toggle('open', state.safetyCoverOpen);
+            if (cover) {
+              cover.classList.toggle('open', state.safetyCoverOpen);
+              const holder = cover.closest('.safety-cover-container');
+              if (holder) holder.classList.toggle('armed', state.safetyCoverOpen);
+            }
             showToast(state.safetyCoverOpen ? '机械安全盖已掀开，可执行引导操作' : '机械安全盖已闭合', 'warn');
             break;
           }
@@ -5955,55 +8874,83 @@
         isPageHidden = document.visibilityState === 'hidden';
       });
 
-      // 3D GPU Card Mouse Tilt + Exploded Isometric View Support (Damped +-25deg max limit)
+      // 3D GPU Card Continuous 16s Orbit (-24deg..-6deg, 12deg..2deg) — no inline transform jump on explode
       (function init3dTilt() {
         const stage = document.getElementById('gpu3dStage');
         const card = document.getElementById('gpu3dCard');
+        const glare = document.getElementById('gpuMouseGlare');
         if (!stage || !card) return;
-        let baseRotY = -14;
-        let baseRotX = 8;
-        let baseRotZ = 0;
-        let targetRotY = -14;
-        let targetRotX = 8;
-        let curRotY = -14;
-        let curRotX = 8;
-        let tiltRaf = null;
 
-        window.__sync3dExplodeBase = function(isExploded) {
-          baseRotY = isExploded ? -18 : -14;
-          baseRotX = isExploded ? 14 : 8;
-          baseRotZ = isExploded ? -3 : 0;
-          targetRotY = baseRotY;
-          targetRotX = baseRotX;
-          if (!tiltRaf && !isPerfLow) tiltRaf = requestAnimationFrame(stepTilt);
-        };
+        let isHovering = false;
+        let mouseNX = 0, mouseNY = 0;
+        let curRY = -18, curRX = 8, curRZ = -1, curScale = 1, curLiftY = 0;
+        let orbitPhase = -0.75;
+        let lastTs = performance.now();
 
-        function stepTilt() {
-          curRotY += (targetRotY - curRotY) * 0.18;
-          curRotX += (targetRotX - curRotX) * 0.18;
-          card.style.transform = 'rotateY(' + curRotY.toFixed(2) + 'deg) rotateX(' + curRotX.toFixed(2) + 'deg) rotateZ(' + baseRotZ + 'deg)';
-          if (Math.abs(targetRotY - curRotY) > 0.08 || Math.abs(targetRotX - curRotX) > 0.08) {
-            tiltRaf = requestAnimationFrame(stepTilt);
-          } else {
-            tiltRaf = null;
-          }
-        }
+        stage.addEventListener('mouseenter', () => {
+          if (isPerfLow) return;
+          isHovering = true;
+        });
 
         stage.addEventListener('mousemove', (e) => {
           if (isPerfLow) return;
+          isHovering = true;
           const rect = stage.getBoundingClientRect();
-          const nx = (e.clientX - rect.left) / rect.width - 0.5;
-          const ny = (e.clientY - rect.top) / rect.height - 0.5;
-          const maxDelta = card.classList.contains('exploded') ? 16 : 25;
-          targetRotY = baseRotY + Math.max(-maxDelta, Math.min(maxDelta, nx * 38));
-          targetRotX = baseRotX + Math.max(-maxDelta, Math.min(maxDelta, -ny * 30));
-          if (!tiltRaf) tiltRaf = requestAnimationFrame(stepTilt);
+          const px = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+          const py = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height)));
+          mouseNX = (px - 0.5) * 2;
+          mouseNY = (py - 0.5) * 2;
+          if (glare) {
+            glare.style.setProperty('--glare-x', (px * 100).toFixed(1) + '%');
+            glare.style.setProperty('--glare-y', (py * 100).toFixed(1) + '%');
+          }
         });
+
         stage.addEventListener('mouseleave', () => {
-          targetRotY = baseRotY;
-          targetRotX = baseRotX;
-          if (!tiltRaf && !isPerfLow) tiltRaf = requestAnimationFrame(stepTilt);
+          isHovering = false;
+          const ratio = Math.max(-1, Math.min(1, curRY / 24));
+          orbitPhase = Math.asin(ratio);
         });
+
+        function tick3d(now) {
+          const dt = Math.min(0.05, Math.max(0.001, (now - lastTs) / 1000));
+          lastTs = now;
+
+          if (!isPageHidden && !isWindowMinimized && !isPerfLow && state.currentPage === 'device') {
+            let targetRY, targetRX, targetRZ, targetScale, targetLiftY;
+
+            if (isHovering) {
+              targetRY = mouseNX * 30;
+              targetRX = -mouseNY * 22 + 4;
+              targetRZ = mouseNX * -2.0;
+              targetScale = 1.08;
+              targetLiftY = -4;
+            } else {
+              orbitPhase += dt * 1.05;
+              targetRY = Math.sin(orbitPhase) * 24;
+              targetRX = 7 + Math.cos(orbitPhase * 0.6) * 5.5;
+              targetRZ = Math.sin(orbitPhase) * -1.4;
+              targetScale = 1.02;
+              targetLiftY = -1;
+            }
+
+            const damping = isHovering ? 0.14 : 0.08;
+            curRY += (targetRY - curRY) * damping;
+            curRX += (targetRX - curRX) * damping;
+            curRZ += (targetRZ - curRZ) * damping;
+            curScale += (targetScale - curScale) * damping;
+            curLiftY += (targetLiftY - curLiftY) * damping;
+
+            card.style.transform =
+              'translate3d(0, ' + curLiftY.toFixed(2) + 'px, 0) ' +
+              'scale(' + curScale.toFixed(3) + ') ' +
+              'rotateX(' + curRX.toFixed(2) + 'deg) ' +
+              'rotateY(' + curRY.toFixed(2) + 'deg) ' +
+              'rotateZ(' + curRZ.toFixed(2) + 'deg)';
+          }
+          requestAnimationFrame(tick3d);
+        }
+        requestAnimationFrame(tick3d);
       })();
 
       // Auto-Running Multi-Mode Power Reactor & Spectrum Waveform Engine (Sleep / Adaptive / Turbo)
@@ -6070,14 +9017,29 @@
         let wavePhase = 0;
         let shockwaveRadius = 12;
         let powerRaf = null;
+        /* 换挡交叉淡化状态：捕获上一模式最后一帧，作为残影淡出 */
+        let lastPresetDrawn = null;
+        let presetTransition = { from: null, fromWave: null, start: 0 };
+        const PRESET_FADE_MS = 520;
+        /* 画布与卡片同尺寸（逃逸效果已回退，保留常量便于后续调整） */
+        const FIRE_PAD = 0;
+        let fireLogicalW = 0;
+        let fireLogicalH = 0;
 
         function syncFireCanvasSize() {
           if (!powerStage) return;
           const rect = powerStage.getBoundingClientRect();
-          const fw = Math.max(640, Math.round(rect.width) || 780);
-          const fh = Math.max(140, Math.round(rect.height) || 156);
-          if (fireCanvas.width !== fw) fireCanvas.width = fw;
-          if (fireCanvas.height !== fh) fireCanvas.height = fh;
+          /* fw/fh 仍是"卡片内容区"的逻辑尺寸，绘制坐标不用改；
+             实际画布 buffer 四周各多 FIRE_PAD，画在外面的粒子不会被切掉。
+             不用 max() 夹取，保证 buffer 与 CSS 尺寸 1:1，溢出部分才不失真 */
+          const lw = Math.round(rect.width) || 780;
+          const lh = Math.round(rect.height) || 156;
+          fireLogicalW = lw;
+          fireLogicalH = lh;
+          const bw = lw + FIRE_PAD * 2;
+          const bh = lh + FIRE_PAD * 2;
+          if (fireCanvas.width !== bw) fireCanvas.width = bw;
+          if (fireCanvas.height !== bh) fireCanvas.height = bh;
         }
 
         function drawPowerWaveFrame() {
@@ -6088,7 +9050,27 @@
           const ww = waveCanvas.width;
           const wh = waveCanvas.height;
 
-          fCtx.clearRect(0, 0, fw, fh);
+          /* 模式切换：先把上一模式的最后一帧抓下来，稍后叠在新画面上淡出 */
+          if (lastPresetDrawn && lastPresetDrawn !== preset) {
+            try {
+              const offF = document.createElement('canvas');
+              offF.width = fw;
+              offF.height = fh;
+              offF.getContext('2d').drawImage(fireCanvas, 0, 0);
+              const offW = document.createElement('canvas');
+              offW.width = ww;
+              offW.height = wh;
+              offW.getContext('2d').drawImage(waveCanvas, 0, 0);
+              presetTransition.from = offF;
+              presetTransition.fromWave = offW;
+              presetTransition.start = performance.now();
+            } catch (e) { /* 忽略过渡失败，保证动画继续 */ }
+          }
+          lastPresetDrawn = preset;
+
+          /* 坐标系原点移到卡片左上角；-(FIRE_PAD) 之外的部分画在卡片外面 */
+          fCtx.setTransform(1, 0, 0, 1, FIRE_PAD, FIRE_PAD);
+          fCtx.clearRect(-FIRE_PAD, -FIRE_PAD, fw + FIRE_PAD * 2, fh + FIRE_PAD * 2);
           wCtx.clearRect(0, 0, ww, wh);
 
           const reactorCx = fw - 104;
@@ -6332,6 +9314,29 @@
             wCtx.stroke();
           }
 
+          /* 换挡残影淡出：旧模式的画面透明度线性衰减，与新画面自然融合 */
+          if (presetTransition.from && presetTransition.start) {
+            const k = (performance.now() - presetTransition.start) / PRESET_FADE_MS;
+            if (k >= 1) {
+              presetTransition.from = null;
+              presetTransition.fromWave = null;
+              presetTransition.start = 0;
+            } else {
+              const a = 1 - k;
+              fCtx.save();
+              fCtx.setTransform(1, 0, 0, 1, 0, 0);
+              fCtx.globalAlpha = a * a;
+              fCtx.drawImage(presetTransition.from, 0, 0);
+              fCtx.restore();
+              if (presetTransition.fromWave) {
+                wCtx.save();
+                wCtx.globalAlpha = a * a;
+                wCtx.drawImage(presetTransition.fromWave, 0, 0);
+                wCtx.restore();
+              }
+            }
+          }
+
           if (!isPerfLow && !isPageHidden && !isWindowMinimized && state.currentPage === 'power') {
             powerRaf = requestAnimationFrame(drawPowerWaveFrame);
           } else {
@@ -6378,16 +9383,15 @@
       renderLogsPage();
       renderUpdatePage();
 
-      sendCmd('app.init', {});
-      const firstPaintMs = Math.round(performance.now() - bootTimestamp);
-      sendCmd('app.ready', { ms: firstPaintMs });
-
       setTimeout(() => {
+        sendCmd('app.init', {});
+        const firstPaintMs = Math.round(performance.now() - bootTimestamp);
+        sendCmd('app.ready', { ms: firstPaintMs });
         if (!receivedAnyEvt) {
           usingMock = true;
           bootMockDataPipe();
         }
-      }, hasHost ? 800 : 60);
+      }, hasHost ? 800 : 20);
 
       /* =======================================================================
          =======================================================================
