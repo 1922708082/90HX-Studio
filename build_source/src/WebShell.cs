@@ -445,6 +445,52 @@ namespace CMP90HXToolbox
                 {
                     // 首帧就绪信号，仅记录
                 }
+                else if (action == "spoof.apply")
+                {
+                    string targetName = ExtractPayloadString(json, "targetName");
+                    if (string.IsNullOrEmpty(targetName)) targetName = "NVIDIA GeForce RTX 3080";
+                    string rid = id;
+                    string tgt = targetName;
+                    LogInfo("开始应用伪装 → " + tgt);
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = false;
+                        try { ok = NativeCore.ApplyGpuRenameAsync(tgt, LogPower).Result; }
+                        catch (Exception ex) { LogCrash("应用伪装失败", ex); }
+
+                        if (ok)
+                        {
+                            LogInfo("伪装完成，回读注册表…");
+                            ReplyOk(rid, action);
+                        }
+                        else
+                        {
+                            ReplyFail(rid, action, "DRIVER_REJECT", "伪装失败，详情见日志（旧版备份位于 ProgramData\\CMP90HX_Toolbox）");
+                        }
+                        // 名称变了，重新推一遍状态让界面同步
+                        PostToPage(HardwareBridge.SpoofStateEvt());
+                        PostToPage(HardwareBridge.DeviceSnapshotEvt());
+                    }));
+                    return;
+                }
+                else if (action == "spoof.restore")
+                {
+                    string rid = id;
+                    LogInfo("开始还原出厂型号名…");
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = false;
+                        try { ok = NativeCore.RestoreGpuTo90hxAsync(LogPower).Result; }
+                        catch (Exception ex) { LogCrash("还原型号名失败", ex); }
+
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "DRIVER_REJECT", "还原失败，详情见日志");
+
+                        PostToPage(HardwareBridge.SpoofStateEvt());
+                        PostToPage(HardwareBridge.DeviceSnapshotEvt());
+                    }));
+                    return;
+                }
                 else if (action == "theme.set")
                 {
                     string t = ExtractPayloadString(json, "theme");
