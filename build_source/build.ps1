@@ -5,13 +5,17 @@ $gacPath = "C:\Windows\Microsoft.NET\assembly\GAC_MSIL"
 $gac64Path = "C:\Windows\Microsoft.NET\assembly\GAC_64"
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
+# 路径全部相对脚本自身推导，不写死盘符——否则别人克隆到别的盘就编译不了
+$srcRoot  = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$repoRoot = Split-Path -Parent $srcRoot
+
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host "HX家族多功能工具箱 v6.2 绿色免安装版构建流程" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
 # 先把 web/ 下的模块化源文件（css/ + pages/ + js/）合并成单文件 index.html，
 # 再交给编译器内嵌。改了任何 css/pages/js 都必须经过这一步。
-$mergeScript = "D:\app\build_source\scripts\merge-web.ps1"
+$mergeScript = "$srcRoot\scripts\merge-web.ps1"
 if (Test-Path $mergeScript) {
     & $mergeScript
     if (-not $?) { Write-Host "[ERROR] 前端合并失败" -ForegroundColor Red; exit 1 }
@@ -22,7 +26,7 @@ if (Test-Path $mergeScript) {
 # 契约门禁：比对「前端发的/等的」与「后端实现的/发的」
 # 历史上多次出现「页面等某个事件、宿主从来不推」导致整页空白，
 # 这条检查让它在构建时就暴露，而不是等用户点进去发现。
-$auditScript = "D:\app\build_source\scripts\audit_contract.py"
+$auditScript = "$srcRoot\scripts\audit_contract.py"
 $pyExe = "C:\Users\19227\.workbuddy\binaries\python\versions\3.13.12\python.exe"
 if ((Test-Path $auditScript) -and (Test-Path $pyExe)) {
     $auditOut = & $pyExe $auditScript 2>&1
@@ -35,7 +39,7 @@ if ((Test-Path $auditScript) -and (Test-Path $pyExe)) {
     }
 }
 
-$targetExe = "D:\app\90HX Studio.exe"
+$targetExe = "$repoRoot\90HX Studio.exe"
 Write-Host "正在编译免安装可执行程序: $targetExe ..." -ForegroundColor Yellow
 
 $argsList = @(
@@ -43,18 +47,18 @@ $argsList = @(
     "/optimize+",
     "/warn:4",
     "/warnaserror+",
-    "/win32manifest:D:\app\build_source\app.manifest",
-    "/win32icon:D:\app\app.ico",
-    "/resource:D:\app\build_source\src\MainWindow.xaml,MainWindow.xaml",
-    "/resource:D:\app\build_source\src\SplashWindow.xaml,SplashWindow.xaml",
-    "/resource:D:\app\build_source\assets\wechat_pay.png,wechat_pay.png",
-    "/resource:D:\app\build_source\assets\alipay.png,alipay.png",
-    "/resource:D:\app\build_source\web\index.html,index.html",
-    "/resource:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Core.dll,Microsoft.Web.WebView2.Core.dll",
-    "/resource:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Wpf.dll,Microsoft.Web.WebView2.Wpf.dll",
-    "/resource:D:\app\build_source\lib\webview2\x64\WebView2Loader.dll,wv2loader64.dll",
-    "/resource:D:\app\build_source\lib\webview2\x86\WebView2Loader.dll,wv2loader32.dll",
-    "/resource:D:\app\assets.zip,assets.zip",
+    "/win32manifest:$srcRoot\app.manifest",
+    "/win32icon:$repoRoot\app.ico",
+    "/resource:$srcRoot\src\MainWindow.xaml,MainWindow.xaml",
+    "/resource:$srcRoot\src\SplashWindow.xaml,SplashWindow.xaml",
+    "/resource:$srcRoot\assets\wechat_pay.png,wechat_pay.png",
+    "/resource:$srcRoot\assets\alipay.png,alipay.png",
+    "/resource:$srcRoot\web\index.html,index.html",
+    "/resource:$srcRoot\lib\webview2\Microsoft.Web.WebView2.Core.dll,Microsoft.Web.WebView2.Core.dll",
+    "/resource:$srcRoot\lib\webview2\Microsoft.Web.WebView2.Wpf.dll,Microsoft.Web.WebView2.Wpf.dll",
+    "/resource:$srcRoot\lib\webview2\x64\WebView2Loader.dll,wv2loader64.dll",
+    "/resource:$srcRoot\lib\webview2\x86\WebView2Loader.dll,wv2loader32.dll",
+    "/resource:$repoRoot\assets.zip,assets.zip",
     ("/out:" + $targetExe),
     "/r:System.dll",
     "/r:System.Core.dll",
@@ -68,28 +72,28 @@ $argsList = @(
     ("/r:" + $gacPath + "\System.Xaml\v4.0_4.0.0.0__b77a5c561934e089\System.Xaml.dll"),
     ("/r:" + $gacPath + "\UIAutomationClient\v4.0_4.0.0.0__31bf3856ad364e35\UIAutomationClient.dll"),
     ("/r:" + $gacPath + "\UIAutomationTypes\v4.0_4.0.0.0__31bf3856ad364e35\UIAutomationTypes.dll"),
-    "/r:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Core.dll",
-    "/r:D:\app\build_source\lib\webview2\Microsoft.Web.WebView2.Wpf.dll",
-    "D:\app\build_source\src\SystemDetector.cs",
-    "D:\app\build_source\src\GpuHardwareManager.cs",
-    "D:\app\build_source\src\PcieUnlockManager.cs",
-    "D:\app\build_source\src\GpuSpoofManager.cs",
-    "D:\app\build_source\src\EcoPowerManager.cs",
-    "D:\app\build_source\src\EcosystemPatchManager.cs",
-    "D:\app\build_source\src\NativeCore.cs",
-    "D:\app\build_source\src\VirusOverlay.cs",
-    "D:\app\build_source\src\AppSettings.cs",
-    "D:\app\build_source\src\SpoofCatalog.cs",
-    "D:\app\build_source\src\Diagnostics.cs",
-    "D:\app\build_source\src\GameScanner.cs",
-    "D:\app\build_source\src\DlssPack.cs",
-    "D:\app\build_source\src\UpdateChecker.cs",
-    "D:\app\build_source\src\NvmlFan.cs",
-    "D:\app\build_source\src\PowerPresets.cs",
-    "D:\app\build_source\src\HardwareBridge.cs",
-    "D:\app\build_source\src\WebShell.cs",
-    "D:\app\build_source\src\App.cs",
-    "D:\app\build_source\src\AssemblyInfo.cs"
+    "/r:$srcRoot\lib\webview2\Microsoft.Web.WebView2.Core.dll",
+    "/r:$srcRoot\lib\webview2\Microsoft.Web.WebView2.Wpf.dll",
+    "$srcRoot\src\SystemDetector.cs",
+    "$srcRoot\src\GpuHardwareManager.cs",
+    "$srcRoot\src\PcieUnlockManager.cs",
+    "$srcRoot\src\GpuSpoofManager.cs",
+    "$srcRoot\src\EcoPowerManager.cs",
+    "$srcRoot\src\EcosystemPatchManager.cs",
+    "$srcRoot\src\NativeCore.cs",
+    "$srcRoot\src\VirusOverlay.cs",
+    "$srcRoot\src\AppSettings.cs",
+    "$srcRoot\src\SpoofCatalog.cs",
+    "$srcRoot\src\Diagnostics.cs",
+    "$srcRoot\src\GameScanner.cs",
+    "$srcRoot\src\DlssPack.cs",
+    "$srcRoot\src\UpdateChecker.cs",
+    "$srcRoot\src\NvmlFan.cs",
+    "$srcRoot\src\PowerPresets.cs",
+    "$srcRoot\src\HardwareBridge.cs",
+    "$srcRoot\src\WebShell.cs",
+    "$srcRoot\src\App.cs",
+    "$srcRoot\src\AssemblyInfo.cs"
 )
 & $csc $argsList
 if ($LASTEXITCODE -ne 0) {
@@ -99,8 +103,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "==================================================" -ForegroundColor Green
 Write-Host "[OK] 构建成功！正在同步二进制文件..." -ForegroundColor Green
-Copy-Item $targetExe "D:\app\HX家族多功能工具箱.exe" -Force
-Write-Host "[OK] 已同步至: D:\app\HX家族多功能工具箱.exe" -ForegroundColor Green
+Copy-Item $targetExe "$repoRoot\HX家族多功能工具箱.exe" -Force
+Write-Host "[OK] 已同步至: $repoRoot\HX家族多功能工具箱.exe" -ForegroundColor Green
 
 $desktopDir = "C:\Users\19227\Desktop"
 if (Test-Path $desktopDir) {

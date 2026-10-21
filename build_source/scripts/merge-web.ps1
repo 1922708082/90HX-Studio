@@ -1,8 +1,8 @@
-# 把 web/ 下的模块化源文件合并成可运行的单文件 index.html
+﻿# 把 web/ 下的模块化源文件合并成可运行的单文件 index.html
 # 由 build.ps1 在编译前调用；也可单独运行用于本地预览。
 
 $ErrorActionPreference = 'Stop'
-$root = 'D:\app\build_source\web'
+$root = Join-Path (Split-Path -Parent $PSScriptRoot) 'web'
 
 $cssOrder   = @('01-base.css', '02-layout.css', '03-components.css', '04-pages.css', '05-overrides.css')
 $pageOrder  = @('device', 'unlock', 'spoof', 'power', 'dlss', 'overlay', 'dualgpu', 'maintenance', 'logs', 'update')
