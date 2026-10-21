@@ -549,11 +549,31 @@ namespace CMP90HXToolbox
                     return false;
                 }
 
-                string zip = zips[0];
-                for (int i = 1; i < zips.Length; i++)
+                // 同样要挑「能打开」的包：最新那个可能只是半截下载（实测有 3KB 假 zip），
+                // 直接按时间取最新会让部署必然失败，而本地其实有完好的旧包。
+                Array.Sort(zips, delegate (string a, string b)
                 {
-                    if (File.GetLastWriteTimeUtc(zips[i]) > File.GetLastWriteTimeUtc(zip)) zip = zips[i];
+                    return File.GetLastWriteTimeUtc(b).CompareTo(File.GetLastWriteTimeUtc(a));
+                });
+                string zip = null;
+                for (int i = 0; i < zips.Length; i++)
+                {
+                    try
+                    {
+                        using (var probe = File.OpenRead(zips[i]))
+                        using (var za = new ZipArchive(probe, ZipArchiveMode.Read))
+                        {
+                            if (za.Entries.Count > 0) { zip = zips[i]; break; }
+                        }
+                    }
+                    catch { }
                 }
+                if (zip == null)
+                {
+                    log("本地压缩包全部损坏，请重新下载", true);
+                    return false;
+                }
+                log("使用资源包: " + Path.GetFileName(zip), false);
 
                 // 代理冲突提示：代理 DLL 只能存在一个
                 string[] proxies = new string[] { "version.dll", "dxgi.dll", "winmm.dll", "dbghelp.dll", "dinput8.dll", "d3d12.dll" };
