@@ -254,40 +254,37 @@ namespace CMP90HXToolbox
             {
                 try { ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; } catch { }
 
-                string api = "https://api.github.com/repos/ShyVortex/dlss-unlocked/releases/latest";
-                string body;
-                using (WebClient wc = new WebClient())
-                {
-                    wc.Headers.Add("User-Agent", "HX-Studio");
-                    wc.Headers.Add("Accept", "application/vnd.github+json");
-                    body = wc.DownloadString(api);
-                }
+                // 不用 api.github.com —— 实测该接口对本机返回 403（限流/拦截）。
+                // 改为读 /releases/latest 的 302 Location 取 tag，再拼资产名。
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(
+                    "https://github.com/ShyVortex/dlss-unlocked/releases/latest");
+                req.AllowAutoRedirect = false;
+                req.UserAgent = "Mozilla/5.0 HX-Studio";
+                req.Timeout = 20000;
 
-                tag = ExtractJson(body, "tag_name");
-                int i = body.IndexOf("\"assets\"", StringComparison.OrdinalIgnoreCase);
-                if (i < 0) return null;
-                string assets = body.Substring(i);
-
-                // 找名字里带 standalone 的 zip；找不到就退回第一个 zip
-                string url = null;
-                foreach (string chunk in assets.Split(new string[] { "\"name\":" }, StringSplitOptions.None))
+                using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
                 {
-                    string name = ExtractJson("{\"name\":" + chunk, "name");
-                    if (string.IsNullOrEmpty(name)) continue;
-                    if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
-                    string u = ExtractJson("{\"name\":" + chunk, "browser_download_url");
-                    if (string.IsNullOrEmpty(u)) continue;
-                    if (name.IndexOf("standalone", StringComparison.OrdinalIgnoreCase) >= 0)
+                    string loc = resp.Headers["Location"];
+                    if (!string.IsNullOrEmpty(loc))
                     {
-                        assetName = name; url = u; break;
+                        int p = loc.LastIndexOf("/tag/", StringComparison.OrdinalIgnoreCase);
+                        if (p >= 0) tag = loc.Substring(p + 5).Trim();
                     }
-                    if (url == null) { assetName = name; url = u; }
                 }
-                return url;
+
+                if (string.IsNullOrEmpty(tag))
+                {
+                    if (log != null) log("解析最新版本失败（未取到 tag）", true);
+                    return null;
+                }
+
+                assetName = "dlss-unlocked-standalone-" + tag + ".zip";
+                return "https://github.com/ShyVortex/dlss-unlocked/releases/download/"
+                       + tag + "/" + assetName;
             }
             catch (Exception ex)
             {
-                if (log != null) log("解析资源地址失败: " + ex.Message, true);
+                if (log != null) log("解析最新版本失败: " + ex.Message, true);
                 return null;
             }
         }
@@ -310,40 +307,25 @@ namespace CMP90HXToolbox
                 string tmp = dest + ".part";
                 if (File.Exists(tmp)) File.Delete(tmp);
 
-                try { ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; } catch { }
-
-                System.Net.HttpWebRequest req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
-                req.UserAgent = "HX-Studio";
-                req.Timeout = 30000;
-                req.ReadWriteTimeout = 60000;
-
-                using (System.Net.HttpWebResponse resp = (System.Net.HttpWebResponse)req.GetResponse())
+                // 镜像只是前缀，URL 本身必须是完整的 github 地址
+                string[] candidates = new string[] { "https://ghfast.top/" + url, url };
+                Exception lastEx = null;
+                for (int ci = 0; ci < candidates.Length; ci++)
                 {
-                    long total = resp.ContentLength;
-                    long read = 0;
-                    int lastPct = -1;
-                    byte[] buf = new byte[131072];
-
-                    using (Stream ns = resp.GetResponseStream())
-                    using (FileStream fs = new FileStream(tmp, FileMode.Create, FileAccess.Write))
+                    try
                     {
-                        int n;
-                        while ((n = ns.Read(buf, 0, buf.Length)) > 0)
-                        {
-                            fs.Write(buf, 0, n);
-                            read += n;
-                            if (total > 0 && log != null)
-                            {
-                                int pct = (int)(read * 100 / total);
-                                if (pct != lastPct && pct % 5 == 0)
-                                {
-                                    lastPct = pct;
-                                    log("下载中 " + pct + "%（" + (read / 1024 / 1024) + " / " + (total / 1024 / 1024) + " MB）", false);
-                                }
-                            }
-                        }
+                        DownloadOnce(candidates[ci], tmp, log);
+                        lastEx = null;
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        if (log != null) log("通道 " + (ci == 0 ? "镜像" : "直连") + " 失败: " + ex.Message, true);
                     }
                 }
+                if (lastEx != null) return false;
+                if (!File.Exists(tmp) || new FileInfo(tmp).Length <= 0) return false;
 
                 if (File.Exists(dest)) File.Delete(dest);
                 File.Move(tmp, dest);
@@ -353,6 +335,44 @@ namespace CMP90HXToolbox
             {
                 if (log != null) log("下载失败: " + ex.Message, true);
                 return false;
+            }
+        }
+
+        /// <summary>单通道下载到临时文件，流式读取以驱动进度。</summary>
+        private static void DownloadOnce(string url, string tmp, Action<string, bool> log)
+        {
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+            req.UserAgent = "Mozilla/5.0 HX-Studio";
+            req.Timeout = 30000;
+            req.ReadWriteTimeout = 60000;
+            req.AllowAutoRedirect = true;
+
+            using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+            {
+                long total = resp.ContentLength;
+                long read = 0;
+                int lastPct = -1;
+                byte[] buf = new byte[131072];
+
+                using (Stream ns = resp.GetResponseStream())
+                using (FileStream fs = new FileStream(tmp, FileMode.Create, FileAccess.Write))
+                {
+                    int n;
+                    while ((n = ns.Read(buf, 0, buf.Length)) > 0)
+                    {
+                        fs.Write(buf, 0, n);
+                        read += n;
+                        if (total > 0 && log != null)
+                        {
+                            int pct = (int)(read * 100 / total);
+                            if (pct != lastPct && pct % 5 == 0)
+                            {
+                                lastPct = pct;
+                                log("下载 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + " MB）", false);
+                            }
+                        }
+                    }
+                }
             }
         }
 

@@ -243,8 +243,25 @@ namespace CMP90HXToolbox
                         string orig = baks[j].Substring(0, baks[j].Length - 6); // 去掉 .hxbak
                         try
                         {
-                            if (File.Exists(orig)) File.SetAttributes(orig, FileAttributes.Normal);
-                            File.Copy(baks[j], orig, true);
+                            // NVIDIA App 还在运行时文件被占，单次复制常失败（用户反馈要点两次）。
+                            // 这里重试 3 次，每次间隔 700ms，第二次起先清只读属性。
+                            bool done = false;
+                            Exception last = null;
+                            for (int attempt = 1; attempt <= 3 && !done; attempt++)
+                            {
+                                try
+                                {
+                                    if (File.Exists(orig)) File.SetAttributes(orig, FileAttributes.Normal);
+                                    File.Copy(baks[j], orig, true);
+                                    done = true;
+                                }
+                                catch (Exception ex)
+                                {
+                                    last = ex;
+                                    System.Threading.Thread.Sleep(700);
+                                }
+                            }
+                            if (!done) throw last;
                             File.Delete(baks[j]);
                             count++;
                             if (log != null) log("已还原 " + Path.GetFileName(orig), false);
