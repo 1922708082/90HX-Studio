@@ -236,7 +236,9 @@ namespace CMP90HXToolbox
             sb.Append("\"validation\":\"").Append(validation).Append("\",");
             sb.Append("\"totalBytes\":").Append(totalBytes).Append(',');
             sb.Append("\"fileCount\":").Append(fileCount).Append(',');
-            sb.Append("\"packReady\":").Append(downloaded ? "true" : "false").Append('}');
+            sb.Append("\"packReady\":").Append(downloaded ? "true" : "false");
+            sb.Append(",\"mirrors\":").Append(HardwareBridge.DownloadSourcesJson());
+            sb.Append('}');
             return sb.ToString();
         }
 

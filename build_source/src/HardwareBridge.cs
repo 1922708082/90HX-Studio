@@ -81,6 +81,21 @@ namespace CMP90HXToolbox
             { "直连 GitHub",       "DIRECT" }
         };
 
+        /// <summary>下载源目录的 JSON 数组：[{"name","prefix"}]，供 dlss.state 与 settings.state 共用。</summary>
+        public static string DownloadSourcesJson()
+        {
+            StringBuilder sb = new StringBuilder(400);
+            sb.Append('[');
+            for (int i = 0; i < DownloadSources.GetLength(0); i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append("{\"name\":").Append(Quote(DownloadSources[i, 0]))
+                  .Append(",\"prefix\":").Append(Quote(DownloadSources[i, 1])).Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+
         /// <summary>下载源等用户设置，开机推给界面回显（含可选源目录）。</summary>
         public static string SettingsStateEvt()
         {
