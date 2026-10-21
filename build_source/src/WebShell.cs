@@ -671,32 +671,79 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "unlock.install")
+                {
+                    // channel: A=UEFI 直启(Mode1) / B=UEFI Shell 链启(Mode2)
+                    string ch = ExtractPayloadString(json, "channel");
+                    string mode = ExtractPayloadString(json, "mode");
+                    bool useMode2 = string.Equals(ch, "B", StringComparison.OrdinalIgnoreCase)
+                                    || string.Equals(mode, "2", StringComparison.OrdinalIgnoreCase)
+                                    || string.Equals(mode, "Mode2", StringComparison.OrdinalIgnoreCase);
+                    LogInfo("安装解锁载荷: " + (useMode2 ? "Mode2 UEFI Shell" : "Mode1 UEFI 直启"));
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok;
+                        try
+                        {
+                            ok = useMode2
+                                ? NativeCore.InstallPcieMode2Async(LogPower).Result
+                                : NativeCore.InstallPcieMode1Async(LogPower).Result;
+                        }
+                        catch (Exception ex) { LogCrash("安装解锁载荷失败", ex); ok = false; }
+
+                        PostToPage(HardwareBridge.UnlockStateEvt());
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "NEED_REBOOT", "载荷安装未完成，详见日志");
+                    }));
+                    return;
+                }
+                else if (action == "unlock.rollback")
+                {
+                    LogInfo("回滚引导与解锁载荷…");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = false;
+                        try { ok = NativeCore.CleanAllPcieUnlocks(LogPower); }
+                        catch (Exception ex) { LogCrash("回滚失败", ex); }
+
+                        PostToPage(HardwareBridge.UnlockStateEvt());
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "INTERNAL", "回滚未完成，详见日志");
+                    }));
+                    return;
+                }
                 else if (action == "dlss.checkUpdate")
                 {
                     LogInfo("检查 DLSS 5 资源包…");
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        string tag = NativeCore.CheckDlssUnlockedLatestTag(LogPower);
-                        if (string.IsNullOrEmpty(tag))
+                        string tag, assetName;
+                        string url = DlssPack.ResolveLatestAsset(out tag, out assetName, LogPower);
+                        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(tag))
                         {
-                            ReplyFail(rid, action, "NETWORK", "无法获取最新版本（镜像与直连均失败）");
+                            ReplyFail(rid, action, "NETWORK", "解析最新版本失败");
                             return;
                         }
+                        LogInfo("最新版本: " + tag + "（资产: " + assetName + "）");
+
                         string dir = NativeCore.GetDlssUnlockedDirectory();
                         string zip = Path.Combine(dir, "dlss-unlocked-standalone-" + tag + ".zip");
                         if (File.Exists(zip))
                         {
                             string v = NativeCore.ValidateDlssUnlockedPackage(LogPower);
-                            LogInfo("资源包已是最新: " + tag + "（" + v + "）");
+                            LogInfo("本地已是该版本（" + v + "）");
                             PostToPage(HardwareBridge.DlssStateEvt());
                             ReplyDataJson(rid, action, "{\"tag\":" + HardwareBridge.Quote(tag) + ",\"downloaded\":true}");
                             return;
                         }
-                        LogInfo("发现新版本 " + tag + "，开始下载…");
-                        bool ok = NativeCore.DownloadDlssUnlockedAsync(tag, null, LogPower).Result;
+
+                        LogInfo("开始下载 " + assetName + "…");
+                        bool ok = DlssPack.DownloadToLegacyDir(url, tag, LogPower);
                         string validation = ok ? NativeCore.ValidateDlssUnlockedPackage(LogPower) : "下载失败";
-                        LogInfo("资源包状态: " + validation);
+                        LogInfo("资源包: " + validation);
                         PostToPage(HardwareBridge.DlssStateEvt());
                         if (ok) ReplyDataJson(rid, action, "{\"tag\":" + HardwareBridge.Quote(tag) + ",\"downloaded\":true}");
                         else ReplyFail(rid, action, "NETWORK", "资源包下载失败");

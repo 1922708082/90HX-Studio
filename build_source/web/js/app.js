@@ -1839,6 +1839,11 @@
         switch (action) {
           case 'nav.switch':
             if (target.dataset.page) switchPage(target.dataset.page);
+            /* 进入日志页时主动拉一次：宿主不推 logs.append，
+               不查的话日志页永远是空的。 */
+            if (target.dataset.page === 'logs') {
+              sendCmd('logs.query', { offset: 0, limit: 200, level: state.logsFilterLevel }, target);
+            }
             break;
           case 'ui.toggleTheme': {
             const nextTheme = state.theme === 'dark' ? 'light' : 'dark';

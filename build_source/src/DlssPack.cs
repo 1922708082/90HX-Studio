@@ -240,6 +240,136 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
+        /// <summary>
+        /// 通过 GitHub API 解析最新 release 的 standalone 资产真实地址与文件名。
+        ///
+        /// 之前靠拼文件名（dlss-unlocked-standalone-<tag>.zip）去下，实测 404——
+        /// 上游资产命名并不固定。改为查 API 拿 browser_download_url，不再猜。
+        /// </summary>
+        public static string ResolveLatestAsset(out string tag, out string assetName, Action<string, bool> log)
+        {
+            tag = null;
+            assetName = null;
+            try
+            {
+                try { ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; } catch { }
+
+                string api = "https://api.github.com/repos/ShyVortex/dlss-unlocked/releases/latest";
+                string body;
+                using (WebClient wc = new WebClient())
+                {
+                    wc.Headers.Add("User-Agent", "HX-Studio");
+                    wc.Headers.Add("Accept", "application/vnd.github+json");
+                    body = wc.DownloadString(api);
+                }
+
+                tag = ExtractJson(body, "tag_name");
+                int i = body.IndexOf("\"assets\"", StringComparison.OrdinalIgnoreCase);
+                if (i < 0) return null;
+                string assets = body.Substring(i);
+
+                // 找名字里带 standalone 的 zip；找不到就退回第一个 zip
+                string url = null;
+                foreach (string chunk in assets.Split(new string[] { "\"name\":" }, StringSplitOptions.None))
+                {
+                    string name = ExtractJson("{\"name\":" + chunk, "name");
+                    if (string.IsNullOrEmpty(name)) continue;
+                    if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
+                    string u = ExtractJson("{\"name\":" + chunk, "browser_download_url");
+                    if (string.IsNullOrEmpty(u)) continue;
+                    if (name.IndexOf("standalone", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        assetName = name; url = u; break;
+                    }
+                    if (url == null) { assetName = name; url = u; }
+                }
+                return url;
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log("解析资源地址失败: " + ex.Message, true);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 下载资源包到老版数据目录（dlss_unlocked），文件名统一成
+        /// dlss-unlocked-standalone-<tag>.zip，保证老版校验与注入逻辑能识别。
+        /// 流式写入以驱动进度回调（WebClient.DownloadFile 不触发进度）。
+        /// </summary>
+        public static bool DownloadToLegacyDir(string url, string tag, Action<string, bool> log)
+        {
+            try
+            {
+                string dir = NativeCore.GetDlssUnlockedDirectory();
+                if (string.IsNullOrEmpty(dir)) return false;
+                Directory.CreateDirectory(dir);
+
+                string fileName = "dlss-unlocked-standalone-" + tag + ".zip";
+                string dest = Path.Combine(dir, fileName);
+                string tmp = dest + ".part";
+                if (File.Exists(tmp)) File.Delete(tmp);
+
+                try { ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; } catch { }
+
+                System.Net.HttpWebRequest req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
+                req.UserAgent = "HX-Studio";
+                req.Timeout = 30000;
+                req.ReadWriteTimeout = 60000;
+
+                using (System.Net.HttpWebResponse resp = (System.Net.HttpWebResponse)req.GetResponse())
+                {
+                    long total = resp.ContentLength;
+                    long read = 0;
+                    int lastPct = -1;
+                    byte[] buf = new byte[131072];
+
+                    using (Stream ns = resp.GetResponseStream())
+                    using (FileStream fs = new FileStream(tmp, FileMode.Create, FileAccess.Write))
+                    {
+                        int n;
+                        while ((n = ns.Read(buf, 0, buf.Length)) > 0)
+                        {
+                            fs.Write(buf, 0, n);
+                            read += n;
+                            if (total > 0 && log != null)
+                            {
+                                int pct = (int)(read * 100 / total);
+                                if (pct != lastPct && pct % 5 == 0)
+                                {
+                                    lastPct = pct;
+                                    log("下载中 " + pct + "%（" + (read / 1024 / 1024) + " / " + (total / 1024 / 1024) + " MB）", false);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (File.Exists(dest)) File.Delete(dest);
+                File.Move(tmp, dest);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log("下载失败: " + ex.Message, true);
+                return false;
+            }
+        }
+
+        private static string ExtractJson(string json, string key)
+        {
+            string pat = "\"" + key + "\"";
+            int i = json.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return null;
+            i = json.IndexOf(':', i);
+            if (i < 0) return null;
+            int q1 = json.IndexOf('"', i);
+            if (q1 < 0) return null;
+            int q2 = json.IndexOf('"', q1 + 1);
+            if (q2 < 0) return null;
+            return json.Substring(q1 + 1, q2 - q1 - 1);
+        }
+
         // ---------- 内部 ----------
 
         private static bool Download(string url, string target, Action<string, bool> log)

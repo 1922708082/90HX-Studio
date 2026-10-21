@@ -43,6 +43,12 @@ for m in re.finditer(r"case\s+'([a-zA-Z][a-zA-Z0-9.]*)':\s*(.*?)break;", js, re.
 # data-action 里由点击委托转成命令的
 for a in re.findall(r'data-action="([a-zA-Z][a-zA-Z0-9.]*)"', html):
     sent.add(a)
+# 二次确认弹窗里的 action（modal.execute 用 sendCmd(pc.action) 变量形式发送，
+# 之前漏了这一类：unlock.install / snapshot.restore / factory.reset 等都从这里来）
+for a in re.findall(r'data-confirm-type="([a-zA-Z][a-zA-Z0-9.]*)"', js):
+    sent.add(a)
+for a in re.findall(r"confirmType === '([a-zA-Z][a-zA-Z0-9.]*)'", js):
+    sent.add(a)
 
 # ---------- B. 前端会处理的事件 ----------
 # 只认「把 payload 直接塞进 state 的」那些 case，即真正的 evt 处理器；
