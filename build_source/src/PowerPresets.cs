@@ -21,6 +21,10 @@ namespace CMP90HXToolbox
     internal static class PowerPresets
     {
         public const int SleepCoreClock = 210;
+        /// <summary>显存最低档。本卡支持的显存频率只有 405 与 9501 两档，
+        /// 不把它压下来，核心降到 210MHz 也还有 80W 左右（实测）。</summary>
+        public const int SleepMemClock = 405;
+        public const int FullMemClock = 9501;
         public const int TurboClockCeiling = 2100;
         public const int AdaptiveWatts = 250;   // 仅用于展示，实际受硬件限制
         /// <summary>满血档的功耗墙。本卡实测物理峰值就在 290~300W，
@@ -65,9 +69,10 @@ namespace CMP90HXToolbox
 
             if (preset == "sleep")
             {
-                // 顺序很重要：先平滑降频（功耗随频率自然下滑），再压 P-State 与功耗墙。
-                // 反过来一步硬切会让功耗瞬间跳到底、再被驱动拉回，视觉上就是闪。
+                // 顺序很重要：先平滑降核心频率，再把显存压到最低档，最后压 P-State 与功耗墙。
+                // 显存不降下来，核心降到 210MHz 也还有 80W 左右（实测 9501MHz 时）。
                 RampClockDown(SleepCoreClock, log);
+                Smi("-lmc " + SleepMemClock + "," + SleepMemClock, log, "显存压到 " + SleepMemClock + "MHz");
                 TryPstate(8, log);
                 TryRelaxPowerLimit(log);
                 ok = true;
@@ -80,15 +85,16 @@ namespace CMP90HXToolbox
                 ok = Smi("-lgc " + SleepCoreClock + "," + TurboClockCeiling, log,
                          "频率区间设为 " + SleepCoreClock + "~" + TurboClockCeiling + "MHz");
                 TryRaisePowerLimit(TurboWatts, log);
-                // 显存也带一点：下限抬到 9000，上限顶到本卡最大值
-                Smi("-lmc 9000,9501", log, "显存频率区间 9000~9501MHz");
+                // 显存锁到出厂满速 9501（默认值；用户手动降过，这里拉回满血）
+                Smi("-lmc 9501,9501", log, "显存频率锁定 9501MHz");
             }
             else
             {
                 preset = "adaptive";
                 TryPstate(0, log);
                 Smi("-rgc", log, "解除核心锁频");
-                // 智能动态是「常态全速」，功耗墙要回到默认，不能沿用静音档的 12W
+                // 恢复出厂显存频率（本卡默认满速就是 9501）
+                Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                 TryRestoreDefaultPowerLimit(log);
                 StartWatchdog(idleSeconds, log);
             }
@@ -309,14 +315,16 @@ namespace CMP90HXToolbox
                 if (shouldThrottle && !_throttled)
                 {
                     LockCore(SleepCoreClock, log);
+                    Smi("-lmc " + SleepMemClock + "," + SleepMemClock, log, "显存压到 " + SleepMemClock + "MHz");
                     TryPstate(8, log);
                     lock (_gate) { _throttled = true; _lastSwitch = DateTime.Now.ToString("HH:mm:ss"); }
-                    if (log != null) log("空闲已压到 " + SleepCoreClock + "MHz / P8", false);
+                    if (log != null) log("空闲已压到 " + SleepCoreClock + "MHz / 显存 " + SleepMemClock + "MHz / P8", false);
                 }
                 else if (!shouldThrottle && _throttled)
                 {
                     TryPstate(0, log);
                     Smi("-rgc", log, "解除锁频");
+                    Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                     lock (_gate) { _throttled = false; _lastSwitch = DateTime.Now.ToString("HH:mm:ss"); }
                     if (log != null) log("检测到负载，频率已放开", false);
                 }
