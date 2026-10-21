@@ -434,14 +434,16 @@ namespace CMP90HXToolbox
                     {
                         fs.Write(buf, 0, n);
                         read += n;
-                        if (total > 0 && log != null)
+                        if (total > 0)
                         {
                             int pct = (int)(read * 100 / total);
                             if (pct != lastPct && pct % 5 == 0)
                             {
                                 lastPct = pct;
-                                log("下载 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + " MB）", false);
+                                if (log != null) log("下载 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + " MB）", false);
                             }
+                            // 每 1% 推一次给界面，日志仍只打 5% 一次的摘要
+                            try { if (OnProgress != null) OnProgress(pct, read, total); } catch { }
                         }
                     }
                 }
@@ -449,6 +451,9 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>判断文件是不是能打开的 zip（镜像可能返回 HTML 错误页或半截数据）。</summary>
+        /// <summary>下载进度回调：percent(0-100), 已读字节, 总字节。宿主用它向前端推事件。</summary>
+        public static Action<int, long, long> OnProgress;
+
         public static bool IsValidZip(string path)
         {
             try

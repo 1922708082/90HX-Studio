@@ -771,9 +771,16 @@ namespace CMP90HXToolbox
                             return;
                         }
 
+                        // 下载进度实时推给界面
+                        DlssPack.OnProgress = delegate (int pct, long read, long total)
+                        {
+                            PostToPage("{\"kind\":\"evt\",\"action\":\"dlss.download\",\"payload\":{\"percent\":" +
+                                       pct + ",\"readBytes\":" + read + ",\"totalBytes\":" + total + "}}");
+                        };
                         string mirror = ExtractPayloadString(json, "mirror");
                         LogInfo("开始下载 " + assetName + (string.IsNullOrEmpty(mirror) ? "（自动选源）" : "（源: " + mirror + "）"));
                         bool ok = DlssPack.DownloadToLegacyDir(url, tag, mirror, LogPower);
+                        DlssPack.OnProgress = null;
                         string validation = ok ? NativeCore.ValidateDlssUnlockedPackage(LogPower) : "下载失败";
                         LogInfo("资源包: " + validation);
                         PostToPage(HardwareBridge.DlssStateEvt());

@@ -377,6 +377,23 @@
             state.powerError = null;
             renderPowerPage();
             break;
+          case 'dlss.download': {
+            try {
+              const wrap = document.getElementById('dlssProgressWrap');
+              const bar = document.getElementById('dlssProgressBar');
+              const pctEl = document.getElementById('dlssProgressPct');
+              const lbl = document.getElementById('dlssProgressLabel');
+              if (wrap) wrap.style.display = 'block';
+              const pct = Math.max(0, Math.min(100, Number(payload && payload.percent) || 0));
+              if (bar) bar.style.width = pct + '%';
+              if (pctEl) pctEl.textContent = pct + '%';
+              if (lbl && payload && payload.totalBytes > 0) {
+                lbl.textContent = '下载中 ' + (payload.readBytes / 1048576).toFixed(0) +
+                                  ' / ' + (payload.totalBytes / 1048576).toFixed(0) + ' MB';
+              }
+            } catch (e) { }
+            break;
+          }
           case 'dlss.state':
             state.dlssState = payload;
             state.dlssStatus = 'ready';
@@ -2007,6 +2024,17 @@
           case 'dlss.checkUpdate': {
             const mIdx = parseInt((document.getElementById('dlssMirrorSelect') || {}).value, 10) || 0;
             const mirSel = document.getElementById('dlssMirrorSelect');
+            // 先把进度条归零并显示，宿主推算进事件
+            try {
+              const w = document.getElementById('dlssProgressWrap');
+              const b = document.getElementById('dlssProgressBar');
+              const pe = document.getElementById('dlssProgressPct');
+              const lb = document.getElementById('dlssProgressLabel');
+              if (w) w.style.display = 'block';
+              if (b) b.style.width = '0%';
+              if (pe) pe.textContent = '0%';
+              if (lb) lb.textContent = '正在检查资源…';
+            } catch (e) { }
             sendCmd('dlss.checkUpdate', { mirror: mirSel ? mirSel.value : '' }, target);
             break;
           }

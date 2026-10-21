@@ -6063,6 +6063,16 @@
                     <span>检查更新</span>
                   </button>
                 </div>
+                <!-- 资源包下载进度：宿主每 1% 推一次 dlss.download -->
+                <div id="dlssProgressWrap" style="display:none;margin-top:10px;">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-sub);margin-bottom:6px;">
+                    <span id="dlssProgressLabel">准备下载…</span>
+                    <span id="dlssProgressPct">0%</span>
+                  </div>
+                  <div style="height:6px;border-radius:3px;background:var(--divider-line);overflow:hidden;">
+                    <div id="dlssProgressBar" style="height:100%;width:0%;background:var(--accent);transition:width .2s linear;"></div>
+                  </div>
+                </div>
               </div>
               <div class="progress-wrap" id="dlssProgressWrap">
                 <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;">
@@ -7276,6 +7286,23 @@
             state.powerError = null;
             renderPowerPage();
             break;
+          case 'dlss.download': {
+            try {
+              const wrap = document.getElementById('dlssProgressWrap');
+              const bar = document.getElementById('dlssProgressBar');
+              const pctEl = document.getElementById('dlssProgressPct');
+              const lbl = document.getElementById('dlssProgressLabel');
+              if (wrap) wrap.style.display = 'block';
+              const pct = Math.max(0, Math.min(100, Number(payload && payload.percent) || 0));
+              if (bar) bar.style.width = pct + '%';
+              if (pctEl) pctEl.textContent = pct + '%';
+              if (lbl && payload && payload.totalBytes > 0) {
+                lbl.textContent = '下载中 ' + (payload.readBytes / 1048576).toFixed(0) +
+                                  ' / ' + (payload.totalBytes / 1048576).toFixed(0) + ' MB';
+              }
+            } catch (e) { }
+            break;
+          }
           case 'dlss.state':
             state.dlssState = payload;
             state.dlssStatus = 'ready';
@@ -8906,6 +8933,17 @@
           case 'dlss.checkUpdate': {
             const mIdx = parseInt((document.getElementById('dlssMirrorSelect') || {}).value, 10) || 0;
             const mirSel = document.getElementById('dlssMirrorSelect');
+            // 先把进度条归零并显示，宿主推算进事件
+            try {
+              const w = document.getElementById('dlssProgressWrap');
+              const b = document.getElementById('dlssProgressBar');
+              const pe = document.getElementById('dlssProgressPct');
+              const lb = document.getElementById('dlssProgressLabel');
+              if (w) w.style.display = 'block';
+              if (b) b.style.width = '0%';
+              if (pe) pe.textContent = '0%';
+              if (lb) lb.textContent = '正在检查资源…';
+            } catch (e) { }
             sendCmd('dlss.checkUpdate', { mirror: mirSel ? mirSel.value : '' }, target);
             break;
           }
