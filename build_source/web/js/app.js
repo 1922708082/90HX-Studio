@@ -849,6 +849,12 @@
 
         // 只有 C（U 盘引导）才需要选盘；B 是 UEFI Shell 链启，不涉及 U 盘
         const needsUsb = state.selectedUnlockChannel === 'C';
+        // 40HX 外置工具只在选中 40HX 卡片时出现
+        const toolRow = document.getElementById('unlockToolRow');
+        if (toolRow) {
+          const b40 = document.querySelector('.seg-btn[data-card="40HX"]');
+          toolRow.style.display = (b40 && b40.classList.contains('active')) ? 'flex' : 'none';
+        }
         if (usbRow) {
           usbRow.style.display = needsUsb ? 'flex' : 'none';
         }

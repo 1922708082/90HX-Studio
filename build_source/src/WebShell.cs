@@ -1106,6 +1106,52 @@ namespace CMP90HXToolbox
                     ReplyFail(id, action, "CANCELLED", "已取消选择");
                     return;
                 }
+                else if (action == "unlock.toolkit")
+                {
+                    // 兜底再判一次：主链上的分支若被前面的 return 挡住，
+                    // 这里仍能处理，避免误报「尚未接入新版界面」。
+                    string card2 = ExtractPayloadString(json, "card");
+                    string op2 = ExtractPayloadString(json, "op");
+                    if (string.IsNullOrEmpty(op2)) op2 = "check";
+                    if (string.Equals(card2, "50HX", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ReplyFail(id, action, "NOT_SUPPORTED", "50HX 暂未验证解锁");
+                        return;
+                    }
+                    string rid3 = id;
+                    Task.Run(new Action(delegate
+                    {
+                        try
+                        {
+                            string dir3 = NativeCore.EnsureToolkitExtracted("40hx");
+                            string exe3 = string.Equals(op2, "install", StringComparison.OrdinalIgnoreCase)
+                                ? "40HXInstaller.exe"
+                                : (string.Equals(op2, "uninstall", StringComparison.OrdinalIgnoreCase)
+                                    ? "40HXUninstaller.exe" : "40HXCheck.exe");
+                            string full3 = Path.Combine(dir3, exe3);
+                            if (!File.Exists(full3))
+                            {
+                                LogInfo("工具不存在: " + exe3 + "，目录: " + dir3);
+                                ReplyFail(rid3, action, "FILE_LOCKED", "未找到 " + exe3);
+                                return;
+                            }
+                            LogInfo("启动外置工具: " + exe3 + "（会弹 UAC）");
+                            System.Diagnostics.ProcessStartInfo psi3 =
+                                new System.Diagnostics.ProcessStartInfo(full3);
+                            psi3.WorkingDirectory = dir3;
+                            psi3.UseShellExecute = true;
+                            psi3.Verb = "runas";
+                            System.Diagnostics.Process.Start(psi3);
+                            ReplyOk(rid3, action);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("启动外置工具失败", ex);
+                            ReplyFail(rid3, action, "INTERNAL", ex.Message);
+                        }
+                    }));
+                    return;
+                }
                 else
                 {
                     // 关键：未接入的动作绝不假装成功。

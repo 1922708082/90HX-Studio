@@ -5732,7 +5732,7 @@
               </div>
 
               <!-- CMP 40HX 走外置工具：查询 / 解锁 / 卸载 -->
-              <div id="unlockToolRow" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--divider-line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div id="unlockToolRow" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--divider-line);display:none;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span style="font-size:12.5px;font-weight:700;color:var(--text-sub);">CMP 40HX 外置工具:</span>
                 <button class="btn btn-secondary" data-action="unlock.toolkit" data-card="40HX" data-op="check">查询状态</button>
                 <button class="btn btn-primary" data-action="unlock.toolkit" data-card="40HX" data-op="install">解锁安装</button>
@@ -7746,6 +7746,12 @@
 
         // 只有 C（U 盘引导）才需要选盘；B 是 UEFI Shell 链启，不涉及 U 盘
         const needsUsb = state.selectedUnlockChannel === 'C';
+        // 40HX 外置工具只在选中 40HX 卡片时出现
+        const toolRow = document.getElementById('unlockToolRow');
+        if (toolRow) {
+          const b40 = document.querySelector('.seg-btn[data-card="40HX"]');
+          toolRow.style.display = (b40 && b40.classList.contains('active')) ? 'flex' : 'none';
+        }
         if (usbRow) {
           usbRow.style.display = needsUsb ? 'flex' : 'none';
         }
