@@ -3240,14 +3240,25 @@
       try {
         if (!state.spoofModels && typeof MOCK !== 'undefined' && MOCK && MOCK.spoofModels) {
           state.spoofModels = MOCK.spoofModels;
-          renderSpoofPage();
         }
+        // 注意：下拉框由 renderSpoofModelsDropdown() 构建，
+        // renderSpoofPage() 只渲染页面其它部分，调错了下拉框就会是空的。
+        if (state.spoofModels) {
+          try { renderSpoofModelsDropdown(); } catch (e2) { }
+        }
+        renderSpoofPage();
         // 诊断：把页面侧看到的真实情况回传宿主，写进日志
         var diagSel = document.getElementById('spoofModelSelect');
         sendCmd('app.diag', {
           tag: 'spoofModels',
           groups: state.spoofModels && state.spoofModels.groups ? state.spoofModels.groups.length : -1,
+          firstGroupModels: (state.spoofModels && state.spoofModels.groups && state.spoofModels.groups[0] && state.spoofModels.groups[0].models)
+            ? state.spoofModels.groups[0].models.length : -1,
+          optgroups: diagSel ? diagSel.querySelectorAll('optgroup').length : -1,
           options: diagSel && diagSel.options ? diagSel.options.length : -1,
+          htmlLen: diagSel ? diagSel.innerHTML.length : -1,
+          htmlHead: diagSel ? diagSel.innerHTML.slice(0, 60) : '',
+          selectTag: diagSel ? diagSel.tagName : 'none',
           hasWait: diagSel ? diagSel.innerHTML.indexOf('等待宿主') >= 0 : null,
           host: hasHost,
           mock: usingMock
