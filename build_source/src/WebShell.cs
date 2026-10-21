@@ -820,6 +820,8 @@ namespace CMP90HXToolbox
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
+                        // 老实现的备份名与实际改写文件对不上，先自己兜一层 .hxbak
+                        Diagnostics.BackupOverlayFiles(LogPower);
                         bool ok = false;
                         try { ok = NativeCore.UnlockNvAppOverlayAsync(LogPower).Result; }
                         catch (Exception ex) { LogCrash("解锁覆盖层失败", ex); }
@@ -836,6 +838,15 @@ namespace CMP90HXToolbox
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
+                        int mine = Diagnostics.RestoreOverlayFiles(LogPower);
+                        if (mine > 0)
+                        {
+                            LogInfo("已从 .hxbak 还原 " + mine + " 个文件");
+                            PostToPage(HardwareBridge.OverlayStateEvt());
+                            ReplyOk(rid, action);
+                            return;
+                        }
+                        LogInfo("没有 .hxbak 备份，走官方备份还原…");
                         bool ok = false;
                         try { ok = NativeCore.RestoreNvAppOverlayAsync(LogPower).Result; }
                         catch (Exception ex) { LogCrash("还原覆盖层失败", ex); }

@@ -176,6 +176,106 @@ namespace CMP90HXToolbox
             return detail.ToString().Trim();
         }
 
+        // ---------- NVIDIA App 覆盖层文件备份 ----------
+
+        private static string[] OverlayDirs()
+        {
+            return new string[] {
+                @"C:\Program Files\NVIDIA Corporation\NVIDIA App\www",
+                @"C:\Program Files\NVIDIA Corporation\NVIDIA app\www",
+                @"C:\Program Files\NVIDIA Corporation\NVIDIA App\osc",
+                @"C:\Program Files\NVIDIA Corporation\NVIDIA app\osc",
+                @"C:\Program Files (x86)\NVIDIA Corporation\NVIDIA App\www",
+                @"C:\Program Files (x86)\NVIDIA Corporation\NVIDIA App\osc",
+                @"D:\Program Files\NVIDIA Corporation\NVIDIA app\www",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                             @"NVIDIA Corporation\NVIDIA App\www")
+            };
+        }
+
+        /// <summary>
+        /// 打补丁前先给每个 main.*.js 存一份 .hxbak。
+        ///
+        /// 老版解锁会自己在补丁流程里建 .bak，但实测它备份的文件名与实际改写的
+        /// 不是同一个（改了 2899f0d8…js，却建了 884630…js.bak），导致还原时
+        /// 找不到对应备份、什么也恢复不了。这里用固定后缀 .hxbak 自己兜一层。
+        /// </summary>
+        public static int BackupOverlayFiles(Action<string, bool> log)
+        {
+            int count = 0;
+            string[] dirs = OverlayDirs();
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                try
+                {
+                    if (!Directory.Exists(dirs[i])) continue;
+                    string[] files = Directory.GetFiles(dirs[i], "main.*.js");
+                    for (int j = 0; j < files.Length; j++)
+                    {
+                        string bak = files[j] + ".hxbak";
+                        if (File.Exists(bak)) continue;      // 已有原始备份就不要覆盖
+                        File.Copy(files[j], bak, false);
+                        count++;
+                        if (log != null) log("已备份 " + Path.GetFileName(files[j]) + " → .hxbak", false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (log != null) log("备份失败: " + ex.Message, true);
+                }
+            }
+            return count;
+        }
+
+        /// <summary>从 .hxbak 还原覆盖层文件；成功一个返回 1。</summary>
+        public static int RestoreOverlayFiles(Action<string, bool> log)
+        {
+            int count = 0;
+            string[] dirs = OverlayDirs();
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                try
+                {
+                    if (!Directory.Exists(dirs[i])) continue;
+                    string[] baks = Directory.GetFiles(dirs[i], "main.*.js.hxbak");
+                    for (int j = 0; j < baks.Length; j++)
+                    {
+                        string orig = baks[j].Substring(0, baks[j].Length - 6); // 去掉 .hxbak
+                        try
+                        {
+                            if (File.Exists(orig)) File.SetAttributes(orig, FileAttributes.Normal);
+                            File.Copy(baks[j], orig, true);
+                            File.Delete(baks[j]);
+                            count++;
+                            if (log != null) log("已还原 " + Path.GetFileName(orig), false);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (log != null) log("还原 " + Path.GetFileName(orig) + " 失败: " + ex.Message, true);
+                        }
+                    }
+                }
+                catch { }
+            }
+            return count;
+        }
+
+        /// <summary>本地是否存在我们自己打的备份（界面用来判断能不能还原）。</summary>
+        public static bool HasOverlayBackup()
+        {
+            string[] dirs = OverlayDirs();
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                try
+                {
+                    if (!Directory.Exists(dirs[i])) continue;
+                    if (Directory.GetFiles(dirs[i], "main.*.js.hxbak").Length > 0) return true;
+                }
+                catch { }
+            }
+            return false;
+        }
+
         // ---------- 快照 ----------
 
         /// <summary>
