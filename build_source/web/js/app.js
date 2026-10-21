@@ -378,18 +378,20 @@
             renderPowerPage();
             break;
           case 'dlss.download': {
+            /* 页面本来就有进度条（dlssProgressWrap/Fill/Percent/Stage），
+               这里只更新它，不再自建一套——之前加了同名 id 导致布局错位。 */
             try {
               const wrap = document.getElementById('dlssProgressWrap');
-              const bar = document.getElementById('dlssProgressBar');
-              const pctEl = document.getElementById('dlssProgressPct');
-              const lbl = document.getElementById('dlssProgressLabel');
-              if (wrap) wrap.style.display = 'block';
+              const fill = document.getElementById('dlssProgressFill');
+              const pctEl = document.getElementById('dlssProgressPercent');
+              const stageEl = document.getElementById('dlssProgressStage');
               const pct = Math.max(0, Math.min(100, Number(payload && payload.percent) || 0));
-              if (bar) bar.style.width = pct + '%';
+              if (wrap) wrap.classList.add('active');
+              if (fill) { fill.classList.remove('indeterminate'); fill.style.width = pct + '%'; }
               if (pctEl) pctEl.textContent = pct + '%';
-              if (lbl && payload && payload.totalBytes > 0) {
-                lbl.textContent = '下载中 ' + (payload.readBytes / 1048576).toFixed(0) +
-                                  ' / ' + (payload.totalBytes / 1048576).toFixed(0) + ' MB';
+              if (stageEl && payload && payload.totalBytes > 0) {
+                stageEl.textContent = '下载资源包 ' + (payload.readBytes / 1048576).toFixed(0) +
+                                      ' / ' + (payload.totalBytes / 1048576).toFixed(0) + ' MB';
               }
             } catch (e) { }
             break;
@@ -2027,13 +2029,13 @@
             // 先把进度条归零并显示，宿主推算进事件
             try {
               const w = document.getElementById('dlssProgressWrap');
-              const b = document.getElementById('dlssProgressBar');
-              const pe = document.getElementById('dlssProgressPct');
-              const lb = document.getElementById('dlssProgressLabel');
-              if (w) w.style.display = 'block';
-              if (b) b.style.width = '0%';
-              if (pe) pe.textContent = '0%';
-              if (lb) lb.textContent = '正在检查资源…';
+              const f = document.getElementById('dlssProgressFill');
+              const pe = document.getElementById('dlssProgressPercent');
+              const st = document.getElementById('dlssProgressStage');
+              if (w) w.classList.add('active');
+              if (f) { f.style.width = '0%'; f.classList.add('indeterminate'); }
+              if (pe) pe.textContent = '进行中';
+              if (st) st.textContent = '检查资源包…';
             } catch (e) { }
             sendCmd('dlss.checkUpdate', { mirror: mirSel ? mirSel.value : '' }, target);
             break;

@@ -416,7 +416,9 @@ namespace CMP90HXToolbox
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.UserAgent = "Mozilla/5.0 HX-Studio";
             req.Timeout = 30000;
-            req.ReadWriteTimeout = 60000;
+            // 15 秒没有任何数据就抛异常：镜像常在传到一半时静默掐断，
+            // 原来的 60 秒表现就是「卡住不动」。
+            req.ReadWriteTimeout = 15000;
             req.AllowAutoRedirect = true;
 
             using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
@@ -447,6 +449,11 @@ namespace CMP90HXToolbox
                         }
                     }
                 }
+
+                // 读到的字节少于 Content-Length = 被中途掐断，必须报错换源，
+                // 否则会把半截文件当作下载成功。
+                if (total > 0 && read < total)
+                    throw new IOException("传输中断（" + read + "/" + total + " 字节）");
             }
         }
 
