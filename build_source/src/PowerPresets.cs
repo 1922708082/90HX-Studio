@@ -18,7 +18,8 @@ namespace CMP90HXToolbox
     /// </summary>
     internal static class PowerPresets
     {
-        public const int SleepWatts = 12;
+        public const int SleepWatts = 0;          // 功耗墙直接压到 0W（本卡 min_limit = 0）
+        public const int SleepFallbackWatts = 12; // 若驱动拒绝 0W 则回退到 12W
         public const int AdaptiveWatts = 250;
         public const int TurboWatts = 320;
         public const int SleepCoreClock = 210;
@@ -48,8 +49,7 @@ namespace CMP90HXToolbox
 
             if (preset == "sleep")
             {
-                ok &= SetPowerLimit(SleepWatts, log);
-                ok &= LockCore(SleepCoreClock, log);
+                ApplySleepLimit(log);
                 TryPstate(8, log);
             }
             else if (preset == "turbo")
@@ -104,6 +104,18 @@ namespace CMP90HXToolbox
         }
 
         // ---------- 内部 ----------
+
+        private static void ApplySleepLimit(Action<string, bool> log)
+        {
+            // 先试 0W：本卡 Min Power Limit = 0，理论上允许。
+            // 驱动若拒绝（部分卡会报 out of range），自动回退 12W。
+            if (!SetPowerLimit(SleepWatts, log))
+            {
+                if (log != null) log("驱动拒绝 0W，回退到 " + SleepFallbackWatts + "W", true);
+                SetPowerLimit(SleepFallbackWatts, log);
+            }
+            LockCore(SleepCoreClock, log);
+        }
 
         private static bool SetPowerLimit(int watts, Action<string, bool> log)
         {
@@ -177,8 +189,7 @@ namespace CMP90HXToolbox
 
                 if (shouldThrottle && !_throttled)
                 {
-                    SetPowerLimit(SleepWatts, log);
-                    LockCore(SleepCoreClock, log);
+                    ApplySleepLimit(log);
                     TryPstate(8, log);
                     lock (_gate) { _throttled = true; _lastSwitch = DateTime.Now.ToString("HH:mm:ss"); }
                     if (log != null) log("空闲已压到 " + SleepWatts + "W", false);

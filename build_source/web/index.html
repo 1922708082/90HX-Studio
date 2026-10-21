@@ -5975,7 +5975,7 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.8 6.8 0 0 0 9.7 9.7z"/><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.8 6.8 0 0 0 9.7 9.7z"/></svg>
                   </div>
                   <div class="power-name">极致静音</div>
-                  <div class="power-desc">功耗墙锁到 12W · 核心锁 210MHz</div>
+                  <div class="power-desc">功耗墙压到 0W · 核心锁 210MHz（实际约 8~12W）</div>
                 </button>
 
                 <button class="power-preset-card" id="presetCard-adaptive" data-action="power.setPreset" data-preset="adaptive" title="adaptive">
@@ -10026,15 +10026,27 @@
       (function initHxTooltip() {
         let tipEl = null;
 
+        // 只保留右上角窗口三键的悬停提示，其余页面一律不弹
+        const TIP_ALLOWED = '.window-dots';
+
+        function allowed(el) {
+          return !!(el && el.closest && el.closest(TIP_ALLOWED));
+        }
+
         function convert(el) {
           if (!el || !el.getAttribute) return null;
           const t = el.getAttribute('title');
-          if (t) {
-            el.setAttribute('data-tip', t);
-            el.removeAttribute('title');
-            return t;
+          if (allowed(el)) {
+            if (t) {
+              el.setAttribute('data-tip', t);
+              el.removeAttribute('title');
+            }
+            return el.getAttribute('data-tip');
           }
-          return el.getAttribute('data-tip');
+          // 非白名单：把 title 和 data-tip 一起抹掉，原生框和自绘框都不会出现
+          if (t) el.removeAttribute('title');
+          if (el.hasAttribute('data-tip')) el.removeAttribute('data-tip');
+          return null;
         }
 
         document.querySelectorAll('[title]').forEach(convert);

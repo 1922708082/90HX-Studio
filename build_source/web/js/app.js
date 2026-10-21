@@ -3144,15 +3144,27 @@
       (function initHxTooltip() {
         let tipEl = null;
 
+        // 只保留右上角窗口三键的悬停提示，其余页面一律不弹
+        const TIP_ALLOWED = '.window-dots';
+
+        function allowed(el) {
+          return !!(el && el.closest && el.closest(TIP_ALLOWED));
+        }
+
         function convert(el) {
           if (!el || !el.getAttribute) return null;
           const t = el.getAttribute('title');
-          if (t) {
-            el.setAttribute('data-tip', t);
-            el.removeAttribute('title');
-            return t;
+          if (allowed(el)) {
+            if (t) {
+              el.setAttribute('data-tip', t);
+              el.removeAttribute('title');
+            }
+            return el.getAttribute('data-tip');
           }
-          return el.getAttribute('data-tip');
+          // 非白名单：把 title 和 data-tip 一起抹掉，原生框和自绘框都不会出现
+          if (t) el.removeAttribute('title');
+          if (el.hasAttribute('data-tip')) el.removeAttribute('data-tip');
+          return null;
         }
 
         document.querySelectorAll('[title]').forEach(convert);
