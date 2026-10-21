@@ -23,8 +23,15 @@ namespace CMP90HXToolbox
         public const int SleepCoreClock = 210;
         public const int TurboClockCeiling = 2100;
         public const int AdaptiveWatts = 250;   // 仅用于展示，实际受硬件限制
-        public const int TurboWatts = 320;
-        public const int SleepWatts = 12;       // 展示用：锁 210MHz/P8 后的实测功耗区间
+        /// <summary>满血档的功耗墙。本卡实测物理峰值就在 290~300W，
+        /// 写 320W（128%）虽然能生效，但实际拉不到那么多，按 300W 更贴合。</summary>
+        public const int TurboWatts = 300;
+        /// <summary>
+        /// 展示用功耗。**禁止再出现 0**：
+        /// 本卡 min_limit 报 0 只是占位值，真写进去会把卡永久钳在 0W 预算，
+        /// 之后 -pl 一律返回 not supported，只能重启或走 NVAPI 才能恢复。
+        /// </summary>
+        public const int SleepWatts = 12;
         public const int SleepFallbackWatts = 12;
 
         private static string _current = "none";
@@ -65,7 +72,10 @@ namespace CMP90HXToolbox
             else if (preset == "turbo")
             {
                 TryPstate(0, log);
-                ok = Smi("-lgc 0," + TurboClockCeiling, log, "频率区间放开至 0~" + TurboClockCeiling + "MHz");
+                // 关键：必须用 -rgc 解除锁频。
+                // 之前用 -lgc 0,2100 把最小值写成 0，参数非法，驱动保留了旧的 210 锁，
+                // 结果功耗墙到了 320W 但频率仍卡在 210MHz。
+                ok = Smi("-rgc", log, "解除核心锁频");
                 TryRaisePowerLimit(TurboWatts, log);
             }
             else
@@ -73,7 +83,8 @@ namespace CMP90HXToolbox
                 preset = "adaptive";
                 TryPstate(0, log);
                 Smi("-rgc", log, "解除核心锁频");
-                TryRelaxPowerLimit(log);
+                // 智能动态是「常态全速」，功耗墙要回到默认，不能沿用静音档的 12W
+                TryRestoreDefaultPowerLimit(log);
                 StartWatchdog(idleSeconds, log);
             }
 
@@ -105,27 +116,20 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>
-        /// 探测功耗墙是否可写：拿当前值原样写一次，看驱动是否拒绝。
-        /// 只会执行一次，结果缓存。
+        /// 功耗墙是否可写。
+        /// 只做「读」判断，绝不为了探测而写值——早期版本拿 -pl 250 当探针，
+        /// 再叠加 0W 的写入，会把卡钳死在 0W 预算里且无法恢复。
+        /// 这里改为：第一次真实写入失败后再缓存结果。
         /// </summary>
         public static bool ProbePowerLimit()
         {
             if (_powerLimitWritable.HasValue) return _powerLimitWritable.Value;
-            try
-            {
-                string outp = NativeCore.RunNvidiaSmiCommand("-pl 250");
-                string t = outp == null ? "" : outp;
-                bool writable = t.IndexOf("not supported", StringComparison.OrdinalIgnoreCase) < 0
-                                && t.IndexOf("insufficient", StringComparison.OrdinalIgnoreCase) < 0
-                                && t.IndexOf("failed", StringComparison.OrdinalIgnoreCase) < 0;
-                _powerLimitWritable = writable;
-                return writable;
-            }
-            catch
-            {
-                _powerLimitWritable = false;
-                return false;
-            }
+            return true; // 尚未验证过，交给第一次真实调用去发现
+        }
+
+        private static void MarkPowerLimitUnwritable(string reason)
+        {
+            _powerLimitWritable = false;
         }
 
         private static void TryRelaxPowerLimit(Action<string, bool> log)
@@ -157,7 +161,28 @@ namespace CMP90HXToolbox
 
         private static bool SetPowerLimit(int watts, Action<string, bool> log)
         {
+            // 安全底线：绝不允许写入 8W 以下。本卡 min_limit 报 0 是占位值，
+            // 写 0 会把卡永久钳在 0W 预算（实测 -pl 0 之后 450MHz / 99W 且无法改回）。
+            if (watts < 8)
+            {
+                if (log != null) log("拒绝写入 " + watts + "W：低于安全下限 8W", true);
+                return false;
+            }
             return Smi("-pl " + watts, log, "功耗墙 " + watts + "W");
+        }
+
+        /// <summary>恢复出厂默认功耗墙，用于关闭守护。</summary>
+        private static void TryRestoreDefaultPowerLimit(Action<string, bool> log)
+        {
+            if (!ProbePowerLimit()) return;
+            int def = AdaptiveWatts;
+            try
+            {
+                NativeCore.GpuPowerRange r = NativeCore.QueryGpuPowerRange();
+                if (r != null && r.DefaultLimit >= 8) def = (int)Math.Round(r.DefaultLimit);
+            }
+            catch { }
+            SetPowerLimit(def, log);
         }
 
         private static bool Smi(string args, Action<string, bool> log, string desc)
