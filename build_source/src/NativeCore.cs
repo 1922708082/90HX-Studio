@@ -464,11 +464,26 @@ namespace CMP90HXToolbox
                 string[] zips = Directory.GetFiles(root, "dlss-unlocked-standalone-*.zip");
                 if (zips.Length == 0) return "未下载";
 
-                string zip = zips[0];
-                for (int i = 1; i < zips.Length; i++)
+                string zip = null;
+                // 按时间倒序，挑第一个「能打开」的包。之前只取最新那个，
+                // 一旦最新包是半截下载就报校验失败，而本地还躺着旧的好包。
+                Array.Sort(zips, delegate (string a, string b)
                 {
-                    if (File.GetLastWriteTimeUtc(zips[i]) > File.GetLastWriteTimeUtc(zip)) zip = zips[i];
+                    return File.GetLastWriteTimeUtc(b).CompareTo(File.GetLastWriteTimeUtc(a));
+                });
+                for (int i = 0; i < zips.Length; i++)
+                {
+                    try
+                    {
+                        using (var probe = File.OpenRead(zips[i]))
+                        using (var za = new ZipArchive(probe, ZipArchiveMode.Read))
+                        {
+                            if (za.Entries.Count > 0) { zip = zips[i]; break; }
+                        }
+                    }
+                    catch { /* 坏包跳过 */ }
                 }
+                if (zip == null) return "本地包均已损坏";
 
                 // 部署到游戏目录时必须存在的三件套
                 string[] need = new string[] { "dxgi.dll", "OptiScaler.ini", "nvngx.dll_dlssnr.dll" };

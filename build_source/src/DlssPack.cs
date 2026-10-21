@@ -344,6 +344,17 @@ namespace CMP90HXToolbox
                     if (log != null) log("所有下载源均失败，最后一个错误: " + lastErr, true);
                     return false;
                 }
+
+                // 镜像常返回 HTML 错误页或半截数据（实测拿到过 3KB 的假 zip）。
+                // 落盘前先验真，不合法就当这次失败。
+                if (!IsValidZip(tmp))
+                {
+                    long bad = 0;
+                    try { bad = new FileInfo(tmp).Length; } catch { }
+                    if (log != null) log("下载到的文件不是有效 zip（" + bad + " 字节），已丢弃", true);
+                    try { File.Delete(tmp); } catch { }
+                    return false;
+                }
                 if (!File.Exists(tmp) || new FileInfo(tmp).Length <= 0) return false;
 
                 if (File.Exists(dest)) File.Delete(dest);
@@ -435,6 +446,23 @@ namespace CMP90HXToolbox
                     }
                 }
             }
+        }
+
+        /// <summary>判断文件是不是能打开的 zip（镜像可能返回 HTML 错误页或半截数据）。</summary>
+        public static bool IsValidZip(string path)
+        {
+            try
+            {
+                if (!File.Exists(path)) return false;
+                if (new FileInfo(path).Length < 1024 * 1024) return false;   // 小于 1MB 必是错的
+                using (FileStream probe = File.OpenRead(path))
+                using (System.IO.Compression.ZipArchive za =
+                       new System.IO.Compression.ZipArchive(probe, System.IO.Compression.ZipArchiveMode.Read))
+                {
+                    return za.Entries.Count > 0;
+                }
+            }
+            catch { return false; }
         }
 
         private static string ExtractJson(string json, string key)

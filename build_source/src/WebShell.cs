@@ -753,6 +753,15 @@ namespace CMP90HXToolbox
 
                         string dir = NativeCore.GetDlssUnlockedDirectory();
                         string zip = Path.Combine(dir, "dlss-unlocked-standalone-" + tag + ".zip");
+                        // 本地有这个文件不等于它完好：实测拿到过 3KB 的假 zip。
+                        // 无效则删掉重新下载，避免一直卡在「已是该版本」。
+                        if (File.Exists(zip) && !DlssPack.IsValidZip(zip))
+                        {
+                            long badLen = 0;
+                            try { badLen = new FileInfo(zip).Length; } catch { }
+                            try { File.Delete(zip); } catch { }
+                            LogInfo("本地包无效（" + badLen + " 字节），已删除并重新下载");
+                        }
                         if (File.Exists(zip))
                         {
                             string v = NativeCore.ValidateDlssUnlockedPackage(LogPower);
