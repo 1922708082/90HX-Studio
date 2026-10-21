@@ -307,7 +307,10 @@ namespace CMP90HXToolbox
                 NativeCore.GpuSensorSnapshot s = NativeCore.QueryGpuSensors();
                 if (s == null) return;
 
-                bool busy = s.GpuUtilPercent >= 15 || s.PowerDraw >= 60;
+                // 判定「忙」只看利用率和明显偏高的功耗。
+                // 原来的 60W 阈值有致命问题：显存还在 9501 时，空闲功耗就有 80W 左右，
+                // 会永远被判成「有负载」，于是永远不下压——形成死循环。
+                bool busy = s.GpuUtilPercent >= 10 || s.PowerDraw >= 150;
                 if (busy) _lastBusy = DateTime.Now;
 
                 bool shouldThrottle = !busy && (DateTime.Now - _lastBusy).TotalSeconds >= _idleSeconds;
