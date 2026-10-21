@@ -3055,6 +3055,20 @@
     .viewport {
       padding: 12px;
     }
+    /* 超宽屏（≥1900px）收敛：否则四张仪表卡会被拉到 600px 宽、下半屏出现大片空白。
+       窗口在常规尺寸（1600 及以下）仍铺满窗口，不改变原有观感。 */
+    @media (min-width: 1900px) {
+      .viewport {
+        justify-content: center;
+        align-items: center;
+      }
+      .viewport > .app-frame {
+        max-width: 1760px;
+        max-height: 960px;
+        margin: auto;
+        flex: 0 1 auto;
+      }
+    }
     .app-frame {
       border-radius: 14px;
       box-shadow: var(--frame-shadow);
