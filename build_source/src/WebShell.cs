@@ -538,6 +538,11 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "app.diag")
+                {
+                    // 页面诊断：把页面侧真实状态原样写进日志，用于定位“界面看不到数据”
+                    LogInfo("[DIAG] " + json);
+                }
                 else if (action == "dialog.browse")
                 {
                     string kind = ExtractPayloadString(json, "kind");

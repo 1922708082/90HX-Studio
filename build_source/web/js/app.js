@@ -3242,6 +3242,16 @@
           state.spoofModels = MOCK.spoofModels;
           renderSpoofPage();
         }
+        // 诊断：把页面侧看到的真实情况回传宿主，写进日志
+        var diagSel = document.getElementById('spoofModelSelect');
+        sendCmd('app.diag', {
+          tag: 'spoofModels',
+          groups: state.spoofModels && state.spoofModels.groups ? state.spoofModels.groups.length : -1,
+          options: diagSel && diagSel.options ? diagSel.options.length : -1,
+          hasWait: diagSel ? diagSel.innerHTML.indexOf('等待宿主') >= 0 : null,
+          host: hasHost,
+          mock: usingMock
+        });
       } catch (e) { }
     })();
   
