@@ -673,16 +673,49 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.checkUpdate")
                 {
-                    LogInfo("检查 DLSS 资源…");
+                    LogInfo("检查 DLSS 5 资源包…");
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        System.Collections.Generic.List<string> report =
-                            DlssPack.CheckAndDownload(LogPower);
-                        for (int i = 0; i < report.Count; i++) LogInfo("  " + report[i]);
+                        string tag = NativeCore.CheckDlssUnlockedLatestTag(LogPower);
+                        if (string.IsNullOrEmpty(tag))
+                        {
+                            ReplyFail(rid, action, "NETWORK", "无法获取最新版本（镜像与直连均失败）");
+                            return;
+                        }
+                        string dir = NativeCore.GetDlssUnlockedDirectory();
+                        string zip = Path.Combine(dir, "dlss-unlocked-standalone-" + tag + ".zip");
+                        if (File.Exists(zip))
+                        {
+                            string v = NativeCore.ValidateDlssUnlockedPackage(LogPower);
+                            LogInfo("资源包已是最新: " + tag + "（" + v + "）");
+                            PostToPage(HardwareBridge.DlssStateEvt());
+                            ReplyDataJson(rid, action, "{\"tag\":" + HardwareBridge.Quote(tag) + ",\"downloaded\":true}");
+                            return;
+                        }
+                        LogInfo("发现新版本 " + tag + "，开始下载…");
+                        bool ok = NativeCore.DownloadDlssUnlockedAsync(tag, null, LogPower).Result;
+                        string validation = ok ? NativeCore.ValidateDlssUnlockedPackage(LogPower) : "下载失败";
+                        LogInfo("资源包状态: " + validation);
                         PostToPage(HardwareBridge.DlssStateEvt());
-                        ReplyDataJson(rid, action, "{\"messages\":" + JsonArray(report) + "}");
+                        if (ok) ReplyDataJson(rid, action, "{\"tag\":" + HardwareBridge.Quote(tag) + ",\"downloaded\":true}");
+                        else ReplyFail(rid, action, "NETWORK", "资源包下载失败");
                     }));
+                    return;
+                }
+                else if (action == "dlss.preflight")
+                {
+                    string gameDir = ExtractPayloadString(json, "gameDir");
+                    string proxyName = ExtractPayloadString(json, "proxyName");
+                    bool reFw = json.IndexOf("\"injectReFramework\":true") >= 0;
+                    NativeCore.DlssPreflightResult r =
+                        NativeCore.PreflightDlssDeploy(gameDir, proxyName, reFw);
+                    int failed = 0;
+                    for (int i = 0; i < r.Items.Count; i++)
+                        if (!r.Items[i].Ok) failed++;
+                    LogInfo("预检: " + (r.Passed ? "通过" : failed + " 项未通过"));
+                    ReplyDataJson(id, action, "{\"passed\":" + (r.Passed ? "true" : "false") +
+                                  ",\"failedCount\":" + failed + "}");
                     return;
                 }
                 else if (action == "dlss.deploy")
@@ -693,14 +726,22 @@ namespace CMP90HXToolbox
                         ReplyFail(id, action, "CHECKSUM_MISMATCH", "请先选择游戏目录");
                         return;
                     }
+                    string proxyName = ExtractPayloadString(json, "proxyName");
+                    bool reFw = json.IndexOf("\"injectReFramework\":true") >= 0;
+                    string opt = ExtractPayloadString(json, "optLevel");
+                    string maxFrames = ExtractPayloadString(json, "maxFrames");
+                    string engine = ExtractPayloadString(json, "engine");
+                    string preset = ExtractPayloadString(json, "preset");
+                    string srMode = ExtractPayloadString(json, "srMode");
                     LogInfo("部署 DLSS → " + gameDir);
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        System.Collections.Generic.List<string> report = DlssPack.Deploy(gameDir, LogPower);
-                        for (int i = 0; i < report.Count; i++) LogInfo("  " + report[i]);
+                        bool ok = NativeCore.InjectDlssG(gameDir, opt, maxFrames, reFw,
+                                                          proxyName, engine, preset, srMode, LogPower);
                         PostToPage(HardwareBridge.DlssStateEvt());
-                        ReplyDataJson(rid, action, "{\"messages\":" + JsonArray(report) + "}");
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "FILE_LOCKED", "部署失败，详见日志");
                     }));
                     return;
                 }

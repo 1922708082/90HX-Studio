@@ -195,41 +195,48 @@ namespace CMP90HXToolbox
             return report;
         }
 
-        /// <summary>生成 dlss.state 的 payload（本地资源实况）。</summary>
+        /// <summary>
+        /// 生成 dlss.state 的 payload。
+        /// 下载与部署已全部复用 NativeCore 的老实现（ShyVortex/dlss-unlocked），
+        /// 这里只负责把「本地包在不在、是否完整」如实报给界面。
+        /// </summary>
         public static string StateJson()
         {
-            StringBuilder sb = new StringBuilder(700);
-            sb.Append("{\"games\":[],\"deployed\":[],\"preflightOk\":");
-            bool anyReady = false;
-            sb.Append("true,\"pack\":[");
+            bool downloaded = false;
+            string tag = "";
+            string validation = "未下载";
+            int fileCount = 0;
+            long totalBytes = 0;
 
             try
             {
-                List<PackFile> files = Files();
-                string dir = DataDir;
-                for (int i = 0; i < files.Count; i++)
+                string dir = NativeCore.GetDlssUnlockedDirectory();
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
                 {
-                    PackFile f = files[i];
-                    long len = 0;
-                    try
+                    string[] zips = Directory.GetFiles(dir, "dlss-unlocked-standalone-*.zip");
+                    if (zips.Length > 0)
                     {
-                        string p = Path.Combine(dir, f.Name);
-                        if (File.Exists(p)) len = new FileInfo(p).Length;
+                        string zip = zips[0];
+                        for (int i = 1; i < zips.Length; i++)
+                            if (File.GetLastWriteTimeUtc(zips[i]) > File.GetLastWriteTimeUtc(zip)) zip = zips[i];
+                        downloaded = true;
+                        totalBytes = new FileInfo(zip).Length;
+                        tag = Path.GetFileName(zip)
+                                .Replace("dlss-unlocked-standalone-", "").Replace(".zip", "");
+                        validation = NativeCore.ValidateDlssUnlockedPackage(null);
                     }
-                    catch { }
-                    if (len > 0) anyReady = true;
-
-                    if (i > 0) sb.Append(',');
-                    sb.Append("{\"name\":\"").Append(f.Name)
-                      .Append("\",\"label\":\"").Append(f.Label)
-                      .Append("\",\"installed\":").Append(len > 0 ? "true" : "false")
-                      .Append(",\"sizeBytes\":").Append(len).Append('}');
                 }
             }
             catch { }
 
-            sb.Append("],\"packReady\":").Append(anyReady ? "true" : "false");
-            sb.Append("}");
+            StringBuilder sb = new StringBuilder(500);
+            sb.Append("{\"games\":[],\"deployed\":[],\"preflightOk\":true,");
+            sb.Append("\"downloaded\":").Append(downloaded ? "true" : "false").Append(',');
+            sb.Append("\"tag\":\"").Append(tag).Append("\",");
+            sb.Append("\"validation\":\"").Append(validation).Append("\",");
+            sb.Append("\"totalBytes\":").Append(totalBytes).Append(',');
+            sb.Append("\"fileCount\":").Append(fileCount).Append(',');
+            sb.Append("\"packReady\":").Append(downloaded ? "true" : "false").Append('}');
             return sb.ToString();
         }
 
