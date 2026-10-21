@@ -80,6 +80,7 @@ $argsList = @(
     "D:\app\build_source\src\VirusOverlay.cs",
     "D:\app\build_source\src\AppSettings.cs",
     "D:\app\build_source\src\SpoofCatalog.cs",
+    "D:\app\build_source\src\Diagnostics.cs",
     "D:\app\build_source\src\NvmlFan.cs",
     "D:\app\build_source\src\PowerPresets.cs",
     "D:\app\build_source\src\HardwareBridge.cs",

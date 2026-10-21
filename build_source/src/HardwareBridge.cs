@@ -104,32 +104,7 @@ namespace CMP90HXToolbox
             outList.Add(sb.ToString());
             sb = new StringBuilder(600);
 
-            // 快照列表：扫描备份目录
-            sb.Append("{\"kind\":\"evt\",\"action\":\"maintenance.snapshots\",\"payload\":{\"items\":[");
-            try
-            {
-                string dir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "CMP90HX_Toolbox", "backup");
-                if (System.IO.Directory.Exists(dir))
-                {
-                    string[] files = System.IO.Directory.GetFiles(dir);
-                    int n = 0;
-                    for (int i = 0; i < files.Length && n < 30; i++)
-                    {
-                        System.IO.FileInfo fi = new System.IO.FileInfo(files[i]);
-                        if (n > 0) sb.Append(',');
-                        sb.Append("{\"id\":").Append(Quote(fi.Name))
-                          .Append(",\"label\":").Append(Quote(fi.Name))
-                          .Append(",\"createdAt\":").Append(Quote(fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")))
-                          .Append(",\"sizeBytes\":").Append(fi.Length)
-                          .Append(",\"kind\":\"auto\",\"restorable\":true}");
-                        n++;
-                    }
-                }
-            }
-            catch { }
-            sb.Append("]}}");
+            // 快照列表改由 SnapshotsEvt() 统一提供（创建/删除后可直接复用）
             outList.Add(sb.ToString());
             sb = new StringBuilder(400);
 
@@ -155,6 +130,43 @@ namespace CMP90HXToolbox
             return "0.0.0";
         }
 
+        /// <summary>系统维护页的快照列表（扫描备份目录，时间倒序）。</summary>
+        public static string SnapshotsEvt()
+        {
+            StringBuilder sb = new StringBuilder(1200);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"maintenance.snapshots\",\"payload\":{\"items\":[");
+            try
+            {
+                string dir = Diagnostics.BackupDir;
+                if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
+                {
+                    System.IO.FileInfo[] files = new System.IO.DirectoryInfo(dir).GetFiles();
+                    System.Array.Sort(files, delegate(System.IO.FileInfo a, System.IO.FileInfo b)
+                    {
+                        return b.LastWriteTime.CompareTo(a.LastWriteTime);
+                    });
+                    int n = 0;
+                    for (int i = 0; i < files.Length && n < 40; i++)
+                    {
+                        System.IO.FileInfo fi = files[i];
+                        bool isSnap = fi.Name.StartsWith("snap_", StringComparison.OrdinalIgnoreCase);
+                        if (n > 0) sb.Append(',');
+                        sb.Append("{\"id\":").Append(Quote(fi.Name));
+                        sb.Append(",\"label\":").Append(Quote(fi.Name));
+                        sb.Append(",\"createdAt\":").Append(Quote(fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")));
+                        sb.Append(",\"sizeBytes\":").Append(fi.Length);
+                        sb.Append(",\"kind\":").Append(Quote(isSnap ? "manual" : "auto"));
+                        // 回滚能力尚未接入，如实标注，避免界面给出不该有的承诺
+                        sb.Append(",\"restorable\":").Append(Bool(false)).Append('}');
+                        n++;
+                    }
+                }
+            }
+            catch { }
+            sb.Append("]}}");
+            return sb.ToString();
+        }
+
         /// <summary>一次性构建全部首屏状态（快照 + 显卡列表 + 三个页面状态）。</summary>
         public static string[] AllInitialEvents()
         {
@@ -166,6 +178,7 @@ namespace CMP90HXToolbox
             try { list.Add(UnlockStateEvt()); } catch { }
             // 型号目录由 C# 单一持有，前端只负责渲染
             try { list.Add(SpoofCatalog.ToJson()); } catch { }
+            try { list.Add(SnapshotsEvt()); } catch { }
             try
             {
                 string[] stubs = StubStates();

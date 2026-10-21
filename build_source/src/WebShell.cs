@@ -538,6 +538,117 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "logs.query")
+                {
+                    int limit = ExtractPayloadNumber(json, "limit");
+                    string level = ExtractPayloadString(json, "level");
+                    System.Collections.Generic.List<string[]> rows = Diagnostics.ReadLogTail(limit, level);
+                    StringBuilder sb = new StringBuilder(8192);
+                    sb.Append("{\"items\":[");
+                    for (int i = 0; i < rows.Count; i++)
+                    {
+                        if (i > 0) sb.Append(',');
+                        sb.Append("{\"at\":").Append(HardwareBridge.Quote(rows[i][0]))
+                          .Append(",\"level\":").Append(HardwareBridge.Quote(rows[i][1]))
+                          .Append(",\"text\":").Append(HardwareBridge.Quote(rows[i][2])).Append('}');
+                    }
+                    sb.Append("]}");
+                    ReplyDataJson(id, action, sb.ToString());
+                    return;
+                }
+                else if (action == "logs.copy")
+                {
+                    string text = Diagnostics.ReadLogText();
+                    if (string.IsNullOrEmpty(text))
+                    {
+                        ReplyFail(id, action, "INTERNAL", "没有可复制的日志内容");
+                        return;
+                    }
+                    string rid = id;
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        try
+                        {
+                            System.Windows.Forms.Clipboard.SetText(text);
+                            LogInfo("日志已复制到剪贴板（" + text.Length + " 字符）");
+                            ReplyOk(rid, action);
+                        }
+                        catch (Exception ex)
+                        {
+                            ReplyFail(rid, action, "INTERNAL", "复制失败：" + ex.Message);
+                        }
+                    }));
+                    return;
+                }
+                else if (action == "logs.export")
+                {
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        string target = ShowSaveDialog("hx-studio-log.txt");
+                        if (string.IsNullOrEmpty(target))
+                        {
+                            ReplyFail(rid, action, "CANCELLED", "已取消导出");
+                            return;
+                        }
+                        string okPath = Diagnostics.ExportLog(target);
+                        if (string.IsNullOrEmpty(okPath))
+                        {
+                            ReplyFail(rid, action, "INTERNAL", "导出失败，请检查目标路径权限");
+                            return;
+                        }
+                        ReplyDataJson(rid, action, "{\"path\":" + HardwareBridge.Quote(okPath) + "}");
+                    }));
+                    return;
+                }
+                else if (action == "logs.clear")
+                {
+                    if (!Diagnostics.ClearLog())
+                    {
+                        ReplyFail(id, action, "INTERNAL", "清空日志失败，文件可能被占用");
+                        return;
+                    }
+                    LogInfo("日志已清空");
+                }
+                else if (action == "snapshot.create")
+                {
+                    string label = ExtractPayloadString(json, "label");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        string sid = Diagnostics.CreateSnapshot(label);
+                        if (string.IsNullOrEmpty(sid))
+                        {
+                            ReplyFail(rid, action, "INTERNAL", "创建快照失败，请检查 ProgramData 写入权限");
+                            return;
+                        }
+                        LogInfo("已创建系统快照: " + sid);
+                        PostToPage(HardwareBridge.SnapshotsEvt());
+                        ReplyDataJson(rid, action, "{\"snapshotId\":" + HardwareBridge.Quote(sid) + "}");
+                    }));
+                    return;
+                }
+                else if (action == "snapshot.delete")
+                {
+                    string snapId = ExtractPayloadString(json, "snapshotId");
+                    if (!Diagnostics.DeleteSnapshot(snapId))
+                    {
+                        ReplyFail(id, action, "FILE_LOCKED", "快照不存在或无法删除");
+                        return;
+                    }
+                    LogInfo("已删除系统快照: " + snapId);
+                    PostToPage(HardwareBridge.SnapshotsEvt());
+                }
+                else if (action == "unlock.scan")
+                {
+                    LogInfo("重新扫描引导与固件状态…");
+                    Task.Run(new Action(delegate
+                    {
+                        PostToPage(HardwareBridge.UnlockStateEvt());
+                        ReplyOk(id, action);
+                    }));
+                    return;
+                }
                 else if (action == "app.diag")
                 {
                     // 页面诊断：把页面侧真实状态原样写进日志，用于定位“界面看不到数据”
@@ -664,6 +775,50 @@ namespace CMP90HXToolbox
             int j = json.IndexOf('"', i);
             if (j < 0) return null;
             return json.Substring(i, j - i);
+        }
+
+        /// <summary>带自定义 data 的应答（data 已是合法 JSON 片段）。</summary>
+        private void ReplyDataJson(string id, string action, string dataJson)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(delegate { ReplyDataJson(id, action, dataJson); }));
+                return;
+            }
+            try
+            {
+                if (_webView == null || _webView.CoreWebView2 == null) return;
+                StringBuilder sb = new StringBuilder(512);
+                sb.Append("{\"kind\":\"res\",\"id\":\"").Append(id == null ? string.Empty : id)
+                  .Append("\",\"action\":\"").Append(action)
+                  .Append("\",\"payload\":{\"ok\":true,\"data\":")
+                  .Append(dataJson).Append("}}");
+                _webView.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogCrash("回复数据消息出错", ex);
+            }
+        }
+
+        private string ShowSaveDialog(string defaultName)
+        {
+            try
+            {
+                using (System.Windows.Forms.SaveFileDialog dlg = new System.Windows.Forms.SaveFileDialog())
+                {
+                    dlg.Title = "导出日志";
+                    dlg.FileName = defaultName;
+                    dlg.Filter = "文本文件 (*.txt)|*.txt|日志文件 (*.log)|*.log|所有文件 (*.*)|*.*";
+                    if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return null;
+                    return dlg.FileName;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogCrash("打开保存对话框失败", ex);
+                return null;
+            }
         }
 
         /// <summary>只在 payload 段里找数字字段。</summary>
