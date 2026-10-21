@@ -1249,6 +1249,22 @@
         const dl = state.dualState;
         if (!dl) return;
 
+        /* 磁盘选择器：由宿主的 dual.state.drives 填充。
+           用户可指定只扫某个盘，默认「全部磁盘」。 */
+        try {
+          const driveSel = document.getElementById('dualScanDrive');
+          if (driveSel && Array.isArray(dl.drives) && dl.drives.length > 0) {
+            const keep = driveSel.value;
+            driveSel.innerHTML = '<option value="">全部磁盘</option>' +
+              dl.drives.map(function (d) {
+                const label = d.label ? ' ' + d.label : '';
+                return '<option value="' + escapeHtml(d.letter) + '">' +
+                  escapeHtml(d.letter + label + ' · ' + d.freeGB + 'GB 可用') + '</option>';
+              }).join('');
+            if (keep) driveSel.value = keep;
+          }
+        } catch (e) { }
+
         // 4-Card Summary
         const icRender = document.getElementById('dualCardIconRender');
         const txRender = document.getElementById('dualCardTextRender');
@@ -1895,7 +1911,12 @@
           case 'power.disable':
           case 'overlay.unlock':
           case 'overlay.cleanCache':
-          case 'dual.scanGames':
+          case 'dual.scanGames': {
+            // 带上用户选择的盘符；空值表示全部磁盘
+            const driveSel = document.getElementById('dualScanDrive');
+            sendCmd('dual.scanGames', { drive: driveSel ? driveSel.value : '' }, target);
+            break;
+          }
           case 'logs.export':
           case 'logs.clear':
           case 'update.check':

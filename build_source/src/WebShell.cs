@@ -641,19 +641,21 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dual.scanGames")
                 {
-                    LogInfo("开始扫描本机游戏目录（Steam / Epic，只读）…");
+                    string drive = ExtractPayloadString(json, "drive");
+                    string scope = string.IsNullOrEmpty(drive) ? "全部磁盘 + Steam/Epic" : drive;
+                    LogInfo("开始扫描游戏目录（" + scope + "，只读）…");
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
                         System.Collections.Generic.List<GameScanner.GameEntry> games = null;
-                        try { games = GameScanner.Scan(); }
+                        try { games = GameScanner.Scan(drive); }
                         catch (Exception ex) { LogCrash("扫描游戏目录失败", ex); }
                         if (games == null) games = new System.Collections.Generic.List<GameScanner.GameEntry>();
 
-                        for (int i = 0; i < games.Count && i < 40; i++)
+                        for (int i = 0; i < games.Count && i < 60; i++)
                             LogInfo("  发现 " + games[i].Source + " 游戏: " + games[i].Name + " → " + games[i].Path);
 
-                        LogInfo("游戏扫描完成，共 " + games.Count + " 个");
+                        LogInfo("游戏扫描完成，共 " + games.Count + " 个（范围: " + scope + "）");
                         PostToPage(HardwareBridge.DualStateEvt());
                         ReplyDataJson(rid, action, "{\"count\":" + games.Count + "}");
                     }));

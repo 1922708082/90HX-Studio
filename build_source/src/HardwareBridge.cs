@@ -89,7 +89,21 @@ namespace CMP90HXToolbox
               .Append(",\"pciId\":").Append(Quote(t.DisplayGpuPciId)).Append("},");
             sb.Append("\"virtual\":{\"present\":").Append(Bool(t.HasVirtualGpu))
               .Append(",\"name\":").Append(Quote(t.VirtualGpuName)).Append("},");
-            sb.Append("\"gpus\":[],\"bindings\":[]");
+            sb.Append("\"gpus\":[],\"bindings\":[],\"drives\":[");
+            try
+            {
+                System.Collections.Generic.List<string[]> drives = GameScanner.ListDrives();
+                for (int i = 0; i < drives.Count; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append("{\"letter\":").Append(Quote(drives[i][0]))
+                      .Append(",\"type\":").Append(Quote(drives[i][1]))
+                      .Append(",\"label\":").Append(Quote(drives[i][2]))
+                      .Append(",\"freeGB\":").Append(drives[i][3]).Append('}');
+                }
+            }
+            catch { }
+            sb.Append(']');
             sb.Append("}}");
             return sb.ToString();
         }
