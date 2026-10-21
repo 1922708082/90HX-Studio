@@ -102,7 +102,7 @@
       }
 
       function valOrUnknown(val, suffix) {
-        if (val === undefined || val === null || val === '') return '未知';
+        if (val === undefined || val === null || val === '') return '—';
         return String(val) + (suffix || '');
       }
 

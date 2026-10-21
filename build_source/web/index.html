@@ -6049,7 +6049,7 @@
             <div class="card">
               <div class="card-title">
                 <span title="dlss.state">运行库</span>
-                <span class="tag" id="dlssVersionBadge">读取中…</span>
+                <span class="tag" id="dlssVersionBadge" title="运行库版本">—</span>
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                 <div style="font-size:11.5px;color:var(--text-sub);font-family:ui-monospace,monospace;" id="dlssRuntimePathText">
@@ -6985,7 +6985,7 @@
       }
 
       function valOrUnknown(val, suffix) {
-        if (val === undefined || val === null || val === '') return '未知';
+        if (val === undefined || val === null || val === '') return '—';
         return String(val) + (suffix || '');
       }
 
