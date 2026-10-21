@@ -799,14 +799,44 @@ namespace CMP90HXToolbox
                     string gameDir = ExtractPayloadString(json, "gameDir");
                     string proxyName = ExtractPayloadString(json, "proxyName");
                     bool reFw = json.IndexOf("\"injectReFramework\":true") >= 0;
-                    NativeCore.DlssPreflightResult r =
-                        NativeCore.PreflightDlssDeploy(gameDir, proxyName, reFw);
-                    int failed = 0;
-                    for (int i = 0; i < r.Items.Count; i++)
-                        if (!r.Items[i].Ok) failed++;
-                    LogInfo("预检: " + (r.Passed ? "通过" : failed + " 项未通过"));
-                    ReplyDataJson(id, action, "{\"passed\":" + (r.Passed ? "true" : "false") +
-                                  ",\"failedCount\":" + failed + "}");
+                    string rid = id;
+
+                    // 必须离开 UI 线程：上次同步执行（含全进程枚举）直接把界面卡死闪退
+                    Task.Run(new Action(delegate
+                    {
+                        try
+                        {
+                            NativeCore.DlssPreflightResult r =
+                                NativeCore.PreflightDlssDeploy(gameDir, proxyName, reFw);
+                            if (r == null || r.Items == null)
+                            {
+                                ReplyFail(rid, action, "INTERNAL", "预检未返回结果");
+                                return;
+                            }
+                            int failed = 0;
+                            StringBuilder sb = new StringBuilder(400);
+                            sb.Append("[");
+                            for (int i = 0; i < r.Items.Count; i++)
+                            {
+                                NativeCore.DlssCheckItem it = r.Items[i];
+                                if (!it.Ok) failed++;
+                                if (i > 0) sb.Append(',');
+                                sb.Append("{\"name\":").Append(HardwareBridge.Quote(it.Name))
+                                  .Append(",\"ok\":").Append(it.Ok ? "true" : "false")
+                                  .Append(",\"blocking\":").Append(it.Blocking ? "true" : "false")
+                                  .Append(",\"detail\":").Append(HardwareBridge.Quote(it.Detail)).Append('}');
+                            }
+                            sb.Append("]");
+                            LogInfo("预检: " + (failingText(failed)) + "（共 " + r.Items.Count + " 项）");
+                            ReplyDataJson(rid, action, "{\"passed\":" + (r.Passed ? "true" : "false") +
+                                          ",\"failedCount\":" + failed + ",\"items\":" + sb.ToString() + "}");
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("预检异常", ex);
+                            ReplyFail(rid, action, "INTERNAL", "预检出错: " + ex.Message);
+                        }
+                    }));
                     return;
                 }
                 else if (action == "dlss.deploy")
@@ -1168,6 +1198,11 @@ namespace CMP90HXToolbox
             }
             sb.Append(']');
             return sb.ToString();
+        }
+
+        private static string failingText(int failed)
+        {
+            return failed == 0 ? "全部通过" : (failed + " 项未通过");
         }
 
         private string ShowSaveDialog(string defaultName)

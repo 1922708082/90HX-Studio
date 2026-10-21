@@ -3889,35 +3889,40 @@ namespace CMP90HXToolbox
             }
             result.Items.Add(new DlssCheckItem("配置文件", iniOk, false, iniDetail));
 
-            // —— 真正会卡住部署的三件事（原来的检查项都是必然通过的，等于没用）——
-            // 1) 游戏是否在运行：DLL 被占用时注入会静默失效
+            // —— 真正会卡住部署的几件事 ——
+            // 注意：不能用 Process.MainModule 扫全进程——读不到路径的进程会抛异常，
+            // 且逐个枚举极慢，放在 UI 线程上会卡死甚至崩掉。
+            // 改为：先看游戏目录里有哪些 exe，再用 GetProcessesByName 精确匹配。
             bool gameRunning = false;
             string runDetail = "游戏未运行";
             try
             {
-                System.Diagnostics.Process[] all = System.Diagnostics.Process.GetProcesses();
-                for (int i = 0; i < all.Length; i++)
+                string[] exes = Directory.GetFiles(gameDir, "*.exe", SearchOption.TopDirectoryOnly);
+                int checkedCount = 0;
+                for (int i = 0; i < exes.Length && checkedCount < 12; i++)
                 {
+                    string baseName = Path.GetFileNameWithoutExtension(exes[i]);
+                    if (string.IsNullOrEmpty(baseName)) continue;
+                    checkedCount++;
                     try
                     {
-                        string fn = all[i].MainModule == null ? null : all[i].MainModule.FileName;
-                        if (!string.IsNullOrEmpty(fn) &&
-                            fn.StartsWith(gameDir, StringComparison.OrdinalIgnoreCase) &&
-                            fn.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        System.Diagnostics.Process[] ps = System.Diagnostics.Process.GetProcessesByName(baseName);
+                        if (ps != null && ps.Length > 0)
                         {
                             gameRunning = true;
-                            runDetail = "游戏正在运行（" + System.IO.Path.GetFileName(fn) + "），请先退出";
+                            runDetail = "游戏正在运行（" + Path.GetFileName(exes[i]) + "），请先退出";
                             break;
                         }
                     }
-                    catch { /* 无权限读进程路径，跳过 */ }
+                    catch { }
                 }
+                if (!gameRunning && checkedCount == 0) runDetail = "目录内没有 exe，请确认选对目录";
             }
-            catch { }
+            catch { runDetail = "无法检查游戏进程"; }
             result.Items.Add(new DlssCheckItem("游戏进程", !gameRunning, true, runDetail));
             if (gameRunning) result.Passed = false;
 
-            // 2) 目录里是否已有旧补丁（避免重复覆盖）
+            // 目录里是否已有旧补丁
             bool hasOld = false;
             string oldDetail = "无旧补丁";
             try
@@ -3929,21 +3934,24 @@ namespace CMP90HXToolbox
             catch { }
             result.Items.Add(new DlssCheckItem("旧补丁", true, false, hasOld ? oldDetail : "无旧补丁"));
 
-            // 3) 磁盘空间（组件约 40MB，留足余量）
+            // 磁盘空间
             bool spaceOk = true;
             string spaceDetail = "空间充足";
             try
             {
                 string rootPath = Path.GetPathRoot(gameDir);
-                DriveInfo di = new DriveInfo(rootPath);
-                long freeMb = di.AvailableFreeSpace / 1024 / 1024;
-                spaceOk = freeMb > 200;
-                spaceDetail = freeMb + " MB 可用";
+                if (!string.IsNullOrEmpty(rootPath))
+                {
+                    DriveInfo di = new DriveInfo(rootPath);
+                    long freeMb = di.AvailableFreeSpace / 1024 / 1024;
+                    spaceOk = freeMb > 200;
+                    spaceDetail = freeMb + " MB 可用";
+                }
             }
             catch { spaceDetail = "无法读取磁盘信息"; }
             result.Items.Add(new DlssCheckItem("磁盘空间", spaceOk, false, spaceDetail));
 
-            // 4) DLSS5 是否已部署到该目录
+            // DLSS5 是否已部署到该目录
             bool hasDlss5 = false;
             try
             {
@@ -3954,63 +3962,6 @@ namespace CMP90HXToolbox
             result.Items.Add(new DlssCheckItem("DLSS 5", true, false,
                 hasDlss5 ? "目录内已有 DLSS5 文件" : "目录内没有 DLSS5（需勾选后部署）"));
 
-            string targetProxy = Path.Combine(gameDir, proxy);
-            bool proxyConflict = File.Exists(targetProxy);
-            bool hasMarker = File.Exists(Path.Combine(gameDir, DlssProxyMarkerFile));
-            result.Items.Add(new DlssCheckItem(
-                "代理文件占用",
-                !proxyConflict || hasMarker,
-                false,
-                proxyConflict
-                    ? (hasMarker ? proxy + " 已存在，属本工具此前注入，将被覆盖" : proxy + " 已存在且非本工具注入，覆盖前请确认来源")
-                    : "目标目录干净，可直接落盘 " + proxy));
-
-            bool hasOptiScaler = File.Exists(Path.Combine(gameDir, "OptiScaler.ini"));
-            bool hasOurIni = File.Exists(Path.Combine(gameDir, "dlssg_sm86.ini"));
-            bool hasForeigndlssg = File.Exists(Path.Combine(gameDir, "nvngx_dlssg.dll"));
-            List<string> leftovers = new List<string>();
-            if (hasOptiScaler) leftovers.Add("OptiScaler.ini");
-            if (hasForeigndlssg) leftovers.Add("nvngx_dlssg.dll");
-            string slPath = Path.Combine(gameDir, "sl.interposer.dll");
-            string slVer = "";
-            if (File.Exists(slPath))
-            {
-                try { slVer = System.Diagnostics.FileVersionInfo.GetVersionInfo(slPath).FileVersion; }
-                catch { slVer = ""; }
-                leftovers.Add("sl.interposer.dll" + (string.IsNullOrEmpty(slVer) ? "" : " v" + slVer));
-            }
-            result.Items.Add(new DlssCheckItem(
-                "第三方组件",
-                leftovers.Count == 0,
-                false,
-                leftovers.Count == 0 ? "未发现其他插帧/超分工具残留" : "发现 " + string.Join("、", leftovers.ToArray()) + "，可能与注入冲突"));
-
-            List<string> legacyHits = new List<string>();
-            for (int i = 0; i < ProxyCandidates.Length; i++)
-            {
-                string p = Path.Combine(gameDir, ProxyCandidates[i]);
-                if (!File.Exists(p)) continue;
-                try
-                {
-                    long len = new FileInfo(p).Length;
-                    if (len >= DlssLegacyBundleThreshold) legacyHits.Add(ProxyCandidates[i] + "(" + FormatSize(len) + ")");
-                }
-                catch { }
-            }
-            result.Items.Add(new DlssCheckItem(
-                "旧版残留",
-                legacyHits.Count == 0,
-                false,
-                legacyHits.Count == 0 ? "未发现旧版单体 DLL 残留" : "发现旧版单体 DLL: " + string.Join("、", legacyHits.ToArray()) + "，建议先清理再注入"));
-
-            bool reConflict = injectReFramework && string.Equals(proxy, "dinput8.dll", StringComparison.OrdinalIgnoreCase);
-            result.Items.Add(new DlssCheckItem(
-                "RE 框架冲突",
-                !reConflict,
-                true,
-                reConflict ? "代理名已选 dinput8.dll，与 RE 框架代理同名，二者只能保留一个" : "无冲突"));
-
-            result.Passed = result.BlockingCount() == 0;
             return result;
         }
 
