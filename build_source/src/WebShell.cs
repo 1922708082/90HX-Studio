@@ -430,20 +430,39 @@ namespace CMP90HXToolbox
                 {
                     string preset = ExtractPayloadString(json, "preset");
                     int secs = ExtractPayloadNumber(json, "idleSeconds");
-                    bool ok = PowerPresets.Apply(preset, secs <= 0 ? 8 : secs, LogPower);
-                    if (!ok) { ReplyFail(id, action, "DRIVER_REJECT", "功耗墙设置失败：" + (PowerPresets.LastError ?? "")); return; }
-                    Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
+                    string rid = id;
+                    // 平滑降频是分步执行的，必须放后台，否则会把界面卡住 1.5 秒
+                    Task.Run(new Action(delegate
+                    {
+                        bool ok = PowerPresets.Apply(preset, secs <= 0 ? 8 : secs, LogPower);
+                        if (ok) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "DRIVER_REJECT", "设置失败：" + (PowerPresets.LastError ?? ""));
+                        PostToPage(HardwareBridge.PowerStateEvt());
+                    }));
+                    return;
                 }
                 else if (action == "power.enable")
                 {
                     int secs = ExtractPayloadNumber(json, "idleSeconds");
-                    PowerPresets.Apply("adaptive", secs <= 0 ? 8 : secs, LogPower);
-                    Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        PowerPresets.Apply("adaptive", secs <= 0 ? 8 : secs, LogPower);
+                        ReplyOk(rid, action);
+                        PostToPage(HardwareBridge.PowerStateEvt());
+                    }));
+                    return;
                 }
                 else if (action == "power.disable")
                 {
-                    PowerPresets.StopAll(LogPower);
-                    Task.Run(new Action(delegate { PostToPage(HardwareBridge.PowerStateEvt()); }));
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        PowerPresets.StopAll(LogPower);
+                        ReplyOk(rid, action);
+                        PostToPage(HardwareBridge.PowerStateEvt());
+                    }));
+                    return;
                 }
                 else if (action == "dialog.browse")
                 {
@@ -489,6 +508,11 @@ namespace CMP90HXToolbox
 
         private void ReplyOk(string id, string action)
         {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(delegate { ReplyOk(id, action); }));
+                return;
+            }
             try
             {
                 if (_webView == null || _webView.CoreWebView2 == null) return;
@@ -508,6 +532,11 @@ namespace CMP90HXToolbox
         /// <summary>失败应答。页面会弹「[错误码] 原因」并把对应页面置为错误态。</summary>
         private void ReplyFail(string id, string action, string code, string message)
         {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(delegate { ReplyFail(id, action, code, message); }));
+                return;
+            }
             try
             {
                 if (_webView == null || _webView.CoreWebView2 == null) return;

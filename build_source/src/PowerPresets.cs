@@ -65,9 +65,12 @@ namespace CMP90HXToolbox
 
             if (preset == "sleep")
             {
-                ok = LockCore(SleepCoreClock, log);
+                // 顺序很重要：先平滑降频（功耗随频率自然下滑），再压 P-State 与功耗墙。
+                // 反过来一步硬切会让功耗瞬间跳到底、再被驱动拉回，视觉上就是闪。
+                RampClockDown(SleepCoreClock, log);
                 TryPstate(8, log);
                 TryRelaxPowerLimit(log);
+                ok = true;
             }
             else if (preset == "turbo")
             {
@@ -77,6 +80,8 @@ namespace CMP90HXToolbox
                 ok = Smi("-lgc " + SleepCoreClock + "," + TurboClockCeiling, log,
                          "频率区间设为 " + SleepCoreClock + "~" + TurboClockCeiling + "MHz");
                 TryRaisePowerLimit(TurboWatts, log);
+                // 显存也带一点：下限抬到 9000，上限顶到本卡最大值
+                Smi("-lmc 9000,9501", log, "显存频率区间 9000~9501MHz");
             }
             else
             {
@@ -172,6 +177,36 @@ namespace CMP90HXToolbox
         private static bool LockCore(int mhz, Action<string, bool> log)
         {
             return Smi("-lgc " + mhz + "," + mhz, log, "核心锁频 " + mhz + "MHz");
+        }
+
+        /// <summary>
+        /// 平滑降频：把当前频率分步压到目标值，而不是一步跳到地板。
+        /// 硬切会让功耗瞬间掉到十几瓦、又被驱动拉回去，看起来就是「闪来闪去」。
+        /// </summary>
+        private static void RampClockDown(int targetMhz, Action<string, bool> log)
+        {
+            int current = targetMhz;
+            try
+            {
+                NativeCore.GpuSensorSnapshot s = NativeCore.QueryGpuSensors();
+                if (s != null && s.GraphicsClockMHz > 0) current = s.GraphicsClockMHz;
+            }
+            catch { }
+
+            if (current <= targetMhz + 50)
+            {
+                Smi("-lgc " + targetMhz + "," + targetMhz, log, "核心锁频 " + targetMhz + "MHz");
+                return;
+            }
+
+            const int steps = 6;
+            for (int i = 1; i <= steps; i++)
+            {
+                int v = current - (current - targetMhz) * i / steps;
+                Smi("-lgc " + v + "," + v, null, null);   // 中间步骤静默，不刷日志
+                try { System.Threading.Thread.Sleep(260); } catch { }
+            }
+            if (log != null) log("核心频率已从 " + current + "MHz 平滑降到 " + targetMhz + "MHz", false);
         }
 
         private static bool SetPowerLimit(int watts, Action<string, bool> log)
