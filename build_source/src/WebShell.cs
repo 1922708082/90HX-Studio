@@ -819,6 +819,8 @@ namespace CMP90HXToolbox
                                 : NativeCore.InstallPcieMode1Async(LogPower).Result;
                         }
                         catch (Exception ex) { LogCrash("安装解锁载荷失败", ex); ok = false; }
+                        // 把结果落到状态文件：开机不读 BCD 也能正确显示「已解锁」
+                        try { NativeCore.MarkPcieUnlocked(ok); } catch { }
 
                         PostToPage(HardwareBridge.UnlockStateEvt());
                         if (ok) ReplyOk(rid, action);
@@ -836,6 +838,8 @@ namespace CMP90HXToolbox
                         bool ok = false;
                         try { ok = NativeCore.CleanAllPcieUnlocks(LogPower); }
                         catch (Exception ex) { LogCrash("回滚失败", ex); }
+                        // 还原成功后清除状态：开机不读 BCD 也能显示「未解锁」
+                        try { NativeCore.MarkPcieUnlocked(false); } catch { }
 
                         PostToPage(HardwareBridge.UnlockStateEvt());
                         if (ok) ReplyOk(rid, action);

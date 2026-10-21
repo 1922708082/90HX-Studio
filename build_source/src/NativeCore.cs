@@ -1529,6 +1529,17 @@ namespace CMP90HXToolbox
             }
         }
 
+        /// <summary>
+        /// 由解锁/还原动作主动写入状态。
+        /// 这样「装了补丁」这件事本身就留下证据，开机不读 BCD 也能显示正确状态，
+        /// 不必等用户点一次「重扫」。
+        /// </summary>
+        public static void MarkPcieUnlocked(bool unlocked)
+        {
+            try { File.WriteAllText(LastPcieStateFile, unlocked ? "1" : "0"); }
+            catch { }
+        }
+
         /// <summary>读取上次记录 PCIe 解锁状态；文件不存在或异常时返回 false。</summary>
         public static bool ReadLastPcieUnlocked()
         {
@@ -7734,9 +7745,10 @@ namespace CMP90HXToolbox
                                     int pwrMizer = Convert.ToInt32(sk.GetValue("PowerMizerLevel") ?? 0);
                                     bool isCompute = (computeThrot == 1) || (pwrMizer == 1);
 
-                                    var pcieCheck = RunCmd("bcdedit", "/enum {bootmgr}");
-                                    bool isPcie = pcieCheck.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0
-                                                  || IsPcieUnlockedNow();
+                                    // 这里原来直接 RunCmd("bcdedit")，绕过了 BcdReadAllowed 开关：
+                                    // 构建显卡列表（含开机 gpu.list）时仍会拉起控制台程序闪黑窗。
+                                    // 统一走 IsPcieUnlockedNow()：命中缓存/上次记录，不触碰 bcdedit。
+                                    bool isPcie = IsPcieUnlockedNow();
 
                                     var item = new InstalledMiningGpu
                                     {

@@ -1982,25 +1982,28 @@
       overflow: hidden;
       cursor: not-allowed;
     }
-    /* 斜纹封条：半透明，压住但不遮住文字 */
+    /* 封条：两条交叉成 X（用户要求「两杠一个叉」），半透明不遮文字 */
+    .nav-item.nav-sealed::before,
     .nav-item.nav-sealed::after {
       content: "";
       position: absolute;
-      left: -10%;
-      right: -10%;
+      left: -12%;
+      right: -12%;
       top: 50%;
-      height: 13px;
-      transform: translateY(-50%) rotate(-6deg);
+      height: 12px;
       background: repeating-linear-gradient(
         45deg,
-        rgba(239, 68, 68, 0.34) 0 6px,
-        rgba(239, 68, 68, 0.16) 6px 12px
+        rgba(239, 68, 68, 0.40) 0 6px,
+        rgba(239, 68, 68, 0.18) 6px 12px
       );
-      border-top: 1px solid rgba(239, 68, 68, 0.45);
-      border-bottom: 1px solid rgba(239, 68, 68, 0.45);
+      border-top: 1px solid rgba(239, 68, 68, 0.50);
+      border-bottom: 1px solid rgba(239, 68, 68, 0.50);
       pointer-events: none;
       z-index: 1;
     }
+    .nav-item.nav-sealed::before { transform: translateY(-50%) rotate(-8deg); }
+    .nav-item.nav-sealed::after  { transform: translateY(-50%) rotate(8deg); }
+
     .nav-item.nav-sealed .seal-ribbon {
       position: absolute;
       right: 6px;
