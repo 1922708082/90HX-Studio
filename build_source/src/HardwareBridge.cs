@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Text;
 
@@ -200,8 +201,35 @@ namespace CMP90HXToolbox
 
             StringBuilder sb = new StringBuilder(400);
             sb.Append("{\"kind\":\"evt\",\"action\":\"overlay.state\",\"payload\":{");
-            sb.Append("\"patched\":").Append(Bool(st.OverlayPatched)).Append(",");
-            sb.Append("\"backupExists\":").Append(Bool(st.OverlayBakExists)).Append(",");
+            // 实时再判一次：SystemDetector 的结果是开机/刷新时的快照，
+            // 解锁或还原之后没重新检测，就会一直显示「未解锁 / 无备份」。
+            bool patched = st.OverlayPatched;
+            bool bakExists = st.OverlayBakExists;
+            try
+            {
+                string www = st.NvAppPath;
+                if (!string.IsNullOrEmpty(www) && Directory.Exists(www))
+                {
+                    string[] mains = Directory.GetFiles(www, "main.*.js");
+                    for (int i = 0; i < mains.Length; i++)
+                    {
+                        if (mains[i].EndsWith(".bak", StringComparison.OrdinalIgnoreCase)) continue;
+                        if (File.Exists(mains[i] + ".bak")) bakExists = true;
+                        try
+                        {
+                            string c = File.ReadAllText(mains[i]);
+                            string marker = "overallState:" + (char)34 + "true" + (char)34;
+                            if (c.IndexOf(marker, StringComparison.Ordinal) >= 0) patched = true;
+                        }
+                        catch { }
+                    }
+                }
+                if (Diagnostics.HasOverlayBackup()) bakExists = true;
+            }
+            catch { }
+
+            sb.Append("\"patched\":").Append(Bool(patched)).Append(",");
+            sb.Append("\"backupExists\":").Append(Bool(bakExists)).Append(",");
             sb.Append("\"nvAppInstalled\":").Append(Bool(st.NvAppInstalled)).Append(",");
             sb.Append("\"nvAppPath\":").Append(Quote(st.NvAppPath));
             sb.Append("}}");
