@@ -8796,14 +8796,20 @@
           case 'device.refresh':
           case 'unlock.scan':
           case 'power.disable':
-          case 'overlay.unlock':
-          case 'overlay.cleanCache':
+            // 这些各自发自己的 action，不能共用一个 sendCmd
+            sendCmd(action, {}, target);
+            break;
           case 'dual.scanGames': {
-            // 带上用户选择的盘符；空值表示全部磁盘
+            // 只有扫描游戏需要带盘符参数
             const driveSel = document.getElementById('dualScanDrive');
             sendCmd('dual.scanGames', { drive: driveSel ? driveSel.value : '' }, target);
             break;
           }
+          case 'overlay.unlock':
+          case 'overlay.cleanCache':
+            // 这两个必须单独走自己的 action，不能落到上面的个案里
+            sendCmd(action, {}, target);
+            break;
           case 'logs.export':
           case 'logs.clear':
           case 'update.check':
