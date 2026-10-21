@@ -424,7 +424,9 @@
               const g = function (id) { return document.getElementById(id); };
               if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
               if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
-              fillDlssMirrorSelect(p.downloadProxy || '');
+              fillDlssMirrorSelect(p.sources || null, p.downloadProxy || '');
+              const ph = document.getElementById('cfgDownloadProxy');
+              if (ph && p.defaultProxy) ph.placeholder = p.defaultProxy;
             } catch (e) { }
             break;
           case 'update.state':
@@ -1076,26 +1078,26 @@
       }
 
       // 5. DLSS PAGE RENDERER
-      /* DLSS 页的下载源下拉。选项与实际下载逻辑一一对应：
-         自动 = 依次尝试全部候选；其余为指定前缀；最后一项为直连。 */
-      const DLSS_MIRRORS = [
-        { label: '自动（依次尝试）', prefix: '' },
-        { label: 'ghproxy.net', prefix: 'https://ghproxy.net/' },
-        { label: 'ghfast.top', prefix: 'https://ghfast.top/' },
-        { label: 'gh-proxy.com', prefix: 'https://gh-proxy.com/' },
-        { label: 'hub.gitmirror.com', prefix: 'https://hub.gitmirror.com/' },
-        { label: '直连 GitHub', prefix: 'DIRECT' }
-      ];
+      /* DLSS 页的下载源下拉。
+         源目录**由后端下发**（settings.state 的 sources），前端不再自带默认值——
+         否则会出现「刚打开显示我写的、后端一推又变回空白」的错位。 */
+      let hxDownloadSources = null;
 
-      function fillDlssMirrorSelect(configuredPrefix) {
+      function fillDlssMirrorSelect(sources, configuredPrefix) {
+        if (Array.isArray(sources)) hxDownloadSources = sources;
         const sel = document.getElementById('dlssMirrorSelect');
         if (!sel) return;
         const keep = sel.value;
-        let html = DLSS_MIRRORS.map(function (m) {
+        const list = hxDownloadSources || [];
+        if (list.length === 0) {
+          sel.innerHTML = '<option value="">等待宿主下发下载源…</option>';
+          return;
+        }
+        let html = list.map(function (m) {
           const mark = (configuredPrefix && m.prefix === configuredPrefix) ? '（已配置）' : '';
-          return '<option value="' + m.prefix + '">' + escapeHtml(m.label + mark) + '</option>';
+          return '<option value="' + escapeHtml(m.prefix) + '">' + escapeHtml(m.label + mark) + '</option>';
         }).join('');
-        if (configuredPrefix) {
+        if (configuredPrefix && !list.some(function (m) { return m.prefix === configuredPrefix; })) {
           html += '<option value="' + escapeHtml(configuredPrefix) + '">自定义：' + escapeHtml(configuredPrefix) + '</option>';
         }
         sel.innerHTML = html;
@@ -3352,7 +3354,7 @@
           renderSpoofPage();
         }
         // DLSS 下载源下拉：开机先填，宿主 settings.state 到达后再校正
-        try { fillDlssMirrorSelect(''); } catch (e) { }
+        try { fillDlssMirrorSelect(null, ''); } catch (e) { }
 
         // 诊断：把页面侧看到的真实情况回传宿主，写进日志
         var diagSel = document.getElementById('spoofModelSelect');

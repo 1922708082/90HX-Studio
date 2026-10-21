@@ -68,15 +68,37 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
-        /// <summary>下载源等用户设置，开机推给界面回显。</summary>
+        /// <summary>
+        /// 下载源目录（由后端唯一持有）。
+        /// 前端不允许自带一份默认列表——否则会出现「刚打开是对的、后端一推又变回空」。
+        /// </summary>
+        private static readonly string[,] DownloadSources = {
+            { "自动（依次尝试）", "" },
+            { "ghproxy.net",       "https://ghproxy.net/" },
+            { "ghfast.top",        "https://ghfast.top/" },
+            { "gh-proxy.com",      "https://gh-proxy.com/" },
+            { "hub.gitmirror.com", "https://hub.gitmirror.com/" },
+            { "直连 GitHub",       "DIRECT" }
+        };
+
+        /// <summary>下载源等用户设置，开机推给界面回显（含可选源目录）。</summary>
         public static string SettingsStateEvt()
         {
             AppSettings.Load();
-            StringBuilder sb = new StringBuilder(320);
+            StringBuilder sb = new StringBuilder(900);
             sb.Append("{\"kind\":\"evt\",\"action\":\"settings.state\",\"payload\":{");
-            sb.Append("\"downloadProxy\":").Append(Quote(AppSettings.DownloadProxy)).Append(',');
-            sb.Append("\"updateManifestUrl\":").Append(Quote(AppSettings.UpdateManifestUrl)).Append(',');
-            sb.Append("\"dlssBaseUrl\":").Append(Quote(AppSettings.DlssBaseUrl));
+            sb.Append("\"downloadProxy\":").Append(Quote(AppSettings.DownloadProxy ?? "")).Append(',');
+            sb.Append("\"updateManifestUrl\":").Append(Quote(AppSettings.UpdateManifestUrl ?? "")).Append(',');
+            sb.Append("\"dlssBaseUrl\":").Append(Quote(AppSettings.DlssBaseUrl ?? "")).Append(',');
+            sb.Append("\"defaultProxy\":").Append(Quote(DownloadSources[1, 1])).Append(',');
+            sb.Append("\"sources\":[");
+            for (int i = 0; i < DownloadSources.GetLength(0); i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append("{\"label\":").Append(Quote(DownloadSources[i, 0]))
+                  .Append(",\"prefix\":").Append(Quote(DownloadSources[i, 1])).Append('}');
+            }
+            sb.Append("]}");
             sb.Append("}}");
             return sb.ToString();
         }
