@@ -794,6 +794,10 @@
           // 选 40HX 时全部藏起来，避免点了变成操作 90HX
           const hdr = document.querySelector('#view-unlock .header-actions');
           if (hdr) hdr.style.display = is40 ? 'none' : '';
+          // 底部「引导写入安全锁 / 立即执行固件解锁」属于 90HX，
+          // 40HX 必须藏起来，否则在这里点解锁会写入 90HX 的载荷
+          const latch = document.getElementById('unlockLatchBox');
+          if (latch) latch.style.display = is40 ? 'none' : '';
         } catch (e) { }
       }
 
