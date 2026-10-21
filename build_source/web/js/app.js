@@ -418,6 +418,14 @@
             if (verEl0 && payload && payload.version) verEl0.textContent = 'v' + payload.version;
             break;
           }
+          case 'settings.state':
+            try {
+              const p = payload || {};
+              const g = function (id) { return document.getElementById(id); };
+              if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
+              if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
+            } catch (e) { }
+            break;
           case 'update.state':
             state.updateState = payload;
             state.updateStatus = 'ready';
@@ -1911,6 +1919,14 @@
               sendCmd(pc.action, pc.payload, pc.triggerBtn);
             }
             break;
+          case 'settings.save': {
+            const g = function (id) { return document.getElementById(id); };
+            sendCmd('settings.save', {
+              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value.trim() : '',
+              updateManifestUrl: g('cfgUpdateUrl') ? g('cfgUpdateUrl').value.trim() : ''
+            }, target);
+            break;
+          }
           case 'device.refresh':
           case 'unlock.scan':
           case 'power.disable':

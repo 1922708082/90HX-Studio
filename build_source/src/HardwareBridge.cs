@@ -68,6 +68,19 @@ namespace CMP90HXToolbox
             return sb.ToString();
         }
 
+        /// <summary>下载源等用户设置，开机推给界面回显。</summary>
+        public static string SettingsStateEvt()
+        {
+            AppSettings.Load();
+            StringBuilder sb = new StringBuilder(320);
+            sb.Append("{\"kind\":\"evt\",\"action\":\"settings.state\",\"payload\":{");
+            sb.Append("\"downloadProxy\":").Append(Quote(AppSettings.DownloadProxy)).Append(',');
+            sb.Append("\"updateManifestUrl\":").Append(Quote(AppSettings.UpdateManifestUrl)).Append(',');
+            sb.Append("\"dlssBaseUrl\":").Append(Quote(AppSettings.DlssBaseUrl));
+            sb.Append("}}");
+            return sb.ToString();
+        }
+
         /// <summary>更新状态。latest 为空表示尚未检查，只用当前版本填充。</summary>
         public static string UpdateStateEvt(string current, string latest, bool hasUpdate)
         {
@@ -239,6 +252,7 @@ namespace CMP90HXToolbox
             // 型号目录由 C# 单一持有，前端只负责渲染
             try { list.Add(SpoofCatalog.ToJson()); } catch { }
             try { list.Add(SnapshotsEvt()); } catch { }
+            try { list.Add(SettingsStateEvt()); } catch { }
             try
             {
                 string[] stubs = StubStates();

@@ -307,8 +307,13 @@ namespace CMP90HXToolbox
                 string tmp = dest + ".part";
                 if (File.Exists(tmp)) File.Delete(tmp);
 
-                // 镜像只是前缀，URL 本身必须是完整的 github 地址
-                string[] candidates = new string[] { "https://ghfast.top/" + url, url };
+                // 镜像只是前缀，URL 本身必须是完整的 github 地址。
+                // 前缀取用户在「下载源设置」里配的全局值；留空则直连。
+                AppSettings.Load();
+                string proxy = AppSettings.DownloadProxy;
+                string[] candidates = string.IsNullOrEmpty(proxy)
+                    ? new string[] { url }
+                    : new string[] { proxy + url, url };
                 Exception lastEx = null;
                 for (int ci = 0; ci < candidates.Length; ci++)
                 {

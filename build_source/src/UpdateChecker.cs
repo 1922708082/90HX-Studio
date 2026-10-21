@@ -33,7 +33,16 @@ namespace CMP90HXToolbox
                 {
                     wc.Headers.Add("User-Agent", "HX-Studio");
                     wc.Encoding = Encoding.UTF8;
-                    string body = wc.DownloadString(manifestUrl);
+                    // 清单地址也走全局加速前缀（地址本身不是 GitHub 时不会被加前缀，
+                    // 由用户填完整地址即可；这里仅在前缀存在且地址是 https://github.com 时生效）
+                    AppSettings.Load();
+                    string target = manifestUrl;
+                    string proxy = AppSettings.DownloadProxy;
+                    if (!string.IsNullOrEmpty(proxy) &&
+                        manifestUrl.StartsWith("https://github.com", StringComparison.OrdinalIgnoreCase))
+                        target = proxy + manifestUrl;
+
+                    string body = wc.DownloadString(target);
                     if (string.IsNullOrEmpty(body)) return null;
                     body = body.Trim();
 

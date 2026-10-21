@@ -26,6 +26,23 @@
 
             <div id="updateStateBanner"></div>
 
+            <!-- 全局下载源：没代理时换镜像前缀，DLSS 与更新共用 -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-title" style="margin-bottom:10px;">下载源设置</div>
+              <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <label style="font-size:12.5px;color:var(--text-sub);width:96px;">加速前缀</label>
+                <input class="text-input" id="cfgDownloadProxy" placeholder="https://ghfast.top/" style="flex:1;min-width:220px;" />
+                <label style="font-size:12.5px;color:var(--text-sub);width:96px;">更新清单地址</label>
+                <input class="text-input" id="cfgUpdateUrl" placeholder="https://muyaa.top/hx/latest.json" style="flex:1;min-width:220px;" />
+                <button class="btn btn-secondary" data-action="settings.save" id="btnSaveDownloadCfg">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="5" y="4" width="14" height="16" rx="2"/><path d="M8 4v5h8V4M8 15h8"/></svg>
+                  <span>保存</span>
+                </button>
+              </div>
+              <div class="page-desc" style="margin-top:8px;">加速前缀只作用于 GitHub 下载，留空则直连；改完立即生效，无需重启。</div>
+            </div>
+
+
             <div class="card">
               <div class="card-title">
                 <span>校验流程</span>

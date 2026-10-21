@@ -639,6 +639,27 @@ namespace CMP90HXToolbox
                     LogInfo("已删除系统快照: " + snapId);
                     PostToPage(HardwareBridge.SnapshotsEvt());
                 }
+                else if (action == "settings.save")
+                {
+                    AppSettings.Load();
+                    string proxy = ExtractPayloadString(json, "downloadProxy");
+                    string upd = ExtractPayloadString(json, "updateManifestUrl");
+                    if (proxy == null) proxy = "";
+                    if (upd == null) upd = "";
+                    proxy = proxy.Trim();
+                    upd = upd.Trim();
+                    if (proxy.Length > 0 && !proxy.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ReplyFail(id, action, "INTERNAL", "加速前缀必须以 http(s):// 开头");
+                        return;
+                    }
+                    AppSettings.DownloadProxy = proxy;
+                    AppSettings.UpdateManifestUrl = upd;
+                    AppSettings.Save();
+                    LogInfo("下载源已保存: 前缀=" + (proxy.Length == 0 ? "直连" : proxy) +
+                            " / 更新地址=" + (upd.Length == 0 ? "未配置" : upd));
+                    PostToPage(HardwareBridge.SettingsStateEvt());
+                }
                 else if (action == "update.check")
                 {
                     string cur = HardwareBridge.CurrentVersion();
@@ -646,10 +667,11 @@ namespace CMP90HXToolbox
                     string url = AppSettings.UpdateManifestUrl;
                     if (string.IsNullOrEmpty(url))
                     {
-                        LogInfo("更新检查: v" + cur + "（未配置更新源）");
+                        LogInfo("更新检查: v" + cur + "，未配置更新地址");
                         ReplyDataJson(id, action, "{\"currentVersion\":" + HardwareBridge.Quote(cur) +
                             ",\"latestVersion\":" + HardwareBridge.Quote(cur) +
-                            ",\"hasUpdate\":false,\"configured\":false}");
+                            ",\"hasUpdate\":false,\"configured\":false" +
+                            ",\"message\":\"未配置更新地址，请在上方「下载源设置」里填写\"}");
                         return;
                     }
                     string rid = id;

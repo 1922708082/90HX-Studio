@@ -25,6 +25,8 @@ namespace CMP90HXToolbox
         public static string DlssBaseUrl = "";
         /// <summary>更新清单地址（留空则只提示当前版本，不联网）。</summary>
         public static string UpdateManifestUrl = "";
+        /// <summary>全局加速前缀（作用于 GitHub 下载），留空则直连。</summary>
+        public static string DownloadProxy = "";
 
         private static string Dir
         {
@@ -80,6 +82,7 @@ namespace CMP90HXToolbox
                         else if (string.Equals(k, "theme", StringComparison.OrdinalIgnoreCase)) Theme = v;
                         else if (string.Equals(k, "dlssBaseUrl", StringComparison.OrdinalIgnoreCase)) DlssBaseUrl = v;
                         else if (string.Equals(k, "updateManifestUrl", StringComparison.OrdinalIgnoreCase)) UpdateManifestUrl = v;
+                        else if (string.Equals(k, "downloadProxy", StringComparison.OrdinalIgnoreCase)) DownloadProxy = v;
                     }
                 }
                 catch { }
@@ -104,6 +107,7 @@ namespace CMP90HXToolbox
                     sb.AppendLine("theme=" + (Theme ?? "light"));
                     sb.AppendLine("dlssBaseUrl=" + (DlssBaseUrl ?? ""));
                     sb.AppendLine("updateManifestUrl=" + (UpdateManifestUrl ?? ""));
+                    sb.AppendLine("downloadProxy=" + (DownloadProxy ?? ""));
                     File.WriteAllText(p, sb.ToString(), new UTF8Encoding(false));
                 }
                 catch { }
