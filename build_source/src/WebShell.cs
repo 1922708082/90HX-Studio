@@ -939,6 +939,15 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "unlock.selectCard")
+                {
+                    // 只是切换界面上的显卡卡片，属于前端选择态；
+                    // 但命令仍要应答，否则会掉进「尚未接入新版界面」兜底。
+                    string cardSel = ExtractPayloadString(json, "card");
+                    LogInfo("选择显卡: " + (string.IsNullOrEmpty(cardSel) ? "90HX" : cardSel));
+                    PostToPage(HardwareBridge.UnlockStateEvt());
+                    return;
+                }
                 else if (action == "unlock.toolkit")
                 {
                     // 40HX 走外置工具：先解压 toolkit，再启动对应 exe
