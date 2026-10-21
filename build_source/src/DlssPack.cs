@@ -296,6 +296,11 @@ namespace CMP90HXToolbox
         /// </summary>
         public static bool DownloadToLegacyDir(string url, string tag, Action<string, bool> log)
         {
+            return DownloadToLegacyDir(url, tag, null, log);
+        }
+
+        public static bool DownloadToLegacyDir(string url, string tag, string preferred, Action<string, bool> log)
+        {
             try
             {
                 string dir = NativeCore.GetDlssUnlockedDirectory();
@@ -310,7 +315,7 @@ namespace CMP90HXToolbox
                 // 候选源：用户自配前缀（若有）→ 内置几个公共加速 → 直连。
                 // 实测不同机器能通的镜像不一样（本机只有 ghproxy.net 与直连通），
                 // 所以必须逐个试并记录每个的失败原因，而不是写死一个。
-                string[] mirrors = BuildCandidates();
+                string[] mirrors = BuildCandidates(preferred);
                 bool anyOk = false;
                 string lastErr = "";
                 for (int ci = 0; ci < mirrors.Length; ci++)
@@ -355,6 +360,18 @@ namespace CMP90HXToolbox
         /// 顺序：用户自配 → 内置公共加速 → 直连（空前缀）。
         /// 内置列表按实测可用性排序，但每台机器网络环境不同，仍逐个尝试。
         /// </summary>
+        private static string[] BuildCandidates(string preferred)
+        {
+            // 用户在 DLSS 页选定了具体源：DIRECT=只直连；其余=该源优先，失败回落直连
+            if (!string.IsNullOrEmpty(preferred))
+            {
+                if (string.Equals(preferred, "DIRECT", StringComparison.OrdinalIgnoreCase))
+                    return new string[] { "" };
+                return new string[] { preferred.TrimEnd('/') + "/", "" };
+            }
+            return BuildCandidates();
+        }
+
         private static string[] BuildCandidates()
         {
             System.Collections.Generic.List<string> list = new System.Collections.Generic.List<string>();

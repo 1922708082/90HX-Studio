@@ -7323,6 +7323,7 @@
               const g = function (id) { return document.getElementById(id); };
               if (g('cfgDownloadProxy')) g('cfgDownloadProxy').value = p.downloadProxy || '';
               if (g('cfgUpdateUrl')) g('cfgUpdateUrl').value = p.updateManifestUrl || '';
+              fillDlssMirrorSelect(p.downloadProxy || '');
             } catch (e) { }
             break;
           case 'update.state':
@@ -7974,6 +7975,32 @@
       }
 
       // 5. DLSS PAGE RENDERER
+      /* DLSS 页的下载源下拉。选项与实际下载逻辑一一对应：
+         自动 = 依次尝试全部候选；其余为指定前缀；最后一项为直连。 */
+      const DLSS_MIRRORS = [
+        { label: '自动（依次尝试）', prefix: '' },
+        { label: 'ghproxy.net', prefix: 'https://ghproxy.net/' },
+        { label: 'ghfast.top', prefix: 'https://ghfast.top/' },
+        { label: 'gh-proxy.com', prefix: 'https://gh-proxy.com/' },
+        { label: 'hub.gitmirror.com', prefix: 'https://hub.gitmirror.com/' },
+        { label: '直连 GitHub', prefix: 'DIRECT' }
+      ];
+
+      function fillDlssMirrorSelect(configuredPrefix) {
+        const sel = document.getElementById('dlssMirrorSelect');
+        if (!sel) return;
+        const keep = sel.value;
+        let html = DLSS_MIRRORS.map(function (m) {
+          const mark = (configuredPrefix && m.prefix === configuredPrefix) ? '（已配置）' : '';
+          return '<option value="' + m.prefix + '">' + escapeHtml(m.label + mark) + '</option>';
+        }).join('');
+        if (configuredPrefix) {
+          html += '<option value="' + escapeHtml(configuredPrefix) + '">自定义：' + escapeHtml(configuredPrefix) + '</option>';
+        }
+        sel.innerHTML = html;
+        if (keep) sel.value = keep;
+      }
+
       function renderDlssPage() {
         renderStateBanner('dlssStateBanner', state.dlssStatus, state.dlssError, 'dlss.checkUpdate');
 
@@ -8896,7 +8923,8 @@
           }
           case 'dlss.checkUpdate': {
             const mIdx = parseInt((document.getElementById('dlssMirrorSelect') || {}).value, 10) || 0;
-            sendCmd('dlss.checkUpdate', { mirrorIndex: mIdx }, target);
+            const mirSel = document.getElementById('dlssMirrorSelect');
+            sendCmd('dlss.checkUpdate', { mirror: mirSel ? mirSel.value : '' }, target);
             break;
           }
           case 'dialog.browse': {
@@ -10222,6 +10250,9 @@
           renderSpoofModelsDropdown();
           renderSpoofPage();
         }
+        // DLSS 下载源下拉：开机先填，宿主 settings.state 到达后再校正
+        try { fillDlssMirrorSelect(''); } catch (e) { }
+
         // 诊断：把页面侧看到的真实情况回传宿主，写进日志
         var diagSel = document.getElementById('spoofModelSelect');
         sendCmd('app.diag', {

@@ -762,8 +762,9 @@ namespace CMP90HXToolbox
                             return;
                         }
 
-                        LogInfo("开始下载 " + assetName + "…");
-                        bool ok = DlssPack.DownloadToLegacyDir(url, tag, LogPower);
+                        string mirror = ExtractPayloadString(json, "mirror");
+                        LogInfo("开始下载 " + assetName + (string.IsNullOrEmpty(mirror) ? "（自动选源）" : "（源: " + mirror + "）"));
+                        bool ok = DlssPack.DownloadToLegacyDir(url, tag, mirror, LogPower);
                         string validation = ok ? NativeCore.ValidateDlssUnlockedPackage(LogPower) : "下载失败";
                         LogInfo("资源包: " + validation);
                         PostToPage(HardwareBridge.DlssStateEvt());
