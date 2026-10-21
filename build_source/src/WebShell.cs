@@ -939,6 +939,61 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "unlock.toolkit")
+                {
+                    // 40HX 走外置工具：先解压 toolkit，再启动对应 exe
+                    string card = ExtractPayloadString(json, "card");
+                    string op = ExtractPayloadString(json, "op");
+                    if (string.IsNullOrEmpty(card)) card = "40HX";
+                    if (string.IsNullOrEmpty(op)) op = "check";
+
+                    string key = string.Equals(card, "50HX", StringComparison.OrdinalIgnoreCase) ? "50hx" : "40hx";
+                    string exeName = string.Equals(op, "install", StringComparison.OrdinalIgnoreCase) ? "40HXInstaller.exe"
+                                   : string.Equals(op, "uninstall", StringComparison.OrdinalIgnoreCase) ? "40HXUninstaller.exe"
+                                   : "40HXCheck.exe";
+
+                    if (key == "50hx")
+                    {
+                        ReplyFail(id, action, "NOT_SUPPORTED", "50HX 暂未验证解锁");
+                        return;
+                    }
+
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        try
+                        {
+                            string dir = NativeCore.EnsureToolkitExtracted("40hx");
+                            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                            {
+                                ReplyFail(rid, action, "INTERNAL", "工具解压失败");
+                                return;
+                            }
+                            string exe = Path.Combine(dir, exeName);
+                            if (!File.Exists(exe))
+                            {
+                                LogInfo("工具不存在: " + exeName + "，目录: " + dir);
+                                ReplyFail(rid, action, "FILE_LOCKED", "未找到 " + exeName);
+                                return;
+                            }
+
+                            LogInfo("启动外置工具: " + exeName + "（需要管理员权限，会弹 UAC）");
+                            System.Diagnostics.ProcessStartInfo psi =
+                                new System.Diagnostics.ProcessStartInfo(exe);
+                            psi.WorkingDirectory = dir;
+                            psi.UseShellExecute = true;
+                            psi.Verb = "runas";     // 安装器要写驱动/引导，必须提权
+                            System.Diagnostics.Process.Start(psi);
+                            ReplyOk(rid, action);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("启动外置工具失败", ex);
+                            ReplyFail(rid, action, "INTERNAL", ex.Message);
+                        }
+                    }));
+                    return;
+                }
                 else if (action == "dual.scanGames")
                 {
                     string drive = ExtractPayloadString(json, "drive");

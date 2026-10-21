@@ -60,6 +60,15 @@
                 <div class="skeleton-line" style="height:64px;"></div>
               </div>
 
+              <!-- CMP 40HX 走外置工具：查询 / 解锁 / 卸载 -->
+              <div id="unlockToolRow" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--divider-line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:12.5px;font-weight:700;color:var(--text-sub);">CMP 40HX 外置工具:</span>
+                <button class="btn btn-secondary" data-action="unlock.toolkit" data-card="40HX" data-op="check">查询状态</button>
+                <button class="btn btn-primary" data-action="unlock.toolkit" data-card="40HX" data-op="install">解锁安装</button>
+                <button class="btn btn-secondary" data-action="unlock.toolkit" data-card="40HX" data-op="uninstall">卸载还原</button>
+                <span style="font-size:11.5px;color:var(--text-sub);">40HX 与 90HX 机制不同，走独立安装器（会弹 UAC）</span>
+              </div>
+
               <div id="unlockUsbRow" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);align-items:center;gap:12px;flex-wrap:wrap;">
                 <label style="font-size:12.5px;font-weight:700;color:var(--text-sub);">目标 U 盘:</label>
                 <select class="select-input" id="unlockUsbSelect" style="max-width:260px;"></select>

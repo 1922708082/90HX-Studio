@@ -1986,6 +1986,9 @@
             showToast(state.safetyCoverOpen ? '机械安全盖已掀开，可执行引导操作' : '机械安全盖已闭合', 'warn');
             break;
           }
+          case 'unlock.toolkit':
+            sendCmd('unlock.toolkit', { card: target.dataset.card || '40HX', op: target.dataset.op || 'check' }, target);
+            break;
           case 'unlock.selectCard':
             if (target.dataset.card === '50HX') {
               showToast('CMP 50HX 暂未验证解锁，仅 90HX / 40HX 可用', 'error');
