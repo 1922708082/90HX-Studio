@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shell;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -87,6 +88,11 @@ namespace CMP90HXToolbox
         {
             try
             {
+                if (_sensorTimer != null) _sensorTimer.Stop();
+            }
+            catch { }
+            try
+            {
                 if (_webView != null) _webView.Dispose();
             }
             catch { }
@@ -151,6 +157,11 @@ namespace CMP90HXToolbox
             core.NavigationStarting += OnNavigationStarting;
             core.NewWindowRequested += OnNewWindowRequested;
             core.ProcessFailed += OnProcessFailed;
+
+            // 握手必须在页面启动后 800ms 内到达一次，否则页面判定「无宿主」转 MOCK 模式，
+            // 之后所有命令都不再发往宿主（窗口三键会因此完全失灵）。
+            core.DOMContentLoaded += OnDomContentLoaded;
+            core.NavigationCompleted += OnNavigationCompleted;
 
             // 7. 资源路由：只放行 hx.local，其余一律 403
             core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
@@ -223,7 +234,12 @@ namespace CMP90HXToolbox
 
         private void OnNavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
         {
-            if (e.Uri != null && e.Uri.StartsWith(HostOrigin, StringComparison.OrdinalIgnoreCase)) return;
+            if (e.Uri != null && e.Uri.StartsWith(HostOrigin, StringComparison.OrdinalIgnoreCase))
+            {
+                // 重新加载时允许重新握手
+                _handshakeSent = false;
+                return;
+            }
 
             e.Cancel = true;
             try
@@ -273,6 +289,93 @@ namespace CMP90HXToolbox
             }
         }
 
+        // ---------- 数据推送 ----------
+
+        private DispatcherTimer _sensorTimer;
+        private bool _handshakeSent;
+
+        /// <summary>
+        /// 握手时机尽量早：DOMContentLoaded 早于页面里的 800ms 看门狗，
+        /// 才能让页面认为「有宿主」，命令才会真正发到 C#。
+        /// </summary>
+        private void OnDomContentLoaded(object sender, CoreWebView2DOMContentLoadedEventArgs e)
+        {
+            PushHandshake();
+        }
+
+        private void OnNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            if (!e.IsSuccess)
+            {
+                LogInfo("页面导航失败: " + e.WebErrorStatus);
+                return;
+            }
+            PushHandshake();
+
+            // SystemDetector.DetectAll 会走 WMI，比较慢，放后台线程，避免卡界面
+            Task.Run(new Action(delegate
+            {
+                string json;
+                try { json = HardwareBridge.DeviceSnapshotEvt(); }
+                catch (Exception ex) { LogCrash("构建设备快照失败", ex); return; }
+                PostToPage(json);
+            }));
+
+            StartSensorTimer();
+        }
+
+        private void PushHandshake()
+        {
+            if (_handshakeSent) return;
+            _handshakeSent = true;
+            PostToPage(HardwareBridge.ThemeEvt("light"));
+            LogInfo("已发送握手事件 theme.apply");
+        }
+
+        private void StartSensorTimer()
+        {
+            if (_sensorTimer == null)
+            {
+                _sensorTimer = new DispatcherTimer();
+                _sensorTimer.Interval = TimeSpan.FromMilliseconds(1500);
+                _sensorTimer.Tick += delegate
+                {
+                    Task.Run(new Action(delegate
+                    {
+                        string json;
+                        try { json = HardwareBridge.SensorsTickEvt(); }
+                        catch { return; }
+                        PostToPage(json);
+                    }));
+                };
+            }
+            _sensorTimer.Start();
+        }
+
+        private void PostToPage(string json)
+        {
+            if (string.IsNullOrEmpty(json)) return;
+            try
+            {
+                if (Dispatcher.CheckAccess()) DoPost(json);
+                else Dispatcher.BeginInvoke(new Action(delegate { DoPost(json); }));
+            }
+            catch (Exception ex)
+            {
+                LogCrash("推送数据失败", ex);
+            }
+        }
+
+        private void DoPost(string json)
+        {
+            try
+            {
+                if (_webView != null && _webView.CoreWebView2 != null)
+                    _webView.CoreWebView2.PostWebMessageAsJson(json);
+            }
+            catch { }
+        }
+
         // ---------- 消息桥接 ----------
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -300,6 +403,17 @@ namespace CMP90HXToolbox
                 else if (action == "window.close")
                 {
                     Close();
+                }
+                else if (action == "device.refresh" || action == "app.init")
+                {
+                    // 页面主动要数据：重新采集并推一次快照
+                    Task.Run(new Action(delegate
+                    {
+                        string snapshotJson;
+                        try { snapshotJson = HardwareBridge.DeviceSnapshotEvt(); }
+                        catch { return; }
+                        PostToPage(snapshotJson);
+                    }));
                 }
 
                 // 必须回 res：页面 sendCmd 时会把触发按钮置 disabled + is-loading，
