@@ -780,6 +780,19 @@
       }
 
       // 2. UNLOCK PAGE RENDERER (3 CARD TYPES x 4 CHANNELS)
+      /* 90HX 与 40HX 是两套机制：选中哪张卡就只显示它那一套 */
+      function applyUnlockCardLayout(card) {
+        try {
+          const is40 = card === '40HX';
+          const grid = document.getElementById('unlockChannelsGrid');
+          const usb = document.getElementById('unlockUsbRow');
+          const tool = document.getElementById('unlockToolRow');
+          if (grid) grid.style.display = is40 ? 'none' : '';
+          if (tool) tool.style.display = is40 ? 'flex' : 'none';
+          if (usb && is40) usb.style.display = 'none';
+        } catch (e) { }
+      }
+
       function renderUnlockPage() {
         renderStateBanner('unlockStateBanner', state.unlockStatus, state.unlockError, 'unlock.scan');
 
@@ -848,6 +861,8 @@
         }
 
         // 只有 C（U 盘引导）才需要选盘；B 是 UEFI Shell 链启，不涉及 U 盘
+        applyUnlockCardLayout(state.selectedUnlockCard ||
+          ((document.querySelector('.seg-btn[data-card].active') || {}).dataset || {}).card || '90HX');
         const needsUsb = state.selectedUnlockChannel === 'C';
         // 40HX 外置工具只在选中 40HX 卡片时出现
         const toolRow = document.getElementById('unlockToolRow');
@@ -2006,8 +2021,7 @@
             document.querySelectorAll('.seg-btn[data-card]').forEach(function (b) {
               b.classList.toggle('active', b === target);
             });
-            const tr0 = document.getElementById('unlockToolRow');
-            if (tr0) tr0.style.display = (card === '40HX') ? 'flex' : 'none';
+            applyUnlockCardLayout(card);
             sendCmd('unlock.selectCard', { card: card }, target);
             break;
           }
