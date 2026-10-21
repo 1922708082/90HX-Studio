@@ -8892,13 +8892,22 @@
           case 'unlock.toolkit':
             sendCmd('unlock.toolkit', { card: target.dataset.card || '40HX', op: target.dataset.op || 'check' }, target);
             break;
-          case 'unlock.selectCard':
-            if (target.dataset.card === '50HX') {
+          case 'unlock.selectCard': {
+            const card = target.dataset.card || '90HX';
+            if (card === '50HX') {
               showToast('CMP 50HX 暂未验证解锁，仅 90HX / 40HX 可用', 'error');
               break;
             }
-            sendCmd('unlock.selectCard', { card: target.dataset.card }, target);
+            // 选择态必须在前端立刻生效，否则点完没有任何视觉反馈
+            state.selectedUnlockCard = card;
+            document.querySelectorAll('.seg-btn[data-card]').forEach(function (b) {
+              b.classList.toggle('active', b === target);
+            });
+            const tr0 = document.getElementById('unlockToolRow');
+            if (tr0) tr0.style.display = (card === '40HX') ? 'flex' : 'none';
+            sendCmd('unlock.selectCard', { card: card }, target);
             break;
+          }
           case 'unlock.selectChannel':
             if (target.classList.contains('disabled')) return;
             state.selectedUnlockChannel = target.dataset.channel || 'A';
