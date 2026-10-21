@@ -103,6 +103,25 @@ namespace CMP90HXToolbox
                 Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                 TryRestoreDefaultPowerLimit(log);
                 StartWatchdog(idleSeconds, log);
+                // 用户要求程序退出后仍能后台调节：装好计划任务，
+                // 但程序在运行期间立刻暂停它，交给进程内守护独占
+                try
+                {
+                    if (!NativeCore.IsPowerSaverTaskInstalled())
+                    {
+                        if (log != null) log("正在注册后台省电计划任务…", false);
+                        NativeCore.InstallPowerSaverTask(log);
+                        if (log != null)
+                            log(NativeCore.IsPowerSaverTaskInstalled()
+                                ? "计划任务注册成功（运行期间暂停，退出后接管）"
+                                : "计划任务注册失败，请查看日志", false);
+                    }
+                    NativeCore.SuspendPowerSaverTask(null);
+                }
+                catch (Exception ex)
+                {
+                    if (log != null) log("注册计划任务异常: " + ex.Message, true);
+                }
             }
 
             lock (_gate)
@@ -111,6 +130,7 @@ namespace CMP90HXToolbox
                 _lastSwitch = DateTime.Now.ToString("HH:mm:ss");
                 _throttled = false;
             }
+            AppSettings.SetPreset(preset, _idleSeconds);
             if (log != null) log("已切换到预设：" + preset, false);
 
             // 应用后回读一次真实频率，写进日志——不再靠猜
@@ -156,13 +176,16 @@ namespace CMP90HXToolbox
             UnlockClocks(log);
             Smi("-rmc", log, "恢复显存调度");
             Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
-            TryRelaxPowerLimit(log);
+            // 关闭守护必须恢复出厂功耗墙。原来这里误用了 TryRelaxPowerLimit（12W），
+            // 结果「关闭守护」= 把功耗墙压到 12W，频率自然被锁在 210MHz。
+            TryRestoreDefaultPowerLimit(log);
             lock (_gate)
             {
                 _current = "none";
                 _throttled = false;
                 _lastSwitch = DateTime.Now.ToString("HH:mm:ss");
             }
+            AppSettings.SetPreset("none", _idleSeconds);
             if (log != null) log("已关闭省电守护，频率与功耗恢复驱动默认", false);
         }
 

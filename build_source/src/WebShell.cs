@@ -300,7 +300,7 @@ namespace CMP90HXToolbox
 
         private DispatcherTimer _sensorTimer;
         private bool _handshakeSent;
-        private string _theme = "light";
+        private string _theme = "light";   // 启动后由 AppSettings 覆盖
 
         /// <summary>
         /// 握手时机尽量早：DOMContentLoaded 早于页面里的 800ms 看门狗，
@@ -340,9 +340,22 @@ namespace CMP90HXToolbox
             PostToPage(HardwareBridge.VersionEvt());
             LogInfo("已发送握手事件 theme.apply / app.version");
 
-            // 单控制器原则：程序接管时先把后台计划任务按下去，
-            // 否则两边同时锁频/解锁会互相覆盖（实测会让卡在负载下也拉不回频率）
-            Task.Run(new Action(delegate { NativeCore.SuspendPowerSaverTask(LogPower); }));
+            // 单控制器原则 + 设置恢复：暂停后台任务，并把上次的档位重新应用上
+            Task.Run(new Action(delegate
+            {
+                NativeCore.SuspendPowerSaverTask(LogPower);
+                try
+                {
+                    AppSettings.Load();
+                    if (!string.IsNullOrEmpty(AppSettings.Preset) && AppSettings.Preset != "none")
+                    {
+                        LogInfo("恢复上次档位: " + AppSettings.Preset + " / " + AppSettings.IdleSeconds + "s");
+                        PowerPresets.Apply(AppSettings.Preset, AppSettings.IdleSeconds, LogPower);
+                        PostToPage(HardwareBridge.PowerStateEvt());
+                    }
+                }
+                catch (Exception ex) { LogCrash("恢复上次档位失败", ex); }
+            }));
         }
 
         private void StartSensorTimer()
@@ -436,6 +449,8 @@ namespace CMP90HXToolbox
                 {
                     string t = ExtractPayloadString(json, "theme");
                     _theme = (t == "dark") ? "dark" : "light";
+                    AppSettings.Load();
+                    AppSettings.SetTheme(_theme);
                 }
                 else if (action == "power.setPreset")
                 {
