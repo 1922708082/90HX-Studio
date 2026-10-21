@@ -311,8 +311,7 @@ namespace CMP90HXToolbox
 
                 string fileName = "dlss-unlocked-standalone-" + tag + ".zip";
                 string dest = Path.Combine(dir, fileName);
-                string tmp = dest + ".part";
-                if (File.Exists(tmp)) File.Delete(tmp);
+                string tmp = dest + ".part";   // 断点续传：保留未完成的 .part
 
                 // 候选源：用户自配前缀（若有）→ 内置几个公共加速 → 直连。
                 // 实测不同机器能通的镜像不一样（本机只有 ghproxy.net 与直连通），
@@ -341,8 +340,11 @@ namespace CMP90HXToolbox
                 }
                 if (!anyOk)
                 {
-                    if (log != null) log("所有下载源均失败，最后一个错误: " + lastErr, true);
-                    return false;
+                    long keep = 0;
+                    try { if (File.Exists(tmp)) keep = new FileInfo(tmp).Length; } catch { }
+                    if (log != null) log("所有下载源均失败，最后一个错误: " + lastErr +
+                                         "（已保留 " + (keep / 1048576) + " MB，下次续传）", true);
+                    return false;   // 保留 .part，下次从断点继续
                 }
 
                 // 镜像常返回 HTML 错误页或半截数据（实测拿到过 3KB 的假 zip）。
@@ -413,6 +415,9 @@ namespace CMP90HXToolbox
         /// <summary>单通道下载到临时文件，流式读取以驱动进度。</summary>
         private static void DownloadOnce(string url, string tmp, Action<string, bool> log)
         {
+            long existing = 0;
+            try { if (File.Exists(tmp)) existing = new FileInfo(tmp).Length; } catch { }
+
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.UserAgent = "Mozilla/5.0 HX-Studio";
             req.Timeout = 30000;
@@ -420,16 +425,40 @@ namespace CMP90HXToolbox
             // 原来的 60 秒表现就是「卡住不动」。
             req.ReadWriteTimeout = 15000;
             req.AllowAutoRedirect = true;
+            if (existing > 0) req.AddRange(existing);      // 断点续传
 
             using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
             {
+                bool partial = resp.StatusCode == HttpStatusCode.PartialContent;
                 long total = resp.ContentLength;
-                long read = 0;
+
+                // 206 时 ContentLength 是剩余部分，总量要从 Content-Range 取
+                if (partial)
+                {
+                    string cr = resp.Headers["Content-Range"];   // bytes 100-999/1000
+                    if (!string.IsNullOrEmpty(cr))
+                    {
+                        int slash = cr.LastIndexOf('/');
+                        long t;
+                        if (slash > 0 && long.TryParse(cr.Substring(slash + 1), out t)) total = t;
+                    }
+                }
+                else if (existing > 0)
+                {
+                    // 服务端不支持断点：只能从头来，丢掉已有进度
+                    existing = 0;
+                    try { File.Delete(tmp); } catch { }
+                }
+
+                long read = existing;
                 int lastPct = -1;
                 byte[] buf = new byte[131072];
 
+                if (existing > 0 && log != null)
+                    log("从断点续传（已有 " + (existing / 1048576) + " MB）", false);
+
                 using (Stream ns = resp.GetResponseStream())
-                using (FileStream fs = new FileStream(tmp, FileMode.Create, FileAccess.Write))
+                using (FileStream fs = new FileStream(tmp, existing > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write))
                 {
                     int n;
                     while ((n = ns.Read(buf, 0, buf.Length)) > 0)
@@ -444,16 +473,14 @@ namespace CMP90HXToolbox
                                 lastPct = pct;
                                 if (log != null) log("下载 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + " MB）", false);
                             }
-                            // 每 1% 推一次给界面，日志仍只打 5% 一次的摘要
                             try { if (OnProgress != null) OnProgress(pct, read, total); } catch { }
                         }
                     }
                 }
 
-                // 读到的字节少于 Content-Length = 被中途掐断，必须报错换源，
-                // 否则会把半截文件当作下载成功。
+                // 读到的字节少于总量 = 被中途掐断，报错换源；.part 保留以便续传
                 if (total > 0 && read < total)
-                    throw new IOException("传输中断（" + read + "/" + total + " 字节）");
+                    throw new IOException("传输中断（" + (read / 1048576) + "/" + (total / 1048576) + " MB）");
             }
         }
 
