@@ -55,6 +55,8 @@ namespace CMP90HXToolbox
         public static bool WatchdogRunning { get { lock (_gate) return _watch != null; } }
         public static bool Throttled { get { lock (_gate) return _throttled; } }
         public static string LastSwitch { get { lock (_gate) return _lastSwitch; } }
+        /// <summary>当前生效的空闲阈值（秒）。界面靠它回显，不能写死。</summary>
+        public static int IdleSeconds { get { lock (_gate) return _idleSeconds; } }
         public static bool PowerLimitWritable { get { return ProbePowerLimit(); } }
 
         /// <summary>应用某一档。</summary>
@@ -97,6 +99,21 @@ namespace CMP90HXToolbox
                 Smi("-lmc " + FullMemClock + "," + FullMemClock, log, "显存恢复 " + FullMemClock + "MHz");
                 TryRestoreDefaultPowerLimit(log);
                 StartWatchdog(idleSeconds, log);
+                // 计划任务只装一次，用于程序退出后仍能接管省电；未注册时补一次
+                try
+                {
+                    if (!NativeCore.IsPowerSaverTaskInstalled())
+                    {
+                        if (log != null) log("检测到省电计划任务未注册，正在注册…", false);
+                        NativeCore.InstallPowerSaverTask(log);
+                        if (log != null)
+                            log(NativeCore.IsPowerSaverTaskInstalled() ? "省电计划任务注册成功" : "省电计划任务注册失败", false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (log != null) log("注册计划任务异常: " + ex.Message, true);
+                }
             }
 
             lock (_gate)

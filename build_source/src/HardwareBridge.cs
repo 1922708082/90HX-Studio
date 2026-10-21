@@ -120,7 +120,7 @@ namespace CMP90HXToolbox
             sb.Append("\"enabled\":").Append(Bool(PowerPresets.Current != "none" || running)).Append(",");
             sb.Append("\"running\":").Append(Bool(running || PowerPresets.WatchdogRunning)).Append(",");
             sb.Append("\"preset\":").Append(Quote(PowerPresets.Current == "none" ? "manual" : PowerPresets.Current)).Append(",");
-            sb.Append("\"idleSeconds\":").Append(PowerPresets.Throttled ? "0" : "8").Append(",");
+            sb.Append("\"idleSeconds\":").Append(PowerPresets.IdleSeconds).Append(",");
             sb.Append("\"currentPstate\":\"").Append(Esc(PowerPresets.Throttled ? "P8" : s.PState)).Append("\",");
             sb.Append("\"powerRange\":{\"min\":").Append(PowerPresets.SleepWatts)
               .Append(",\"default\":").Append(F1(range.DefaultLimit))

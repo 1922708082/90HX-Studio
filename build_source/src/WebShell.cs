@@ -434,7 +434,9 @@ namespace CMP90HXToolbox
                     // 平滑降频是分步执行的，必须放后台，否则会把界面卡住 1.5 秒
                     Task.Run(new Action(delegate
                     {
-                        bool ok = PowerPresets.Apply(preset, secs <= 0 ? 8 : secs, LogPower);
+                        // 未带 idleSeconds 时沿用当前设定，不能重置成 8
+                        int useSecs = secs <= 0 ? PowerPresets.IdleSeconds : secs;
+                        bool ok = PowerPresets.Apply(preset, useSecs, LogPower);
                         if (ok) ReplyOk(rid, action);
                         else ReplyFail(rid, action, "DRIVER_REJECT", "设置失败：" + (PowerPresets.LastError ?? ""));
                         PostToPage(HardwareBridge.PowerStateEvt());
