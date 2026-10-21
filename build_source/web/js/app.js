@@ -582,8 +582,8 @@
             '<span class="gs-pair">高温阈值 <strong>' + escapeHtml(valOrUnknown(s.tempSlowdownC, '°C')) + '</strong></span>' +
             '<span class="gs-pair">保护 <strong>' + escapeHtml(valOrUnknown(s.tempShutdownC, '°C')) + '</strong></span>';
         }
-        const cTemp = document.getElementById('gaugeCardTemp');
-        if (cTemp) cTemp.title = tempSubStr;
+        // 明细已由卡片下方的 .gauge-sub 展示，这里不再给整卡挂 title：
+        // 原生 title 悬停时会弹出系统样式的小方框，和界面风格不符
 
         const fanRatio = Math.max(0, Math.min(1, (s.fanPercent || 0) / 100));
         if (ringFan) ringFan.style.strokeDashoffset = String(60 * (1 - fanRatio));
@@ -595,8 +595,7 @@
             '<span class="gs-pair">核心负载 <strong>' + escapeHtml(valOrUnknown(s.utilPercent, '%')) + '</strong></span>' +
             '<span class="gs-pair">状态 <strong>' + escapeHtml(valOrUnknown(s.pstate)) + '</strong></span>';
         }
-        const cFan = document.getElementById('gaugeCardFan');
-        if (cFan) cFan.title = fanSubStr;
+        // 同上：风扇卡不挂 title，避免系统小方框
 
         const pwrLimit = s.powerLimit || s.powerDefaultLimit || 300;
         const pwrRatio = Math.max(0, Math.min(1, (s.powerDraw || 0) / pwrLimit));
@@ -609,8 +608,7 @@
             '<span class="gs-pair">功耗上限 <strong>' + escapeHtml(valOrUnknown(s.powerLimit, 'W')) + '</strong></span>' +
             '<span class="gs-pair">默认 <strong>' + escapeHtml(valOrUnknown(s.powerDefaultLimit, 'W')) + '</strong></span>';
         }
-        const cPwr = document.getElementById('gaugeCardPower');
-        if (cPwr) cPwr.title = pwrSubStr;
+        // 同上：功耗卡不挂 title
 
         const memTotal = s.memTotalMB || 1;
         const memRatio = Math.max(0, Math.min(1, (s.memUsedMB || 0) / memTotal));
@@ -623,8 +621,7 @@
             '<span class="gs-pair">核心 <strong>' + escapeHtml(valOrUnknown(s.coreClock, 'MHz')) + '</strong></span>' +
             '<span class="gs-pair">显存 <strong>' + escapeHtml(valOrUnknown(s.memClock, 'MHz')) + '</strong></span>';
         }
-        const cMem = document.getElementById('gaugeCardMem');
-        if (cMem) cMem.title = memSubStr;
+        // 同上：显存卡不挂 title
 
         const pVal = document.getElementById('powerReactorValText');
         const pSub = document.getElementById('powerReactorSubText');
@@ -1021,19 +1018,19 @@
           if (animBadgeTxt) animBadgeTxt.textContent = '满血狂暴 · P0 极限超频聚变已激活';
           if (animTitle) animTitle.textContent = '全核高频释放 · 功耗上限解锁至 ' + valOrUnknown(pr.current || pr.max, 'W');
           if (reactorVal) reactorVal.textContent = valOrUnknown(pr.current || 320) + ' W';
-          if (reactorSub) { reactorSub.textContent = '2100 MHz'; reactorSub.title = '2100 MHz · 满血狂暴'; }
+          if (reactorSub) { reactorSub.textContent = '2100 MHz'; }
         } else if (p.preset === 'sleep') {
           if (animDot) animDot.style.background = 'var(--success)';
           if (animBadgeTxt) animBadgeTxt.textContent = '极致静音 · P8 冰封待机已锁定';
           if (animTitle) animTitle.textContent = '超低频静音待机 · 状态 ' + valOrUnknown(p.currentPstate);
           if (reactorVal) reactorVal.textContent = valOrUnknown(pr.current || 36.5) + ' W';
-          if (reactorSub) { reactorSub.textContent = '310 MHz'; reactorSub.title = '310 MHz · 冰封静音'; }
+          if (reactorSub) { reactorSub.textContent = '310 MHz'; }
         } else {
           if (animDot) animDot.style.background = 'var(--accent)';
           if (animBadgeTxt) animBadgeTxt.textContent = '智能动态 · 空闲 ' + valOrUnknown(p.idleSeconds, '秒') + ' 自动切入 P8';
           if (animTitle) animTitle.textContent = '毫秒级自适应变频调度 · 状态 ' + valOrUnknown(p.currentPstate);
           if (reactorVal) reactorVal.textContent = valOrUnknown(pr.current || 148.5) + ' W';
-          if (reactorSub) { reactorSub.textContent = '1710 MHz'; reactorSub.title = '1710 MHz · 智能变频'; }
+          if (reactorSub) { reactorSub.textContent = '1710 MHz'; }
         }
         if (animSub) {
           animSub.textContent = '功耗下限 ' + valOrUnknown(pr.min, 'W') +
@@ -3128,5 +3125,86 @@
             break;
         }
       }
+
+      /* =======================================================================
+         自绘提示框
+         原生 title 属性会弹出系统那个灰黄方框，和界面完全不搭。
+         这里把 title 统一转成 data-tip，用自绘浮层显示；新插入的节点在首次
+         悬停时也会被自动转换，所以模板里不用改任何标记。
+         ======================================================================= */
+      (function initHxTooltip() {
+        let tipEl = null;
+
+        function convert(el) {
+          if (!el || !el.getAttribute) return null;
+          const t = el.getAttribute('title');
+          if (t) {
+            el.setAttribute('data-tip', t);
+            el.removeAttribute('title');
+            return t;
+          }
+          return el.getAttribute('data-tip');
+        }
+
+        document.querySelectorAll('[title]').forEach(convert);
+
+        // 渲染函数会通过 innerHTML 插入带 title 的节点，这里持续兜住，
+        // 保证原生系统小方框一次都不会弹出来
+        try {
+          const sweep = function () {
+            const list = document.querySelectorAll('[title]');
+            for (let i = 0; i < list.length; i++) convert(list[i]);
+          };
+          new MutationObserver(sweep).observe(document.body, { childList: true, subtree: true });
+          setTimeout(sweep, 800);
+          setTimeout(sweep, 2500);
+        } catch (e) { }
+
+        function ensureTip() {
+          if (tipEl) return tipEl;
+          tipEl = document.createElement('div');
+          tipEl.className = 'hx-tip';
+          tipEl.setAttribute('role', 'tooltip');
+          document.body.appendChild(tipEl);
+          return tipEl;
+        }
+
+        function place(x, y) {
+          const r = tipEl.getBoundingClientRect();
+          let left = x + 14;
+          let top = y + 18;
+          if (left + r.width > window.innerWidth - 8) left = window.innerWidth - r.width - 8;
+          if (top + r.height > window.innerHeight - 8) top = y - r.height - 14;
+          tipEl.style.left = Math.max(8, left) + 'px';
+          tipEl.style.top = Math.max(8, top) + 'px';
+        }
+
+        function hideTip() {
+          if (tipEl) tipEl.classList.remove('show');
+        }
+
+        document.addEventListener('mouseover', function (e) {
+          const el = e.target && e.target.closest ? e.target.closest('[data-tip],[title]') : null;
+          if (!el) { hideTip(); return; }
+          const text = convert(el);
+          if (!text) { hideTip(); return; }
+          const box = ensureTip();
+          if (box.textContent !== text) box.textContent = text;
+          box.classList.add('show');
+          place(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mousemove', function (e) {
+          if (tipEl && tipEl.classList.contains('show')) place(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mouseout', function (e) {
+          const el = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+          if (el) hideTip();
+        });
+
+        window.addEventListener('blur', hideTip);
+        document.addEventListener('click', hideTip);
+      })();
     })();
   

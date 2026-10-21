@@ -1940,3 +1940,32 @@
       .two-col-grid, .power-preset-group { grid-template-columns: 1fr; }
       .gpu-3d-stage { display: none; }
     }
+/* =========================================================================
+   自绘提示框（替代原生 title 的系统弹框）
+   ========================================================================= */
+.hx-tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9999;
+  max-width: 300px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  font-weight: 500;
+  color: var(--text-main);
+  background: var(--card-bg);
+  border: 1px solid var(--card-hover-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.30);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 110ms var(--ease-std), transform 110ms var(--ease-std);
+  white-space: normal;
+  word-break: break-word;
+}
+.hx-tip.show {
+  opacity: 1;
+  transform: none;
+}
