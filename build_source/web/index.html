@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 14:59:07" />
+  <meta name="hx-build" content="2026-10-22 15:42:43" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -428,7 +428,7 @@
       right: 0;
       height: 28px;
       background: var(--accent-soft);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
       display: none;
       align-items: center;
       justify-content: center;
@@ -445,7 +445,7 @@
     .titlebar {
       height: 44px;
       background: var(--titlebar-bg);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -527,7 +527,7 @@
     }
     .tool-chip-btn {
       background: var(--card-sub-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-soft);
       color: var(--text-sub);
       padding: 4px 8px;
       border-radius: 8px;
@@ -606,7 +606,7 @@
     .sidebar {
       width: 208px;
       background: var(--sidebar-bg);
-      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-right: 1px solid var(--border-soft);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -801,7 +801,7 @@
       gap: 12px;
       flex-wrap: wrap;
       padding-bottom: 4px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
     }
     .page-title {
       font-size: 14px;
@@ -907,7 +907,7 @@
       padding: 4px 8px;
       border-radius: 999px;
       background: var(--card-sub-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-soft);
       color: var(--text-sub);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       display: inline-flex;
@@ -1871,7 +1871,7 @@
     }
     .channel-card {
       background: var(--card-sub-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-soft);
       border-radius: 12px;
       padding: 12px;
       cursor: pointer;
@@ -1921,7 +1921,7 @@
       height: 44px;
       border-radius: 12px;
       background: var(--card-bg);
-      border: 1.5px solid rgba(255, 255, 255, 0.06);
+      border: 1.5px solid var(--border-soft);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2415,7 +2415,7 @@
     }
     .data-table td {
       padding: 8px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       color: var(--text-main);
       font-size: 12.5px;
@@ -3936,16 +3936,9 @@
       font-weight: 700;
     }
 
-    /* Smooth downward shift of lower cards when hovering over a gauge card */
-    #telemetryGaugesGrid ~ .card {
-      transition:
-        transform 240ms var(--spring-ease),
-        border-color var(--dur-fast) var(--ease-std) !important;
-    }
-    #telemetryGaugesGrid:hover ~ .card,
-    #telemetryGaugesGrid:has(.gauge-card.is-hovered) ~ .card {
-      transform: translateY(6px) !important;
-    }
+    /* 原「hover 仪表卡时下方卡片整体下移 6px」已移除（评审项 1）：
+       仪表卡不可点，hover 不该有任何位移动效，04-pages.css:179 已把
+       #telemetryGaugesGrid ~ .card 的 transform 锁成 none，这里不再反向覆盖。 */
 
     /* 2. UNCONSTRAINED 3D GPU HERO & PANORAMIC 6-PART L-SHAPED CALLOUT EXPLODED VIEW */
     .hero-banner,
@@ -3992,7 +3985,9 @@
       justify-content: center;
       position: relative;
       z-index: 30;
-      cursor: grab;
+      /* 评审项 5：JS 只挂了 mouseenter/mousemove/mouseleave 做「鼠标跟随环视」，
+         没有任何 mousedown/mousemove+按键 的拖拽逻辑，grab 是假承诺 → 改回默认箭头 */
+      cursor: default;
       overflow: visible !important;
       margin: -8px 0;
       transition:
@@ -4000,9 +3995,7 @@
         height 460ms var(--spring-ease),
         margin 460ms var(--spring-ease);
     }
-    .gpu-3d-stage:active {
-      cursor: grabbing;
-    }
+    /* 同理：没有拖拽就没有 grabbing 态，原 :active { cursor: grabbing } 一并移除 */
     .hero-actions-right {
       order: 3;
       display: flex;
@@ -4928,7 +4921,8 @@
       height: 126px !important;
       perspective: 1200px !important;
       margin: -10px 0 !important;
-      cursor: grab !important;
+      /* 评审项 5：同 .gpu-3d-stage（js/app.js:2591-2621 只有 mousemove 跟随，无拖拽） */
+      cursor: default !important;
     }
     .gpu-3d-stage::before {
       width: 340px !important;
@@ -5439,6 +5433,109 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
   background-color: rgba(15, 23, 42, 0.38);
 }
 
+/* =========================================================================
+   评审修正补丁（第 6 类：视觉缺陷）· 只写 CSS，不新增 !important
+   本段位于 05 末尾，层叠顺序最后，靠「同属性、更晚出现 / 更高特异性」覆盖。
+   1) 假可点卡片：不可点的 .card / .gauge-card hover 回到静止基线
+   2) 亮色主题边框令牌 --border-soft（02/03 的 9 处写死白边已改用它）
+   3) 主按钮对比度 2.14:1 → 5.51:1（只压明度，色相不动）
+   4) 骨架屏 1.4s shimmer（prefers-reduced-motion 下停）
+   5) 假 drag 光标（见文件内 .gpu-3d-stage 两处行内注释）
+   6) 长路径 / sha256 文本换行
+   ========================================================================= */
+
+/* --- 1) 假可点卡片 -------------------------------------------------------
+   判定依据：JS 只对 [data-action] 做事件委托（js/app.js:2206），真正可点的
+   卡片一定带 data-action / role="button" / tabindex（日志等级卡、电源预设卡、
+   信道卡）；其余卡片 hover 只有位移和投影，点了什么也不会发生。
+   回到静止基线（基线值均取自原规则，未凭空猜）：
+     transform: none                        ← 02-layout.css:494 translateY(-1px) / 05:47 translateY(-2px)
+     border-color: var(--card-border-color) ← 02-layout.css:493 / 05:48 的 --card-hover-border
+     box-shadow: var(--card-shadow)         ← 05:49 的大投影 + 04-pages.css:135 的亮色 hover 投影
+     cursor: default                        ← 全站默认箭头（05:1492 的 html,body 规则）
+   两套主题都成立：还原值全部走主题变量，深色下等于卡片原本的静止外观，
+   亮色下等于 01-base / 04-pages 在 body.theme-light 里重定义后的同一批变量。 */
+.card:not([data-action]):not([role="button"]):not([tabindex]):hover,
+.gauge-card:not([data-action]):not([role="button"]):not([tabindex]):hover,
+.gauge-card:not([data-action]):not([role="button"]):not([tabindex]).is-hovered {
+  transform: none;
+  border-color: var(--card-border-color);
+  box-shadow: var(--card-shadow);
+  cursor: default;
+}
+
+/* --- 2) 主题边框令牌 -----------------------------------------------------
+   02-layout.css / 03-components.css 里写死的 rgba(255,255,255,.06) 在亮色主题
+   等于「白底画白线」。收口成令牌后由主题切换：
+     深色 = 原来的白 6%（与改前逐像素一致，不产生视觉回归）
+     亮色 = 深色墨 10%，在白/浅灰卡片上清晰可见
+   使用点（原值与新值在深色下完全相同）：
+     02-layout.css   .global-busy-bar / .titlebar / .tool-chip-btn /
+                     .sidebar / .page-header / .tag,.pill
+     03-components.css .channel-card / .node-icon / .data-table td */
+:root {
+  --border-soft: rgba(255, 255, 255, 0.06);
+}
+body.theme-dark {
+  --border-soft: rgba(255, 255, 255, 0.06);
+}
+body.theme-light {
+  --border-soft: rgba(15, 23, 42, 0.10);
+}
+
+/* --- 3) 主按钮对比度 -----------------------------------------------------
+   原渐变最亮端 #38bdf8 + 白字 = 2.14:1，远低于 4.5:1 的正文要求。
+   只压明度、不动色相（仍是 199° 天蓝 → 靛蓝），白字对比度：
+     #036fa4 5.51:1（最亮端，最差处）
+     #025d8a 7.15:1（中段）
+     #4f46e5 6.29:1（末端）
+   hover 的 filter: brightness(1.08) 提亮后最亮端仍有 4.86:1，不破线。
+   深/亮两套都用同一组明度收紧值：深色底上按钮更沉、亮色底上按钮与页面
+   拉开距离，两边的白字都在 4.5:1 以上。 */
+body.theme-dark {
+  --btn-primary-bg: linear-gradient(135deg, #036fa4 0%, #025d8a 55%, #4f46e5 100%);
+}
+body.theme-light {
+  --btn-primary-bg: linear-gradient(135deg, #036fa4 0%, #025d8a 60%, #4f46e5 100%);
+}
+
+/* --- 4) 骨架屏 shimmer ---------------------------------------------------
+   02-layout.css:542 只声明了 background-size:200%，没有动画，灰条完全静止，
+   看起来像渲染失败。这里补 1.4s 匀速位移：200% → -200% 走完一个完整扫光。
+   只动 background-position（合成层属性），不触发重排、不改变尺寸。 */
+.skeleton-line {
+  animation: hx-skeleton-shimmer 1.4s linear infinite;
+}
+@keyframes hx-skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+/* 系统开启「减少动态效果」时停掉，保留静态灰条（仍有加载中的语义） */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line {
+    animation: none;
+  }
+}
+
+/* --- 6) 长路径 / 哈希溢出 ------------------------------------------------
+   这三处是等宽长串（C:\Program Files\... 和 64 位 sha256），中间没有断行点，
+   会把卡片撑破。overflow-wrap:anywhere 允许任意位置断行，word-break:break-all
+   兜住旧内核；min-width:0 让它们作为 flex 子项能真正收缩
+   （flex 项默认 min-width:auto 会被内容顶到自然宽度）。
+   同时恢复可选中复制：01-base.css:10 的全局 user-select:none 会连取证文本一起锁死。 */
+#overlayPathText,
+#dlssRuntimePathText,
+#updateSha256Text {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  white-space: normal;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
+}
+
   </style>
 </head>
 
@@ -5565,6 +5662,13 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
                 </button>
               </li>
               <li>
+                <button class="nav-item" data-action="nav.switch" data-page="dlss" title="DLSS 5 / 帧生成">
+                  <svg class="nav-icon" data-tone="violet" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="6" width="20" height="12" rx="5"/><rect x="2" y="6" width="20" height="12" rx="5"/><path class="svg-line" d="M7 12h4M9 10v4"/><circle class="svg-dot" cx="16.5" cy="12" r="1.6"/></svg>
+                  <span>DLSS 5 / 帧生成</span>
+                  <span class="seal-ribbon">内测</span>
+                </button>
+              </li>
+              <li>
                 <button class="nav-item" data-action="nav.switch" data-page="overlay">
                   <svg class="nav-icon" viewBox="0 0 24 24"><rect class="svg-tone" x="11" y="6" width="8" height="6" rx="1"/><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect class="svg-dot" x="11" y="6" width="8" height="6" rx="1"/></svg>
                   <span>游戏覆盖</span>
@@ -5615,7 +5719,10 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
           <!-- =================================================================
                PAGE 1: device (硬件总览)
                ================================================================= -->
-                    <!-- <!-- PAGE: device · 单独维护，构建时注入 index.html 的 #pageHost -->
+                    <!-- 构建时按 pages/ 顺序注入。
+                         占位符必须放在注释外：页面片段自带注释，嵌在外层注释里会让外层提前闭合，
+                         尾部说明就会变成正文显示在每页底部。 -->
+                    <!-- PAGE: device · 单独维护，构建时注入 index.html 的 #pageHost -->
 <div id="view-device" class="view-panel active">
             <div class="page-header">
               <div>
@@ -6701,16 +6808,8 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
                 <span title="boundApps">已绑定游戏</span>
                 <span class="tag" id="dualBoundCountBadge">0 款</span>
               </div>
-              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                <input type="text" class="text-input" id="dualBindExeInput" placeholder="选择游戏主程序文件" style="flex:1;" />
-                <button class="btn btn-secondary" data-action="dialog.browse" data-browse-kind="file" data-browse-target="dualBindExeInput">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
-                  <span>浏览文件</span>
-                </button>
-                <button class="btn btn-primary" data-action="dual.bind" id="btnDualBind" disabled title="后端尚未实现 dual.bind，暂不可用">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M12 5.5v13M5.5 12h13"/></svg>
-                  <span>添加绑定</span>
-                </button>
+              <div class="state-box" style="margin-bottom:12px;">
+                <div class="state-box-text">双卡绑定功能暂未开放（后端未接入）</div>
               </div>
               <div id="dualBoundListContainer">
                 <div class="skeleton-line"></div>
@@ -6726,7 +6825,7 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
                   <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/></svg>
                   <span>系统维护</span>
                 </div>
-                <div class="page-desc">系统快照备份与出厂重置</div>
+                <div class="page-desc">系统快照备份与管理</div>
               </div>
               <div class="header-actions">
                 <input type="text" class="text-input" id="snapshotLabelInput" placeholder="快照备注（可选）" style="width:184px;" />
@@ -6769,9 +6868,12 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
                   <div class="node-icon active">
                     <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
                   </div>
-                  <div class="node-title">无损回滚</div>
-                  <div class="node-status">一键还原</div>
+                  <div class="node-title">快照管理</div>
+                  <div class="node-status">创建 · 删除</div>
                 </div>
+              </div>
+              <div class="state-box" style="margin-top:12px;">
+                <div class="state-box-text">支持创建与删除快照；回滚功能暂未开放</div>
               </div>
             </div>
 
@@ -6814,17 +6916,11 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
 
             <div class="card" style="border-color:var(--danger-border);">
               <div class="card-title">
-                <span style="color:var(--danger);" title="factory.reset">出厂重置</span>
-                <span class="tag danger">需输入 RESET</span>
+                <span style="color:var(--danger);">出厂重置</span>
+                <span class="tag danger">暂未开放</span>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                <div style="font-size:12.5px;color:var(--text-sub);">
-                  清除伪装、引导与节能配置并恢复默认状态
-                </div>
-                <button class="btn btn-danger" data-action="modal.confirm" data-confirm-type="factory.reset" id="btnFactoryReset" disabled title="后端尚未实现 factory.reset，暂不可用">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4.5M12 17.5h.01"/></svg>
-                  <span>紧急重置</span>
-                </button>
+              <div class="state-box">
+                <div class="state-box-text">出厂重置功能暂未开放（后端未接入），当前可创建快照留档</div>
               </div>
             </div>
           </div>
@@ -7066,7 +7162,7 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
               </div>
             </div>
           </div>
- 构建时按 pages/ 顺序注入 -->
+
 
 
         </section>
@@ -7294,17 +7390,48 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
         }, 3000);
       }
 
+      /* 错误横幅的收起计时器：同一个容器只允许挂一个，否则重试几次会叠出多个定时器 */
+      const bannerHideTimers = {};
+
+      function bannerStateKeys(containerId) {
+        const base = String(containerId).replace(/StateBanner$/, '');
+        return { status: base + 'Status', error: base + 'Error' };
+      }
+
+      /* 关掉横幅 = 连错误态一起清掉，否则下一次页面渲染它又会自己冒出来 */
+      function hideStateBanner(containerId) {
+        const el = document.getElementById(containerId);
+        if (el) el.innerHTML = '';
+        const keys = bannerStateKeys(containerId);
+        /* 只把还是 error 的状态收掉：中途已经恢复成 ready 的不能被这条迟到的定时器改坏 */
+        if (state[keys.status] === 'error') state[keys.status] = 'dismissed';
+        if (state[keys.error]) state[keys.error] = null;
+        if (bannerHideTimers[containerId]) {
+          clearTimeout(bannerHideTimers[containerId]);
+          delete bannerHideTimers[containerId];
+        }
+      }
+
       function renderStateBanner(containerId, status, errorObj, retryAction, emptyText, emptyBtnLabel, emptyBtnAction) {
         const el = document.getElementById(containerId);
         if (!el) return;
+        if (bannerHideTimers[containerId]) {
+          clearTimeout(bannerHideTimers[containerId]);
+          delete bannerHideTimers[containerId];
+        }
         if (status === 'loading') {
           el.innerHTML = '<div class="state-box"><div class="state-box-text"><span>正在等待宿主同步数据...</span><div class="skeleton-line" style="width:216px;margin-top:4px;"></div></div></div>';
         } else if (status === 'error' && errorObj) {
           const code = escapeHtml(errorObj.code || 'INTERNAL');
           const desc = escapeHtml(errorObj.message || ERROR_CODE_LABELS[errorObj.code] || '未知错误');
           el.innerHTML = '<div class="state-box error"><div class="state-box-text"><div><span class="error-code-pill">' + code + '</span><strong>' + desc + '</strong></div></div>' +
+            '<div style="display:flex;align-items:center;gap:8px;flex:none;">' +
             (retryAction ? '<button class="btn btn-secondary" data-action="' + escapeHtml(retryAction) + '">重试</button>' : '') +
+            '<button class="btn btn-secondary" data-action="banner.dismiss" data-banner="' + escapeHtml(containerId) + '" title="关闭提示" aria-label="关闭提示" style="padding:4px 9px;font-size:15px;line-height:1;">×</button>' +
+            '</div>' +
             '</div>';
+          /* 12 秒后自动收起：一直挂着的红条会让人以为故障还没过去 */
+          bannerHideTimers[containerId] = setTimeout(function () { hideStateBanner(containerId); }, 12000);
         } else if (status === 'empty') {
           el.innerHTML = '<div class="state-box"><div class="state-box-text">' + escapeHtml(emptyText || '当前暂无数据') + '</div>' +
             (emptyBtnAction ? '<button class="btn btn-primary" data-action="' + escapeHtml(emptyBtnAction) + '">' + escapeHtml(emptyBtnLabel || '立即执行') + '</button>' : '') +
@@ -8764,13 +8891,12 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
           return;
         }
 
-        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th><th>操作</th></tr></thead><tbody>' +
+        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th></tr></thead><tbody>' +
           apps.map(app =>
             '<tr>' +
               '<td><strong>' + escapeHtml(valOrUnknown(app.name)) + '</strong></td>' +
               '<td>' + escapeHtml(valOrUnknown(app.exePath)) + '</td>' +
               '<td>' + escapeHtml(valOrUnknown(app.addedAt)) + '</td>' +
-              '<td><button class="btn btn-secondary" style="padding:4px 8px;font-size:11.5px;" data-action="dual.unbind" data-exe-path="' + escapeHtml(app.exePath) + '">解绑</button></td>' +
             '</tr>'
           ).join('') +
           '</tbody></table>';
@@ -8832,7 +8958,6 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
               '<div class="timeline-sub">' + escapeHtml(kLabel) + ' · ' + escapeHtml(kb) + '</div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-              '<button class="btn btn-secondary" data-action="modal.confirm" data-confirm-type="snapshot.restore" data-snapshot-id="' + escapeHtml(item.id) + '"' + (!item.restorable ? ' disabled' : '') + '>回滚</button>' +
               '<button class="btn btn-secondary" data-action="snapshot.delete" data-snapshot-id="' + escapeHtml(item.id) + '">删除</button>' +
             '</div>' +
           '</div>';
@@ -9009,6 +9134,10 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
         return { gameDir: gameDir.trim(), proxyName: proxyName, injectReFramework: injectRe };
       }
 
+      /* RESET 输入草稿：误按 Esc 关掉弹窗不该把已经手打的内容清掉，
+         下次打开原样还回来；只有点「取消」或执行完成才丢弃。 */
+      let resetConfirmDraft = '';
+
       // Custom Confirmation Modal (Section 6.2: what changes, impact, reversible, reboot, plus RESET input)
       function openDangerConfirmModal(confirmType, triggerEl) {
         const modal = document.getElementById('actionModal');
@@ -9023,7 +9152,7 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
 
         if (!modal) return;
         resetWrap.style.display = 'none';
-        if (resetInput) resetInput.value = '';
+        if (resetInput) resetInput.value = resetConfirmDraft;
         if (confirmBtn) confirmBtn.disabled = false;
 
         if (confirmType === 'unlock.install') {
@@ -9093,8 +9222,9 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
           revEl.textContent = '不可直接撤销（除非手动重新配置各项功能）。';
           rebEl.textContent = '是（重置完成后强烈建议重启系统）。';
           resetWrap.style.display = 'block';
-          if (confirmBtn) confirmBtn.disabled = true;
-          state.pendingConfirm = { action: 'factory.reset', payload: { confirmText: '' }, triggerBtn: triggerEl };
+          const resetDraft = resetInput ? resetInput.value.trim() : '';
+          if (confirmBtn) confirmBtn.disabled = resetDraft !== 'RESET';
+          state.pendingConfirm = { action: 'factory.reset', payload: { confirmText: resetDraft }, triggerBtn: triggerEl };
         } else if (confirmType === 'logs.clear') {
           const cached = (state.logsList || []).length;
           titleEl.textContent = '确认清空全部日志';
@@ -9141,10 +9271,19 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
         }
       }
 
-      function closeDangerModal() {
+      /* reason 决定 RESET 输入的去留：
+         'cancel' 用户主动取消 → 清空；'escape' 误按 Esc → 保留草稿；'execute' 执行完成后清空。 */
+      function closeDangerModal(reason) {
         const modal = document.getElementById('actionModal');
+        const resetInput = document.getElementById('modalResetConfirmInput');
         if (modal) modal.classList.remove('open');
         state.pendingConfirm = null;
+        if (reason === 'cancel' || reason === 'execute') {
+          resetConfirmDraft = '';
+          if (resetInput) resetInput.value = '';
+        } else if (resetInput) {
+          resetConfirmDraft = resetInput.value;
+        }
       }
 
       // Input listener for factory.reset 'RESET' verification
@@ -9152,6 +9291,7 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
       if (resetInputEl) {
         resetInputEl.addEventListener('input', () => {
           const btn = document.getElementById('modalConfirmBtn');
+          resetConfirmDraft = resetInputEl.value;
           if (state.pendingConfirm && state.pendingConfirm.action === 'factory.reset') {
             const match = resetInputEl.value.trim() === 'RESET';
             if (btn) btn.disabled = !match;
@@ -9252,6 +9392,9 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
         sel.parentNode.insertBefore(wrap, sel);
         wrap.appendChild(sel);
         sel.classList.add('hx-select-native');
+        /* 原生 select 被 CSS 压成 1px 透明元素后仍然能 Tab 到，焦点会停在看不见的地方；
+           交互已经由下面的 trigger 按钮接管，所以把它从 Tab 序里摘掉。 */
+        sel.setAttribute('tabindex', '-1');
 
         const trigger = document.createElement('button');
         trigger.type = 'button';
@@ -9296,6 +9439,20 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
         document.querySelectorAll('select.select-input').forEach(enhanceHxSelect);
       }
 
+      /* 兜底：任何隐藏但仍可聚焦的下拉都摘出 Tab 序。
+         只看元素自身（hidden 属性 / 内联隐藏 / 自身 display:none），
+         不能用祖先的状态判断——未激活的页面整块 display:none，那样会把正常下拉也误伤。 */
+      function markHiddenSelectsUntabbable() {
+        document.querySelectorAll('select').forEach(function (sel) {
+          if (sel.getAttribute('tabindex') === '-1') return;
+          let ownDisplay = '';
+          try { ownDisplay = window.getComputedStyle(sel).display; } catch (e) { }
+          if (sel.hidden || sel.style.display === 'none' || sel.style.visibility === 'hidden' || ownDisplay === 'none') {
+            sel.setAttribute('tabindex', '-1');
+          }
+        });
+      }
+
       document.addEventListener('click', (e) => {
         if (e.target.closest('.hx-select') || e.target.closest('.hx-select-menu')) return;
         closeAllHxSelects();
@@ -9313,6 +9470,7 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
       window.addEventListener('blur', () => closeAllHxSelects());
 
       enhanceAllHxSelects();
+      markHiddenSelectsUntabbable();
       window.__enhanceHxSelects = enhanceAllHxSelects;
 
       // Global Delegated Click Handler for [data-action]
@@ -9415,7 +9573,11 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
             openDangerConfirmModal(target.dataset.confirmType, target);
             break;
           case 'modal.close':
-            closeDangerModal();
+            /* 只有点「取消」才算用户放弃，才清空 RESET 输入 */
+            closeDangerModal('cancel');
+            break;
+          case 'banner.dismiss':
+            hideStateBanner(target.dataset.banner || '');
             break;
           case 'modal.execute':
             if (state.pendingConfirm) {
@@ -9424,7 +9586,7 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
                 showToast('请手动输入大写 RESET 后再确认', 'error');
                 return;
               }
-              closeDangerModal();
+              closeDangerModal('execute');
               sendCmd(pc.action, pc.payload, pc.triggerBtn);
             }
             break;
@@ -9479,6 +9641,13 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
           }
           case 'power.setPreset': {
             const preset = target.dataset.preset || 'adaptive';
+            /* 单选：先把整组卡片清一遍再只点亮当前这张。
+               只靠 renderPowerPage 刷新的话，宿主回执慢一步就会两张同时亮。 */
+            document.querySelectorAll('.power-preset-card').forEach(function (card) {
+              const on = card === target;
+              card.classList.toggle('active', on);
+              card.classList.toggle('turbo-mode', on && preset === 'turbo');
+            });
             if (state.powerState) {
               state.powerState.preset = preset;
               renderPowerPage();
@@ -9661,7 +9830,8 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
       // Keyboard Shortcuts (Section 6.4: Esc closes modal, Ctrl+F focuses log search, Enter on role="button")
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          closeDangerModal();
+          /* Esc 只是收起弹窗，不丢已输入的内容（见 closeDangerModal 的 reason） */
+          closeDangerModal('escape');
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
           if (state.currentPage === 'logs') {
             e.preventDefault();

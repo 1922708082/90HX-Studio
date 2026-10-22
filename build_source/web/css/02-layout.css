@@ -32,7 +32,7 @@
       right: 0;
       height: 28px;
       background: var(--accent-soft);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
       display: none;
       align-items: center;
       justify-content: center;
@@ -49,7 +49,7 @@
     .titlebar {
       height: 44px;
       background: var(--titlebar-bg);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -131,7 +131,7 @@
     }
     .tool-chip-btn {
       background: var(--card-sub-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-soft);
       color: var(--text-sub);
       padding: 4px 8px;
       border-radius: 8px;
@@ -210,7 +210,7 @@
     .sidebar {
       width: 208px;
       background: var(--sidebar-bg);
-      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-right: 1px solid var(--border-soft);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -405,7 +405,7 @@
       gap: 12px;
       flex-wrap: wrap;
       padding-bottom: 4px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
     }
     .page-title {
       font-size: 14px;
@@ -511,7 +511,7 @@
       padding: 4px 8px;
       border-radius: 999px;
       background: var(--card-sub-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-soft);
       color: var(--text-sub);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       display: inline-flex;

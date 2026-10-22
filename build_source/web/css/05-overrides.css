@@ -161,16 +161,9 @@
       font-weight: 700;
     }
 
-    /* Smooth downward shift of lower cards when hovering over a gauge card */
-    #telemetryGaugesGrid ~ .card {
-      transition:
-        transform 240ms var(--spring-ease),
-        border-color var(--dur-fast) var(--ease-std) !important;
-    }
-    #telemetryGaugesGrid:hover ~ .card,
-    #telemetryGaugesGrid:has(.gauge-card.is-hovered) ~ .card {
-      transform: translateY(6px) !important;
-    }
+    /* 原「hover 仪表卡时下方卡片整体下移 6px」已移除（评审项 1）：
+       仪表卡不可点，hover 不该有任何位移动效，04-pages.css:179 已把
+       #telemetryGaugesGrid ~ .card 的 transform 锁成 none，这里不再反向覆盖。 */
 
     /* 2. UNCONSTRAINED 3D GPU HERO & PANORAMIC 6-PART L-SHAPED CALLOUT EXPLODED VIEW */
     .hero-banner,
@@ -217,7 +210,9 @@
       justify-content: center;
       position: relative;
       z-index: 30;
-      cursor: grab;
+      /* 评审项 5：JS 只挂了 mouseenter/mousemove/mouseleave 做「鼠标跟随环视」，
+         没有任何 mousedown/mousemove+按键 的拖拽逻辑，grab 是假承诺 → 改回默认箭头 */
+      cursor: default;
       overflow: visible !important;
       margin: -8px 0;
       transition:
@@ -225,9 +220,7 @@
         height 460ms var(--spring-ease),
         margin 460ms var(--spring-ease);
     }
-    .gpu-3d-stage:active {
-      cursor: grabbing;
-    }
+    /* 同理：没有拖拽就没有 grabbing 态，原 :active { cursor: grabbing } 一并移除 */
     .hero-actions-right {
       order: 3;
       display: flex;
@@ -1153,7 +1146,8 @@
       height: 126px !important;
       perspective: 1200px !important;
       margin: -10px 0 !important;
-      cursor: grab !important;
+      /* 评审项 5：同 .gpu-3d-stage（js/app.js:2591-2621 只有 mousemove 跟随，无拖拽） */
+      cursor: default !important;
     }
     .gpu-3d-stage::before {
       width: 340px !important;
@@ -1662,4 +1656,107 @@ body.theme-light .log-stream-box::-webkit-scrollbar-thumb {
 }
 body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
   background-color: rgba(15, 23, 42, 0.38);
+}
+
+/* =========================================================================
+   评审修正补丁（第 6 类：视觉缺陷）· 只写 CSS，不新增 !important
+   本段位于 05 末尾，层叠顺序最后，靠「同属性、更晚出现 / 更高特异性」覆盖。
+   1) 假可点卡片：不可点的 .card / .gauge-card hover 回到静止基线
+   2) 亮色主题边框令牌 --border-soft（02/03 的 9 处写死白边已改用它）
+   3) 主按钮对比度 2.14:1 → 5.51:1（只压明度，色相不动）
+   4) 骨架屏 1.4s shimmer（prefers-reduced-motion 下停）
+   5) 假 drag 光标（见文件内 .gpu-3d-stage 两处行内注释）
+   6) 长路径 / sha256 文本换行
+   ========================================================================= */
+
+/* --- 1) 假可点卡片 -------------------------------------------------------
+   判定依据：JS 只对 [data-action] 做事件委托（js/app.js:2206），真正可点的
+   卡片一定带 data-action / role="button" / tabindex（日志等级卡、电源预设卡、
+   信道卡）；其余卡片 hover 只有位移和投影，点了什么也不会发生。
+   回到静止基线（基线值均取自原规则，未凭空猜）：
+     transform: none                        ← 02-layout.css:494 translateY(-1px) / 05:47 translateY(-2px)
+     border-color: var(--card-border-color) ← 02-layout.css:493 / 05:48 的 --card-hover-border
+     box-shadow: var(--card-shadow)         ← 05:49 的大投影 + 04-pages.css:135 的亮色 hover 投影
+     cursor: default                        ← 全站默认箭头（05:1492 的 html,body 规则）
+   两套主题都成立：还原值全部走主题变量，深色下等于卡片原本的静止外观，
+   亮色下等于 01-base / 04-pages 在 body.theme-light 里重定义后的同一批变量。 */
+.card:not([data-action]):not([role="button"]):not([tabindex]):hover,
+.gauge-card:not([data-action]):not([role="button"]):not([tabindex]):hover,
+.gauge-card:not([data-action]):not([role="button"]):not([tabindex]).is-hovered {
+  transform: none;
+  border-color: var(--card-border-color);
+  box-shadow: var(--card-shadow);
+  cursor: default;
+}
+
+/* --- 2) 主题边框令牌 -----------------------------------------------------
+   02-layout.css / 03-components.css 里写死的 rgba(255,255,255,.06) 在亮色主题
+   等于「白底画白线」。收口成令牌后由主题切换：
+     深色 = 原来的白 6%（与改前逐像素一致，不产生视觉回归）
+     亮色 = 深色墨 10%，在白/浅灰卡片上清晰可见
+   使用点（原值与新值在深色下完全相同）：
+     02-layout.css   .global-busy-bar / .titlebar / .tool-chip-btn /
+                     .sidebar / .page-header / .tag,.pill
+     03-components.css .channel-card / .node-icon / .data-table td */
+:root {
+  --border-soft: rgba(255, 255, 255, 0.06);
+}
+body.theme-dark {
+  --border-soft: rgba(255, 255, 255, 0.06);
+}
+body.theme-light {
+  --border-soft: rgba(15, 23, 42, 0.10);
+}
+
+/* --- 3) 主按钮对比度 -----------------------------------------------------
+   原渐变最亮端 #38bdf8 + 白字 = 2.14:1，远低于 4.5:1 的正文要求。
+   只压明度、不动色相（仍是 199° 天蓝 → 靛蓝），白字对比度：
+     #036fa4 5.51:1（最亮端，最差处）
+     #025d8a 7.15:1（中段）
+     #4f46e5 6.29:1（末端）
+   hover 的 filter: brightness(1.08) 提亮后最亮端仍有 4.86:1，不破线。
+   深/亮两套都用同一组明度收紧值：深色底上按钮更沉、亮色底上按钮与页面
+   拉开距离，两边的白字都在 4.5:1 以上。 */
+body.theme-dark {
+  --btn-primary-bg: linear-gradient(135deg, #036fa4 0%, #025d8a 55%, #4f46e5 100%);
+}
+body.theme-light {
+  --btn-primary-bg: linear-gradient(135deg, #036fa4 0%, #025d8a 60%, #4f46e5 100%);
+}
+
+/* --- 4) 骨架屏 shimmer ---------------------------------------------------
+   02-layout.css:542 只声明了 background-size:200%，没有动画，灰条完全静止，
+   看起来像渲染失败。这里补 1.4s 匀速位移：200% → -200% 走完一个完整扫光。
+   只动 background-position（合成层属性），不触发重排、不改变尺寸。 */
+.skeleton-line {
+  animation: hx-skeleton-shimmer 1.4s linear infinite;
+}
+@keyframes hx-skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+/* 系统开启「减少动态效果」时停掉，保留静态灰条（仍有加载中的语义） */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line {
+    animation: none;
+  }
+}
+
+/* --- 6) 长路径 / 哈希溢出 ------------------------------------------------
+   这三处是等宽长串（C:\Program Files\... 和 64 位 sha256），中间没有断行点，
+   会把卡片撑破。overflow-wrap:anywhere 允许任意位置断行，word-break:break-all
+   兜住旧内核；min-width:0 让它们作为 flex 子项能真正收缩
+   （flex 项默认 min-width:auto 会被内容顶到自然宽度）。
+   同时恢复可选中复制：01-base.css:10 的全局 user-select:none 会连取证文本一起锁死。 */
+#overlayPathText,
+#dlssRuntimePathText,
+#updateSha256Text {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  white-space: normal;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
 }

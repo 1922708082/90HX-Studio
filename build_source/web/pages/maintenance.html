@@ -6,7 +6,7 @@
                   <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/></svg>
                   <span>系统维护</span>
                 </div>
-                <div class="page-desc">系统快照备份与出厂重置</div>
+                <div class="page-desc">系统快照备份与管理</div>
               </div>
               <div class="header-actions">
                 <input type="text" class="text-input" id="snapshotLabelInput" placeholder="快照备注（可选）" style="width:184px;" />
@@ -49,9 +49,12 @@
                   <div class="node-icon active">
                     <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
                   </div>
-                  <div class="node-title">无损回滚</div>
-                  <div class="node-status">一键还原</div>
+                  <div class="node-title">快照管理</div>
+                  <div class="node-status">创建 · 删除</div>
                 </div>
+              </div>
+              <div class="state-box" style="margin-top:12px;">
+                <div class="state-box-text">支持创建与删除快照；回滚功能暂未开放</div>
               </div>
             </div>
 
@@ -94,17 +97,11 @@
 
             <div class="card" style="border-color:var(--danger-border);">
               <div class="card-title">
-                <span style="color:var(--danger);" title="factory.reset">出厂重置</span>
-                <span class="tag danger">需输入 RESET</span>
+                <span style="color:var(--danger);">出厂重置</span>
+                <span class="tag danger">暂未开放</span>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                <div style="font-size:12.5px;color:var(--text-sub);">
-                  清除伪装、引导与节能配置并恢复默认状态
-                </div>
-                <button class="btn btn-danger" data-action="modal.confirm" data-confirm-type="factory.reset" id="btnFactoryReset" disabled title="后端尚未实现 factory.reset，暂不可用">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4.5M12 17.5h.01"/></svg>
-                  <span>紧急重置</span>
-                </button>
+              <div class="state-box">
+                <div class="state-box-text">出厂重置功能暂未开放（后端未接入），当前可创建快照留档</div>
               </div>
             </div>
           </div>

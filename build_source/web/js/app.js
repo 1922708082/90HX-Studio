@@ -181,17 +181,48 @@
         }, 3000);
       }
 
+      /* 错误横幅的收起计时器：同一个容器只允许挂一个，否则重试几次会叠出多个定时器 */
+      const bannerHideTimers = {};
+
+      function bannerStateKeys(containerId) {
+        const base = String(containerId).replace(/StateBanner$/, '');
+        return { status: base + 'Status', error: base + 'Error' };
+      }
+
+      /* 关掉横幅 = 连错误态一起清掉，否则下一次页面渲染它又会自己冒出来 */
+      function hideStateBanner(containerId) {
+        const el = document.getElementById(containerId);
+        if (el) el.innerHTML = '';
+        const keys = bannerStateKeys(containerId);
+        /* 只把还是 error 的状态收掉：中途已经恢复成 ready 的不能被这条迟到的定时器改坏 */
+        if (state[keys.status] === 'error') state[keys.status] = 'dismissed';
+        if (state[keys.error]) state[keys.error] = null;
+        if (bannerHideTimers[containerId]) {
+          clearTimeout(bannerHideTimers[containerId]);
+          delete bannerHideTimers[containerId];
+        }
+      }
+
       function renderStateBanner(containerId, status, errorObj, retryAction, emptyText, emptyBtnLabel, emptyBtnAction) {
         const el = document.getElementById(containerId);
         if (!el) return;
+        if (bannerHideTimers[containerId]) {
+          clearTimeout(bannerHideTimers[containerId]);
+          delete bannerHideTimers[containerId];
+        }
         if (status === 'loading') {
           el.innerHTML = '<div class="state-box"><div class="state-box-text"><span>正在等待宿主同步数据...</span><div class="skeleton-line" style="width:216px;margin-top:4px;"></div></div></div>';
         } else if (status === 'error' && errorObj) {
           const code = escapeHtml(errorObj.code || 'INTERNAL');
           const desc = escapeHtml(errorObj.message || ERROR_CODE_LABELS[errorObj.code] || '未知错误');
           el.innerHTML = '<div class="state-box error"><div class="state-box-text"><div><span class="error-code-pill">' + code + '</span><strong>' + desc + '</strong></div></div>' +
+            '<div style="display:flex;align-items:center;gap:8px;flex:none;">' +
             (retryAction ? '<button class="btn btn-secondary" data-action="' + escapeHtml(retryAction) + '">重试</button>' : '') +
+            '<button class="btn btn-secondary" data-action="banner.dismiss" data-banner="' + escapeHtml(containerId) + '" title="关闭提示" aria-label="关闭提示" style="padding:4px 9px;font-size:15px;line-height:1;">×</button>' +
+            '</div>' +
             '</div>';
+          /* 12 秒后自动收起：一直挂着的红条会让人以为故障还没过去 */
+          bannerHideTimers[containerId] = setTimeout(function () { hideStateBanner(containerId); }, 12000);
         } else if (status === 'empty') {
           el.innerHTML = '<div class="state-box"><div class="state-box-text">' + escapeHtml(emptyText || '当前暂无数据') + '</div>' +
             (emptyBtnAction ? '<button class="btn btn-primary" data-action="' + escapeHtml(emptyBtnAction) + '">' + escapeHtml(emptyBtnLabel || '立即执行') + '</button>' : '') +
@@ -1651,13 +1682,12 @@
           return;
         }
 
-        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th><th>操作</th></tr></thead><tbody>' +
+        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th></tr></thead><tbody>' +
           apps.map(app =>
             '<tr>' +
               '<td><strong>' + escapeHtml(valOrUnknown(app.name)) + '</strong></td>' +
               '<td>' + escapeHtml(valOrUnknown(app.exePath)) + '</td>' +
               '<td>' + escapeHtml(valOrUnknown(app.addedAt)) + '</td>' +
-              '<td><button class="btn btn-secondary" style="padding:4px 8px;font-size:11.5px;" data-action="dual.unbind" data-exe-path="' + escapeHtml(app.exePath) + '">解绑</button></td>' +
             '</tr>'
           ).join('') +
           '</tbody></table>';
@@ -1719,7 +1749,6 @@
               '<div class="timeline-sub">' + escapeHtml(kLabel) + ' · ' + escapeHtml(kb) + '</div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-              '<button class="btn btn-secondary" data-action="modal.confirm" data-confirm-type="snapshot.restore" data-snapshot-id="' + escapeHtml(item.id) + '"' + (!item.restorable ? ' disabled' : '') + '>回滚</button>' +
               '<button class="btn btn-secondary" data-action="snapshot.delete" data-snapshot-id="' + escapeHtml(item.id) + '">删除</button>' +
             '</div>' +
           '</div>';
@@ -1896,6 +1925,10 @@
         return { gameDir: gameDir.trim(), proxyName: proxyName, injectReFramework: injectRe };
       }
 
+      /* RESET 输入草稿：误按 Esc 关掉弹窗不该把已经手打的内容清掉，
+         下次打开原样还回来；只有点「取消」或执行完成才丢弃。 */
+      let resetConfirmDraft = '';
+
       // Custom Confirmation Modal (Section 6.2: what changes, impact, reversible, reboot, plus RESET input)
       function openDangerConfirmModal(confirmType, triggerEl) {
         const modal = document.getElementById('actionModal');
@@ -1910,7 +1943,7 @@
 
         if (!modal) return;
         resetWrap.style.display = 'none';
-        if (resetInput) resetInput.value = '';
+        if (resetInput) resetInput.value = resetConfirmDraft;
         if (confirmBtn) confirmBtn.disabled = false;
 
         if (confirmType === 'unlock.install') {
@@ -1980,8 +2013,9 @@
           revEl.textContent = '不可直接撤销（除非手动重新配置各项功能）。';
           rebEl.textContent = '是（重置完成后强烈建议重启系统）。';
           resetWrap.style.display = 'block';
-          if (confirmBtn) confirmBtn.disabled = true;
-          state.pendingConfirm = { action: 'factory.reset', payload: { confirmText: '' }, triggerBtn: triggerEl };
+          const resetDraft = resetInput ? resetInput.value.trim() : '';
+          if (confirmBtn) confirmBtn.disabled = resetDraft !== 'RESET';
+          state.pendingConfirm = { action: 'factory.reset', payload: { confirmText: resetDraft }, triggerBtn: triggerEl };
         } else if (confirmType === 'logs.clear') {
           const cached = (state.logsList || []).length;
           titleEl.textContent = '确认清空全部日志';
@@ -2028,10 +2062,19 @@
         }
       }
 
-      function closeDangerModal() {
+      /* reason 决定 RESET 输入的去留：
+         'cancel' 用户主动取消 → 清空；'escape' 误按 Esc → 保留草稿；'execute' 执行完成后清空。 */
+      function closeDangerModal(reason) {
         const modal = document.getElementById('actionModal');
+        const resetInput = document.getElementById('modalResetConfirmInput');
         if (modal) modal.classList.remove('open');
         state.pendingConfirm = null;
+        if (reason === 'cancel' || reason === 'execute') {
+          resetConfirmDraft = '';
+          if (resetInput) resetInput.value = '';
+        } else if (resetInput) {
+          resetConfirmDraft = resetInput.value;
+        }
       }
 
       // Input listener for factory.reset 'RESET' verification
@@ -2039,6 +2082,7 @@
       if (resetInputEl) {
         resetInputEl.addEventListener('input', () => {
           const btn = document.getElementById('modalConfirmBtn');
+          resetConfirmDraft = resetInputEl.value;
           if (state.pendingConfirm && state.pendingConfirm.action === 'factory.reset') {
             const match = resetInputEl.value.trim() === 'RESET';
             if (btn) btn.disabled = !match;
@@ -2139,6 +2183,9 @@
         sel.parentNode.insertBefore(wrap, sel);
         wrap.appendChild(sel);
         sel.classList.add('hx-select-native');
+        /* 原生 select 被 CSS 压成 1px 透明元素后仍然能 Tab 到，焦点会停在看不见的地方；
+           交互已经由下面的 trigger 按钮接管，所以把它从 Tab 序里摘掉。 */
+        sel.setAttribute('tabindex', '-1');
 
         const trigger = document.createElement('button');
         trigger.type = 'button';
@@ -2183,6 +2230,20 @@
         document.querySelectorAll('select.select-input').forEach(enhanceHxSelect);
       }
 
+      /* 兜底：任何隐藏但仍可聚焦的下拉都摘出 Tab 序。
+         只看元素自身（hidden 属性 / 内联隐藏 / 自身 display:none），
+         不能用祖先的状态判断——未激活的页面整块 display:none，那样会把正常下拉也误伤。 */
+      function markHiddenSelectsUntabbable() {
+        document.querySelectorAll('select').forEach(function (sel) {
+          if (sel.getAttribute('tabindex') === '-1') return;
+          let ownDisplay = '';
+          try { ownDisplay = window.getComputedStyle(sel).display; } catch (e) { }
+          if (sel.hidden || sel.style.display === 'none' || sel.style.visibility === 'hidden' || ownDisplay === 'none') {
+            sel.setAttribute('tabindex', '-1');
+          }
+        });
+      }
+
       document.addEventListener('click', (e) => {
         if (e.target.closest('.hx-select') || e.target.closest('.hx-select-menu')) return;
         closeAllHxSelects();
@@ -2200,6 +2261,7 @@
       window.addEventListener('blur', () => closeAllHxSelects());
 
       enhanceAllHxSelects();
+      markHiddenSelectsUntabbable();
       window.__enhanceHxSelects = enhanceAllHxSelects;
 
       // Global Delegated Click Handler for [data-action]
@@ -2302,7 +2364,11 @@
             openDangerConfirmModal(target.dataset.confirmType, target);
             break;
           case 'modal.close':
-            closeDangerModal();
+            /* 只有点「取消」才算用户放弃，才清空 RESET 输入 */
+            closeDangerModal('cancel');
+            break;
+          case 'banner.dismiss':
+            hideStateBanner(target.dataset.banner || '');
             break;
           case 'modal.execute':
             if (state.pendingConfirm) {
@@ -2311,7 +2377,7 @@
                 showToast('请手动输入大写 RESET 后再确认', 'error');
                 return;
               }
-              closeDangerModal();
+              closeDangerModal('execute');
               sendCmd(pc.action, pc.payload, pc.triggerBtn);
             }
             break;
@@ -2366,6 +2432,13 @@
           }
           case 'power.setPreset': {
             const preset = target.dataset.preset || 'adaptive';
+            /* 单选：先把整组卡片清一遍再只点亮当前这张。
+               只靠 renderPowerPage 刷新的话，宿主回执慢一步就会两张同时亮。 */
+            document.querySelectorAll('.power-preset-card').forEach(function (card) {
+              const on = card === target;
+              card.classList.toggle('active', on);
+              card.classList.toggle('turbo-mode', on && preset === 'turbo');
+            });
             if (state.powerState) {
               state.powerState.preset = preset;
               renderPowerPage();
@@ -2548,7 +2621,8 @@
       // Keyboard Shortcuts (Section 6.4: Esc closes modal, Ctrl+F focuses log search, Enter on role="button")
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          closeDangerModal();
+          /* Esc 只是收起弹窗，不丢已输入的内容（见 closeDangerModal 的 reason） */
+          closeDangerModal('escape');
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
           if (state.currentPage === 'logs') {
             e.preventDefault();

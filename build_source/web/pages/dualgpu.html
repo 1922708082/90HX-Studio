@@ -120,16 +120,8 @@
                 <span title="boundApps">已绑定游戏</span>
                 <span class="tag" id="dualBoundCountBadge">0 款</span>
               </div>
-              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                <input type="text" class="text-input" id="dualBindExeInput" placeholder="选择游戏主程序文件" style="flex:1;" />
-                <button class="btn btn-secondary" data-action="dialog.browse" data-browse-kind="file" data-browse-target="dualBindExeInput">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
-                  <span>浏览文件</span>
-                </button>
-                <button class="btn btn-primary" data-action="dual.bind" id="btnDualBind" disabled title="后端尚未实现 dual.bind，暂不可用">
-                  <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M12 5.5v13M5.5 12h13"/></svg>
-                  <span>添加绑定</span>
-                </button>
+              <div class="state-box" style="margin-bottom:12px;">
+                <div class="state-box-text">双卡绑定功能暂未开放（后端未接入）</div>
               </div>
               <div id="dualBoundListContainer">
                 <div class="skeleton-line"></div>

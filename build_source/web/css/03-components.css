@@ -890,7 +890,7 @@
     }
     .channel-card {
       background: var(--card-sub-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-soft);
       border-radius: 12px;
       padding: 12px;
       cursor: pointer;
@@ -940,7 +940,7 @@
       height: 44px;
       border-radius: 12px;
       background: var(--card-bg);
-      border: 1.5px solid rgba(255, 255, 255, 0.06);
+      border: 1.5px solid var(--border-soft);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1434,7 +1434,7 @@
     }
     .data-table td {
       padding: 8px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-soft);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       color: var(--text-main);
       font-size: 12.5px;
