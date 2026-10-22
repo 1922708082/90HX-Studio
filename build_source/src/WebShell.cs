@@ -1366,7 +1366,8 @@ namespace CMP90HXToolbox
                         // 用户会以为机器上真的没装游戏，而实际是盘掉线/权限不足。
                         if (games == null)
                         {
-                            PostToPage(HardwareBridge.DualStateEvt());
+                            // 失败路径不推 DualStateEvt：它会去枚举注册表「图形首选项」，
+                            // 而这次扫描根本没成功，刷新状态纯属浪费。
                             ReplyFail(rid, action, "INTERNAL",
                                       "扫描失败：" + (scanErr ?? "未知原因") + "（请检查磁盘是否在线、是否有读取权限）");
                             return;
@@ -1446,7 +1447,7 @@ namespace CMP90HXToolbox
                         LogInfo("已清理 GPU 缓存: " + count + " 个文件 / " + (freed / 1024.0 / 1024.0).ToString("0.0") + " MB （" + detail + "）");
                         ReplyDataJson(rid, action, "{\"freedBytes\":" + freed + ",\"fileCount\":" + count +
                             ",\"message\":" + HardwareBridge.Quote(
-                                "已清理 " + count + " 个文件，释放 " + (freed / 1024 / 1024) + " MB") + "}");
+                                "已清理 " + count + " 个文件，释放 " + (freed / 1048576.0).ToString("0.0") + " MB") + "}");
                     }));
                     return;
                 }

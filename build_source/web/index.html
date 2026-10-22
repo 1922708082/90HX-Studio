@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 13:08:57" />
+  <meta name="hx-build" content="2026-10-22 13:16:21" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -7288,10 +7288,24 @@ body.is-mock .mock-badge {
           setTimeout(function () {
             if (!pendingCmds.has(id)) return;   // 已正常回执
             if (!retrySafe) {
-              // 有副作用的命令：只提醒，保留 pending 与按钮禁用，不 resolve 成失败
+              // 有副作用的命令：先提醒（保留 pending 与按钮，避免用户重试造成并发）；
+              // 但再等 60 秒仍无回执就必须进终态，否则宿主真挂死时按钮会永久转圈。
               try {
                 showToast('任务仍在执行，请勿重复点击：' + action, 'warn');
               } catch (e) { }
+              setTimeout(function () {
+                if (!pendingCmds.has(id)) return;
+                pendingCmds.delete(id);
+                try {
+                  if (triggerBtn && triggerBtn.classList) {
+                    triggerBtn.classList.remove('is-loading');
+                    triggerBtn.disabled = false;
+                  }
+                } catch (e) { }
+                try {
+                  showToast('结果未知：' + action + ' 长时间无响应，请关闭软件后重新打开确认实际状态', 'error');
+                } catch (e) { }
+              }, 60000);
               return;
             }
             pendingCmds.delete(id);
@@ -7642,7 +7656,12 @@ body.is-mock .mock-badge {
             d0.displayGpuPciId = g0.pciId || '';
             d0.hasVirtualGpu = !!v0.present;
             d0.virtualGpuName = v0.name || '';
-            if (typeof d0.boundGames === 'number') d0.boundGamesCount = d0.boundGames;
+            /* 计数必须与列表同源。
+               后端绑定的 boundGames 是注册表里「图形首选项」的条目数，
+               而列表用的是 bindings（当前恒为空）——
+               结果就是同一屏出现「共 2 款」+「暂无绑定游戏」，自相矛盾。
+               在列表真正接上之前，一律以列表长度为准，宁可是 0。 */
+            d0.boundGamesCount = Array.isArray(d0.boundApps) ? d0.boundApps.length : 0;
             if (!Array.isArray(d0.boundApps)) {
               d0.boundApps = Array.isArray(d0.bindings) ? d0.bindings : [];
             }
