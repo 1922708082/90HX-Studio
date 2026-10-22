@@ -120,8 +120,16 @@
                 <span title="boundApps">已绑定游戏</span>
                 <span class="tag" id="dualBoundCountBadge">0 款</span>
               </div>
-              <div class="state-box" style="margin-bottom:12px;">
-                <div class="state-box-text">双卡绑定功能暂未开放（后端未接入）</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <input type="text" class="text-input" id="dualBindExeInput" placeholder="选择要绑定的游戏 .exe" style="flex:1;min-width:200px;" />
+                <button class="btn btn-secondary" data-action="dialog.browse" data-browse-target="dualBindExeInput" data-browse-kind="file">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
+                  <span>浏览</span>
+                </button>
+                <button class="btn btn-primary" id="btnDualBind" data-action="dual.bind">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M9.5 14.5l5-5"/><path d="M13.2 3.8l1.2-1.2a3.8 3.8 0 0 1 5.4 5.4l-1.2 1.2"/><path d="M10.8 20.2l-1.2 1.2a3.8 3.8 0 0 1-5.4-5.4l1.2-1.2"/></svg>
+                  <span>绑定到独显</span>
+                </button>
               </div>
               <div id="dualBoundListContainer">
                 <div class="skeleton-line"></div>

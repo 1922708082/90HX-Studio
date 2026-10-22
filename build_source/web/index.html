@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 15:42:43" />
+  <meta name="hx-build" content="2026-10-22 19:04:56" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -6808,8 +6808,16 @@ body.theme-light {
                 <span title="boundApps">已绑定游戏</span>
                 <span class="tag" id="dualBoundCountBadge">0 款</span>
               </div>
-              <div class="state-box" style="margin-bottom:12px;">
-                <div class="state-box-text">双卡绑定功能暂未开放（后端未接入）</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <input type="text" class="text-input" id="dualBindExeInput" placeholder="选择要绑定的游戏 .exe" style="flex:1;min-width:200px;" />
+                <button class="btn btn-secondary" data-action="dialog.browse" data-browse-target="dualBindExeInput" data-browse-kind="file">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 7.5v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
+                  <span>浏览</span>
+                </button>
+                <button class="btn btn-primary" id="btnDualBind" data-action="dual.bind">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M9.5 14.5l5-5"/><path d="M13.2 3.8l1.2-1.2a3.8 3.8 0 0 1 5.4 5.4l-1.2 1.2"/><path d="M10.8 20.2l-1.2 1.2a3.8 3.8 0 0 1-5.4-5.4l1.2-1.2"/></svg>
+                  <span>绑定到独显</span>
+                </button>
               </div>
               <div id="dualBoundListContainer">
                 <div class="skeleton-line"></div>
@@ -6825,7 +6833,7 @@ body.theme-light {
                   <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/></svg>
                   <span>系统维护</span>
                 </div>
-                <div class="page-desc">系统快照备份与管理</div>
+                <div class="page-desc">系统快照备份与出厂重置</div>
               </div>
               <div class="header-actions">
                 <input type="text" class="text-input" id="snapshotLabelInput" placeholder="快照备注（可选）" style="width:184px;" />
@@ -6869,11 +6877,21 @@ body.theme-light {
                     <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
                   </div>
                   <div class="node-title">快照管理</div>
-                  <div class="node-status">创建 · 删除</div>
+                  <div class="node-status">创建 · 回滚 · 删除</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>
+                  </div>
+                  <div class="node-title">出厂重置</div>
+                  <div class="node-status">需输入 RESET</div>
                 </div>
               </div>
               <div class="state-box" style="margin-top:12px;">
-                <div class="state-box-text">支持创建与删除快照；回滚功能暂未开放</div>
+                <div class="state-box-text">支持创建、回滚与删除快照；执行出厂重置前建议先创建快照留档</div>
               </div>
             </div>
 
@@ -6917,10 +6935,17 @@ body.theme-light {
             <div class="card" style="border-color:var(--danger-border);">
               <div class="card-title">
                 <span style="color:var(--danger);">出厂重置</span>
-                <span class="tag danger">暂未开放</span>
+                <span class="tag danger">危险操作</span>
               </div>
-              <div class="state-box">
-                <div class="state-box-text">出厂重置功能暂未开放（后端未接入），当前可创建快照留档</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:12.5px;color:var(--text-sub);max-width:560px;">
+                  清除全部显卡伪装注册表项、移除已部署的引导载荷、删除状态文件并恢复原始引导配置。
+                  该操作不可直接撤销，执行前需在确认框中手动输入大写 RESET。
+                </div>
+                <button class="btn btn-danger" id="btnFactoryReset" data-action="factory.reset">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3.5v8"/><path d="M12 3.5v8"/><path d="M7 6.2a7.2 7.2 0 1 0 10 0"/></svg>
+                  <span>恢复出厂设置</span>
+                </button>
               </div>
             </div>
           </div>
@@ -8891,12 +8916,13 @@ body.theme-light {
           return;
         }
 
-        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th></tr></thead><tbody>' +
+        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th><th>操作</th></tr></thead><tbody>' +
           apps.map(app =>
             '<tr>' +
               '<td><strong>' + escapeHtml(valOrUnknown(app.name)) + '</strong></td>' +
               '<td>' + escapeHtml(valOrUnknown(app.exePath)) + '</td>' +
               '<td>' + escapeHtml(valOrUnknown(app.addedAt)) + '</td>' +
+              '<td><button class="btn btn-secondary" data-action="dual.unbind" data-exe-path="' + escapeHtml(valOrUnknown(app.exePath)) + '" style="padding:2px 10px;font-size:12px;">解绑</button></td>' +
             '</tr>'
           ).join('') +
           '</tbody></table>';
@@ -8958,7 +8984,8 @@ body.theme-light {
               '<div class="timeline-sub">' + escapeHtml(kLabel) + ' · ' + escapeHtml(kb) + '</div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-              '<button class="btn btn-secondary" data-action="snapshot.delete" data-snapshot-id="' + escapeHtml(item.id) + '">删除</button>' +
+              '<button class="btn btn-secondary" data-action="modal.confirm" data-confirm-type="snapshot.restore" data-snapshot-id="' + escapeHtml(item.id) + '">回滚</button>' +
+              '<button class="btn btn-danger" data-action="snapshot.delete" data-snapshot-id="' + escapeHtml(item.id) + '">删除</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -9488,6 +9515,10 @@ body.theme-light {
             if (navPage === 'logs') {
               sendCmd('logs.query', { offset: 0, limit: 200, level: state.logsFilterLevel }, target);
             }
+            /* DLSS 页仍是内测能力，每次进入都给一次风险提示 */
+            if (navPage === 'dlss') {
+              showToast('DLSS 5 / 帧生成 属于内测功能，可能不稳定；异常请反馈', 'warn');
+            }
             break;
           }
           case 'ui.toggleTheme': {
@@ -9617,6 +9648,10 @@ body.theme-light {
           case 'logs.clear':
             // 清空日志不可恢复，先走二次确认，确认后才发命令
             openDangerConfirmModal('logs.clear', target);
+            break;
+          case 'factory.reset':
+            // 出厂重置不可撤销且需手输 RESET，先开确认弹窗，确认后才发命令
+            openDangerConfirmModal('factory.reset', target);
             break;
           case 'logs.export':
           case 'update.check':

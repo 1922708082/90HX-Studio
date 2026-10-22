@@ -6,7 +6,7 @@
                   <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5V4"/><path d="M12 7.5V12l3 2"/></svg>
                   <span>系统维护</span>
                 </div>
-                <div class="page-desc">系统快照备份与管理</div>
+                <div class="page-desc">系统快照备份与出厂重置</div>
               </div>
               <div class="header-actions">
                 <input type="text" class="text-input" id="snapshotLabelInput" placeholder="快照备注（可选）" style="width:184px;" />
@@ -50,11 +50,21 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>
                   </div>
                   <div class="node-title">快照管理</div>
-                  <div class="node-status">创建 · 删除</div>
+                  <div class="node-status">创建 · 回滚 · 删除</div>
+                </div>
+
+                <div class="chain-link-arrow active"></div>
+
+                <div class="chain-node">
+                  <div class="node-icon active">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle class="svg-tone" cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>
+                  </div>
+                  <div class="node-title">出厂重置</div>
+                  <div class="node-status">需输入 RESET</div>
                 </div>
               </div>
               <div class="state-box" style="margin-top:12px;">
-                <div class="state-box-text">支持创建与删除快照；回滚功能暂未开放</div>
+                <div class="state-box-text">支持创建、回滚与删除快照；执行出厂重置前建议先创建快照留档</div>
               </div>
             </div>
 
@@ -98,10 +108,17 @@
             <div class="card" style="border-color:var(--danger-border);">
               <div class="card-title">
                 <span style="color:var(--danger);">出厂重置</span>
-                <span class="tag danger">暂未开放</span>
+                <span class="tag danger">危险操作</span>
               </div>
-              <div class="state-box">
-                <div class="state-box-text">出厂重置功能暂未开放（后端未接入），当前可创建快照留档</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="font-size:12.5px;color:var(--text-sub);max-width:560px;">
+                  清除全部显卡伪装注册表项、移除已部署的引导载荷、删除状态文件并恢复原始引导配置。
+                  该操作不可直接撤销，执行前需在确认框中手动输入大写 RESET。
+                </div>
+                <button class="btn btn-danger" id="btnFactoryReset" data-action="factory.reset">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path class="svg-tone" d="M12 3.5v8"/><path d="M12 3.5v8"/><path d="M7 6.2a7.2 7.2 0 1 0 10 0"/></svg>
+                  <span>恢复出厂设置</span>
+                </button>
               </div>
             </div>
           </div>

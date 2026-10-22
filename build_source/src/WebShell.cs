@@ -55,7 +55,9 @@ namespace CMP90HXToolbox
         private static int GroupOf(string action)
         {
             if (action == null) return 0;
-            if (action == "unlock.install" || action == "unlock.rollback") return 1;
+            // factory.reset 和 unlock.install/rollback 同组：都会改 BCD/ESP，
+            // 两边并发执行等于两串 bcdedit 交错，可以把 BCD 写坏。
+            if (action == "unlock.install" || action == "unlock.rollback" || action == "factory.reset") return 1;
             if (action == "dlss.deploy" || action == "dlss.remove" || action == "dlss.checkUpdate") return 2;
             if (action == "update.download" || action == "update.apply") return 3;
             return 0;
@@ -813,6 +815,40 @@ namespace CMP90HXToolbox
                     LogInfo("已删除系统快照: " + snapId);
                     PostToPage(HardwareBridge.SnapshotsEvt());
                 }
+                else if (action == "snapshot.restore")
+                {
+                    string snapId = JsonUnescape(ExtractPayloadString(json, "snapshotId"));
+                    if (string.IsNullOrEmpty(snapId))
+                    {
+                        ReplyFail(id, action, "VALIDATION_FAILED", "缺少 snapshotId");
+                        return;
+                    }
+                    string rid = id;
+                    LogInfo("回滚快照: " + snapId);
+                    // 要写 HKLM 驱动类键并逐项回读，不能占 UI 线程
+                    Task.Run(new Action(delegate
+                    {
+                        Diagnostics.SnapshotRestoreResult r = null;
+                        try { r = Diagnostics.RestoreSnapshot(snapId, LogPower); }
+                        catch (Exception ex) { LogCrash("回滚快照失败", ex); }
+
+                        if (r == null || !r.Ok)
+                        {
+                            string why = r == null ? "回滚未返回结果" : (r.Message ?? "未知原因");
+                            LogInfo("回滚快照失败: " + why);
+                            ReplyFail(rid, action, r == null ? "INTERNAL" : (r.Code ?? "INTERNAL"), why);
+                            return;
+                        }
+
+                        LogInfo(r.Message);
+                        // 驱动类描述变了：型号名/显卡列表必须重推，否则界面还显示旧名字
+                        PostToPage(HardwareBridge.SpoofStateEvt());
+                        PostToPage(HardwareBridge.DeviceSnapshotEvt());
+                        PostToPage(HardwareBridge.GpuListEvt());
+                        ReplyDataJson(rid, action, "{\"message\":" + HardwareBridge.Quote(r.Message) + "}");
+                    }));
+                    return;
+                }
                 else if (action == "settings.save")
                 {
                     AppSettings.Load();
@@ -1075,6 +1111,166 @@ namespace CMP90HXToolbox
                         PostToPage(HardwareBridge.GpuListEvt());   // PCIe 标志变了，列表要跟着刷新
                         if (ok) ReplyOk(rid, action);
                         else ReplyFail(rid, action, "INTERNAL", "回滚未完成，详见日志");
+                    }));
+                    return;
+                }
+                else if (action == "factory.reset")
+                {
+                    // 与 unlock.install / unlock.rollback 同组：都会改 BCD 与 ESP，
+                    // 并发执行等于两串 bcdedit 交错，可以把 BCD 写坏。
+                    if (!TryEnterGroup(action, id))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
+                    // confirmText 由前端二次确认弹窗填写，必须是完整大写 RESET
+                    string confirm = ExtractPayloadString(json, "confirmText");
+                    if (!string.Equals(confirm, "RESET", StringComparison.Ordinal))
+                    {
+                        ReplyFail(id, action, "VALIDATION_FAILED", "需要输入大写 RESET 确认");
+                        return;
+                    }
+
+                    NativeCore.BcdReadAllowed = true;   // 下面要读/改 BCD
+                    LogInfo("===== 开始恢复出厂设置 =====");
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        ResetReport rep = new ResetReport();
+
+                        // ---- 步骤 1：还原显卡型号名 ----
+                        LogInfo("[恢复出厂 1/4] 还原显卡型号名…");
+                        try
+                        {
+                            bool okName = NativeCore.RestoreGpuTo90hxAsync(LogPower).Result;
+                            // 回读校验：该方法内部多处 catch{}，返回值不足以证明真的改了。
+                            string desc = NativeCore.ReadGpuDriverDesc();
+                            if (!okName)
+                                rep.Fail("步骤1 显卡型号: 还原调用返回失败（详见上面的日志）");
+                            else if (string.IsNullOrEmpty(desc))
+                                rep.Fail("步骤1 显卡型号: 无法回读驱动类 DriverDesc，不能确认已还原");
+                            else if (desc.IndexOf("CMP", StringComparison.OrdinalIgnoreCase) < 0)
+                                rep.Fail("步骤1 显卡型号: 回读仍是 " + desc);
+                            else
+                                rep.Pass("步骤1 显卡型号已还原为 " + desc);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("恢复出厂-还原显卡型号失败", ex);
+                            rep.Fail("步骤1 显卡型号: " + ex.Message);
+                        }
+
+                        // ---- 步骤 2：清理全部 PCIe 引导载荷 ----
+                        LogInfo("[恢复出厂 2/4] 清理全部 PCIe 引导载荷…");
+                        try
+                        {
+                            bool okBcd = NativeCore.CleanAllPcieUnlocks(LogPower);
+                            if (okBcd)
+                            {
+                                // 记账写 0：开机不读 BCD 也不会把「已解锁」显示出来
+                                try { NativeCore.MarkPcieUnlocked(false); } catch { }
+                                rep.Pass("步骤2 PCIe 引导载荷已清理（BCD 与 ESP 恢复官方状态）");
+                            }
+                            else
+                            {
+                                rep.Fail("步骤2 PCIe 引导载荷: 清理未完成（bcdedit 或 ESP 操作失败，详见上面的日志）");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("恢复出厂-清理引导载荷失败", ex);
+                            rep.Fail("步骤2 PCIe 引导载荷: " + ex.Message);
+                        }
+
+                        // ---- 步骤 3：清理状态文件 ----
+                        LogInfo("[恢复出厂 3/4] 清理本地状态文件…");
+                        try
+                        {
+                            string[] files = new string[]
+                            {
+                                Path.Combine(NativeCore.GetConfigDirectory(), "pcie-unlocked.txt"),
+                                Path.Combine(NativeCore.GetConfigDirectory(), "compat-state.txt"),
+                                // 实际生效的解锁状态文件在 data\state 下，两处都要清
+                                Path.Combine(NativeCore.GetDataDirectory(), "state", "pcie-unlocked.txt")
+                            };
+                            StringBuilder deleted = new StringBuilder();
+                            StringBuilder delErr = new StringBuilder();
+                            for (int i = 0; i < files.Length; i++)
+                            {
+                                string f = files[i];
+                                try
+                                {
+                                    if (!File.Exists(f)) continue;
+                                    File.Delete(f);
+                                    // 两处可能都有 pcie-unlocked.txt，同一个名字只报一次
+                                    string fn = Path.GetFileName(f);
+                                    if (deleted.ToString().IndexOf(fn, StringComparison.Ordinal) < 0)
+                                        deleted.Append(fn).Append(' ');
+                                }
+                                catch (Exception exDel)
+                                {
+                                    delErr.Append(Path.GetFileName(f)).Append(": ").Append(exDel.Message).Append("；");
+                                }
+                            }
+                            if (delErr.Length > 0)
+                                rep.Fail("步骤3 状态文件: 删除失败 " + delErr.ToString().TrimEnd('；'));
+                            else
+                                rep.Pass("步骤3 状态文件已清理（" +
+                                         (deleted.Length > 0 ? "删除 " + deleted.ToString().Trim() : "本来就没有残留文件") + "）");
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("恢复出厂-清理状态文件失败", ex);
+                            rep.Fail("步骤3 状态文件: " + ex.Message);
+                        }
+
+                        // ---- 步骤 4：删除省电计划任务 ----
+                        LogInfo("[恢复出厂 4/4] 移除省电计划任务…");
+                        try
+                        {
+                            if (!NativeCore.IsPowerSaverTaskInstalled())
+                            {
+                                rep.Pass("步骤4 省电计划任务: 本来就没安装，跳过");
+                            }
+                            else
+                            {
+                                NativeCore.UninstallPowerSaverTask(LogPower);
+                                // 该方法的 schtasks 兜底分支无论成败都 return true，
+                                // 必须重新查询确认，不能信返回值。
+                                if (NativeCore.IsPowerSaverTaskInstalled())
+                                    rep.Fail("步骤4 省电计划任务: 删除后仍能查询到该任务");
+                                else
+                                    rep.Pass("步骤4 省电计划任务已移除");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("恢复出厂-移除省电任务失败", ex);
+                            rep.Fail("步骤4 省电计划任务: " + ex.Message);
+                        }
+
+                        // 型号名/引导/功耗状态都变过，整页重推
+                        PostToPage(HardwareBridge.SpoofStateEvt());
+                        PostToPage(HardwareBridge.DeviceSnapshotEvt());
+                        PostToPage(HardwareBridge.GpuListEvt());
+                        PostToPage(HardwareBridge.UnlockStateEvt());
+                        PostToPage(HardwareBridge.PowerStateEvt());
+
+                        string summary = rep.Summary();
+                        if (rep.Failed.Count == 0)
+                        {
+                            LogInfo(summary);
+                            ReplyDataJson(rid, action,
+                                "{\"ok\":true,\"successCount\":" + rep.Ok.Count +
+                                ",\"failedCount\":0,\"message\":" + HardwareBridge.Quote(summary) + "}");
+                        }
+                        else
+                        {
+                            // 还有步骤失败时绝不能回「重置成功」——
+                            // 用户会以为机器已经回到出厂状态，实际没有。
+                            LogInfo(summary);
+                            ReplyFail(rid, action, "INTERNAL", summary);
+                        }
                     }));
                     return;
                 }
@@ -1419,6 +1615,69 @@ namespace CMP90HXToolbox
                     }));
                     return;
                 }
+                else if (action == "dual.bind" || action == "dual.unbind")
+                {
+                    bool isBind = (action == "dual.bind");
+                    // 前端用 postMessage(object)，WebMessageAsJson 给出的是原始 JSON 文本：
+                    // Windows 路径里的 \ 在文本里是 \\，不还原就会把双反斜杠当成路径本体
+                    // 写进注册表值名（界面回显也会变成双斜杠）。
+                    string exePath = JsonUnescape(ExtractPayloadString(json, "exePath"));
+                    if (string.IsNullOrEmpty(exePath) || exePath.Trim().Length == 0)
+                    {
+                        ReplyFail(id, action, "VALIDATION_FAILED",
+                                  isBind ? "请提供要绑定的程序路径（exePath）" : "请提供要解绑的程序路径（exePath）");
+                        return;
+                    }
+                    string rid = id;
+                    Task.Run(new Action(delegate
+                    {
+                        NativeCore.GpuBindingResult r = null;
+                        try
+                        {
+                            r = isBind
+                                ? NativeCore.BindAppToHighPerformanceGpu(exePath, LogPower)
+                                : NativeCore.UnbindAppFromGpuPreference(exePath, LogPower);
+                        }
+                        catch (Exception ex) { LogCrash(isBind ? "绑定高性能 GPU 失败" : "解除 GPU 绑定失败", ex); }
+
+                        if (r == null || !r.Ok)
+                        {
+                            string why = r == null ? "未返回结果" : (r.Error ?? "未知原因");
+                            LogInfo((isBind ? "绑定" : "解绑") + "失败: " + why);
+                            // 错误码由 NativeCore 给出：路径/文件问题 VALIDATION_FAILED，权限 NO_ADMIN，其余 INTERNAL
+                            string code = (r != null && !string.IsNullOrEmpty(r.Code)) ? r.Code : "INTERNAL";
+                            ReplyFail(rid, action, code, (isBind ? "绑定失败：" : "解绑失败：") + why);
+                            return;
+                        }
+
+                        // 名单与计数必须同源：页面列表读的是 dual.state 里的 bindings，
+                        // 只回 count 不推事件会出现「共 3 款」+「暂无绑定游戏」自相矛盾。
+                        PostToPage(HardwareBridge.DualStateEvt());
+
+                        string name = SafeFileName(exePath);
+                        string msg;
+                        if (isBind)
+                        {
+                            msg = (r.Existed ? "已更新 " : "已绑定 ") + name +
+                                  " → 高性能 GPU（GpuPreference=2），当前共 " + r.Count + " 个绑定";
+                        }
+                        else if (r.Existed)
+                        {
+                            msg = "已解除 " + name + " 的绑定，当前共 " + r.Count + " 个绑定";
+                        }
+                        else
+                        {
+                            msg = name + " 本来就没有绑定高性能 GPU（当前共 " + r.Count + " 个绑定）";
+                        }
+                        if (r.OtherUserFailures > 0)
+                            msg += "；另有 " + r.OtherUserFailures + " 个其它用户配置" +
+                                   (isBind ? "未能写入" : "无法访问、未做处理") + "（不影响当前用户）";
+                        LogInfo(msg);
+                        ReplyDataJson(rid, action,
+                            "{\"count\":" + r.Count + ",\"message\":" + HardwareBridge.Quote(msg) + "}");
+                    }));
+                    return;
+                }
                 else if (action == "overlay.unlock")
                 {
                     LogInfo("解锁覆盖层…");
@@ -1725,6 +1984,88 @@ namespace CMP90HXToolbox
         private static string failingText(int failed)
         {
             return failed == 0 ? "全部通过" : (failed + " 项未通过");
+        }
+
+        /// <summary>
+        /// 出厂重置的逐步结果。成功/失败分开记，
+        /// 最后统一拼成「成功 N 步 / 失败 M 步 + 明细」，
+        /// 避免各步骤自己回一条半截消息、用户看不到全貌。
+        /// </summary>
+        private sealed class ResetReport
+        {
+            public readonly System.Collections.Generic.List<string> Ok =
+                new System.Collections.Generic.List<string>();
+            public readonly System.Collections.Generic.List<string> Failed =
+                new System.Collections.Generic.List<string>();
+
+            public void Pass(string detail) { Ok.Add(detail); }
+            public void Fail(string detail) { Failed.Add(detail); }
+
+            public string Summary()
+            {
+                StringBuilder sb = new StringBuilder(320);
+                sb.Append("恢复出厂结果：成功 ").Append(Ok.Count)
+                  .Append(" 步，失败 ").Append(Failed.Count).Append(" 步。");
+                for (int i = 0; i < Ok.Count; i++)
+                    sb.Append(" [成功] ").Append(Ok[i]).Append('；');
+                for (int i = 0; i < Failed.Count; i++)
+                    sb.Append(" [失败] ").Append(Failed[i]).Append('；');
+                return sb.ToString().TrimEnd('；');
+            }
+        }
+
+        /// <summary>
+        /// 还原 JSON 字符串字面量里的转义。
+        /// WebMessageAsJson 给出的是原始 JSON 文本，Windows 路径里的反斜杠在文本里是 "\\"；
+        /// 不还原就把双反斜杠当成路径本体（写进注册表值名后会一直带着双斜杠）。
+        /// </summary>
+        private static string JsonUnescape(string s)
+        {
+            if (string.IsNullOrEmpty(s) || s.IndexOf('\\') < 0) return s;
+
+            StringBuilder sb = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c != '\\' || i + 1 >= s.Length)
+                {
+                    sb.Append(c);
+                    continue;
+                }
+                char n = s[++i];
+                switch (n)
+                {
+                    case '"': sb.Append('"'); break;
+                    case '\\': sb.Append('\\'); break;
+                    case '/': sb.Append('/'); break;
+                    case 'n': sb.Append('\n'); break;
+                    case 'r': sb.Append('\r'); break;
+                    case 't': sb.Append('\t'); break;
+                    case 'b': sb.Append('\b'); break;
+                    case 'f': sb.Append('\f'); break;
+                    case 'u':
+                        int code;
+                        if (i + 4 < s.Length &&
+                            int.TryParse(s.Substring(i + 1, 4),
+                                System.Globalization.NumberStyles.HexNumber,
+                                System.Globalization.CultureInfo.InvariantCulture, out code))
+                        {
+                            sb.Append((char)code);
+                            i += 4;
+                        }
+                        else sb.Append('u');
+                        break;
+                    default: sb.Append(n); break;
+                }
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>取文件名用于提示；路径异常时退回原文，不让拼消息把整个操作搞挂。</summary>
+        private static string SafeFileName(string path)
+        {
+            try { return Path.GetFileName(path); }
+            catch { return path; }
         }
 
         private string ShowSaveDialog(string defaultName)

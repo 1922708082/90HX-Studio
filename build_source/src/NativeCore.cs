@@ -3462,6 +3462,397 @@ namespace CMP90HXToolbox
             return result;
         }
 
+        // ---- 双卡绑定（dual.bind / dual.unbind）----
+
+        /// <summary>绑定/解绑的返回结果。Error 为空才表示成功，Count 是回读到的真实绑定数。</summary>
+        public sealed class GpuBindingResult
+        {
+            public bool Ok;
+            /// <summary>操作前是否已存在该绑定（bind 用来区分「新增」还是「已更新」，unbind 用来区分「本来就没绑」）。</summary>
+            public bool Existed;
+            /// <summary>操作完成后回读到的绑定总数。</summary>
+            public int Count;
+            /// <summary>其它已加载用户配置单元的失败数（当前用户成功时不影响结论，但要如实告知）。</summary>
+            public int OtherUserFailures;
+            /// <summary>失败时给前端的错误码：VALIDATION_FAILED（路径/文件问题）/ NO_ADMIN（权限）/ INTERNAL。</summary>
+            public string Code;
+            public string Error;
+        }
+
+        private const string GpuPreferenceSubKey = @"Software\Microsoft\DirectX\UserGpuPreferences";
+        private const string GpuPreferenceToken = "GpuPreference=2";
+
+        /// <summary>
+        /// 把 exe 写入「图形首选项」并设为高性能 GPU。
+        ///
+        /// 为什么不直接复用 AddAppToGpuPreference：那个方法全程 catch{}，写失败也 return true，
+        /// 调用方只能当成功——正是本项目最忌讳的假成功。这里写失败带原因返回，
+        /// 写成功后回读注册表，回读不符同样算失败。
+        /// </summary>
+        public static GpuBindingResult BindAppToHighPerformanceGpu(string exePath, Action<string, bool> log)
+        {
+            GpuBindingResult r = new GpuBindingResult();
+
+            string full;
+            string pathErr = NormalizeExePath(exePath, true, out full);
+            if (pathErr != null)
+            {
+                r.Code = "VALIDATION_FAILED";
+                r.Error = pathErr;
+                return r;
+            }
+
+            string composed;
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(GpuPreferenceSubKey))
+                {
+                    if (key == null)
+                    {
+                        r.Code = "INTERNAL";
+                        r.Error = "无法创建注册表键 HKCU\\" + GpuPreferenceSubKey + "（可能被安全软件拦截）";
+                        return r;
+                    }
+                    string old = Convert.ToString(key.GetValue(full) ?? "");
+                    r.Existed = !string.IsNullOrEmpty(old);
+                    // 只替换 GpuPreference=n，保留换肤等其它首选项
+                    composed = ComposeGpuPreference(old, 2);
+                    key.SetValue(full, composed, RegistryValueKind.String);
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                r.Code = "NO_ADMIN";
+                r.Error = "注册表写入被拒绝（需要管理员权限）：" + ex.Message;
+                return r;
+            }
+            catch (System.Security.SecurityException ex)
+            {
+                r.Code = "NO_ADMIN";
+                r.Error = "注册表写入被安全策略拒绝：" + ex.Message;
+                return r;
+            }
+            catch (Exception ex)
+            {
+                r.Code = "INTERNAL";
+                r.Error = "写入图形首选项失败：" + ex.Message;
+                return r;
+            }
+
+            r.OtherUserFailures = WriteGpuPreferenceForOtherUsers(full, composed);
+
+            // 回读：写进去的值必须真能读出来，否则不能算成功
+            string actual;
+            bool has = TryReadGpuPreference(full, out actual);
+            if (!has)
+            {
+                r.Code = "INTERNAL";
+                r.Error = "写入后回读失败：注册表里查不到 " + full;
+                return r;
+            }
+            if (actual == null || actual.IndexOf(GpuPreferenceToken, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                r.Code = "INTERNAL";
+                r.Error = "写入后回读不符（实际值: " + (actual ?? "空") + "）";
+                return r;
+            }
+
+            r.Count = GetConfiguredGpuPreferenceApps().Count;
+            r.Ok = true;
+            if (log != null)
+                log((r.Existed ? "已更新程序 GPU 绑定: " : "已绑定程序到高性能 GPU: ") + Path.GetFileName(full), false);
+            return r;
+        }
+
+        /// <summary>
+        /// 删除 exe 的「图形首选项」绑定。
+        /// 值本来就不存在不算失败（Existed=false，由调用方回「本来就没绑定」）——
+        /// 这种情况绝不能编一个「已解绑」出来。
+        /// </summary>
+        public static GpuBindingResult UnbindAppFromGpuPreference(string exePath, Action<string, bool> log)
+        {
+            GpuBindingResult r = new GpuBindingResult();
+
+            string full;
+            string pathErr = NormalizeExePath(exePath, false, out full);
+            if (pathErr != null)
+            {
+                r.Code = "VALIDATION_FAILED";
+                r.Error = pathErr;
+                return r;
+            }
+
+            try
+            {
+                r.Existed = GpuBindingExists(full);
+                if (r.Existed)
+                {
+                    using (RegistryKey key = Registry.CurrentUser.OpenSubKey(GpuPreferenceSubKey, true))
+                    {
+                        if (key == null)
+                        {
+                            r.Code = "NO_ADMIN";
+                            r.Error = "无法以写入方式打开 HKCU\\" + GpuPreferenceSubKey + "（需要管理员权限）";
+                            return r;
+                        }
+                        key.DeleteValue(full, false);
+                    }
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                r.Code = "NO_ADMIN";
+                r.Error = "注册表写入被拒绝（需要管理员权限）：" + ex.Message;
+                return r;
+            }
+            catch (System.Security.SecurityException ex)
+            {
+                r.Code = "NO_ADMIN";
+                r.Error = "注册表写入被安全策略拒绝：" + ex.Message;
+                return r;
+            }
+            catch (Exception ex)
+            {
+                r.Code = "INTERNAL";
+                r.Error = "删除图形首选项失败：" + ex.Message;
+                return r;
+            }
+
+            r.OtherUserFailures = DeleteGpuPreferenceForOtherUsers(full);
+
+            // 回读：当前用户的项必须真的消失
+            if (r.Existed)
+            {
+                string still;
+                if (TryReadGpuPreference(full, out still))
+                {
+                    r.Code = "INTERNAL";
+                    r.Error = "解绑后回读发现该项仍存在：" + full;
+                    return r;
+                }
+                if (GpuBindingExists(full))
+                {
+                    // 可能是别的用户配置文件里的同名项，删除失败已在 OtherUserFailures 计数
+                    r.Code = "INTERNAL";
+                    r.Error = "解绑未完全生效：另一个用户的图形首选项里仍有该程序";
+                    return r;
+                }
+            }
+
+            r.Count = GetConfiguredGpuPreferenceApps().Count;
+            r.Ok = true;
+            if (log != null)
+                log(r.Existed
+                    ? "已解除程序 GPU 绑定: " + Path.GetFileName(full)
+                    : "程序本来就没有 GPU 绑定: " + Path.GetFileName(full), false);
+            return r;
+        }
+
+        /// <summary>
+        /// 校验并规范化待绑定的 exe 路径；返回 null 表示通过，否则是给用户看的原因。
+        /// 必须校验：注册表值名就是这条路径，任意字符串写进去既无效也难清理。
+        /// </summary>
+        private static string NormalizeExePath(string exePath, bool requireExists, out string full)
+        {
+            full = null;
+            if (string.IsNullOrEmpty(exePath) || exePath.Trim().Length == 0)
+                return "程序路径为空";
+
+            string p = exePath.Trim();
+            if (p.Length >= 2 && p[0] == '"' && p[p.Length - 1] == '"') p = p.Substring(1, p.Length - 2);
+
+            if (!Path.IsPathRooted(p))
+                return "程序路径必须是完整路径（例如 D:\\Games\\game.exe）：" + p;
+
+            try { p = Path.GetFullPath(p); }
+            catch (Exception ex) { return "程序路径非法：" + ex.Message; }
+
+            if (!p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                return "只能处理 .exe 程序：" + p;
+            // 解绑不要求文件还在：程序卸载后正是最需要清掉残留绑定的时候
+            if (requireExists && !File.Exists(p))
+                return "程序文件不存在：" + p;
+
+            full = p;
+            return null;
+        }
+
+        /// <summary>
+        /// 只替换 GpuPreference=n 这一段，保留 SwapEffectUpgradeEnable 等其它设置。
+        /// 整串覆盖会把用户已有的其它首选项抹掉。
+        /// </summary>
+        private static string ComposeGpuPreference(string oldValue, int pref)
+        {
+            string want = "GpuPreference=" + pref;
+            if (string.IsNullOrEmpty(oldValue)) return want + ";";
+
+            StringBuilder sb = new StringBuilder(64);
+            bool replaced = false;
+            string[] parts = oldValue.Split(';');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string seg = parts[i].Trim();
+                if (seg.Length == 0) continue;
+                if (seg.StartsWith("GpuPreference=", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (replaced) continue;      // 重复项只保留一个
+                    sb.Append(want).Append(';');
+                    replaced = true;
+                }
+                else
+                {
+                    sb.Append(seg).Append(';');
+                }
+            }
+            if (!replaced) sb.Append(want).Append(';');
+            return sb.ToString();
+        }
+
+        /// <summary>读当前用户那份「图形首选项」里某个 exe 的值；第二个返回值为是否存在。</summary>
+        private static bool TryReadGpuPreference(string exePath, out string value)
+        {
+            value = null;
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(GpuPreferenceSubKey, false))
+                {
+                    if (key == null) return false;
+                    object v = key.GetValue(exePath);
+                    if (v == null) return false;
+                    value = Convert.ToString(v);
+                    return true;
+                }
+            }
+            catch { return false; }
+        }
+
+        /// <summary>该程序是否绑在高性能 GPU 上（含其它已加载用户的配置），大小写不敏感。</summary>
+        private static bool GpuBindingExists(string exePath)
+        {
+            List<string> bound = GetConfiguredGpuPreferenceApps();
+            for (int i = 0; i < bound.Count; i++)
+            {
+                if (string.Equals(bound[i], exePath, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
+        private static string _currentUserSidCache;
+
+        private static string CurrentUserSid()
+        {
+            if (!string.IsNullOrEmpty(_currentUserSidCache)) return _currentUserSidCache;
+            try
+            {
+                using (WindowsIdentity id = WindowsIdentity.GetCurrent())
+                {
+                    if (id != null && id.User != null) _currentUserSidCache = id.User.Value;
+                }
+            }
+            catch { }
+            return _currentUserSidCache;
+        }
+
+        /// <summary>
+        /// 其它已加载用户配置单元的写入（尽力而为）。
+        /// 当前用户那份才是权威：这份失败只影响别的账户，不能因此把本次操作判失败，
+        /// 但必须计数并告知，不能悄悄吞掉。
+        /// </summary>
+        private static int WriteGpuPreferenceForOtherUsers(string exePath, string value)
+        {
+            int failed = 0;
+            string me = CurrentUserSid();
+            try
+            {
+                using (RegistryKey users = Registry.Users)
+                {
+                    if (users == null) return 0;
+                    foreach (string sid in users.GetSubKeyNames())
+                    {
+                        if (!sid.StartsWith("S-1-5-21-", StringComparison.Ordinal)) continue;
+                        if (sid.EndsWith("_Classes", StringComparison.Ordinal)) continue;
+                        if (!string.IsNullOrEmpty(me) && string.Equals(sid, me, StringComparison.OrdinalIgnoreCase)) continue;
+                        try
+                        {
+                            using (RegistryKey uKey = users.CreateSubKey(sid + @"\Software\Microsoft\DirectX\UserGpuPreferences"))
+                            {
+                                if (uKey == null) { failed++; continue; }
+                                uKey.SetValue(exePath, value, RegistryValueKind.String);
+                            }
+                        }
+                        catch { failed++; }
+                    }
+                }
+            }
+            catch { }
+            return failed;
+        }
+
+        /// <summary>其它已加载用户配置单元里的同名项删除（尽力而为，失败计数）。</summary>
+        private static int DeleteGpuPreferenceForOtherUsers(string exePath)
+        {
+            int failed = 0;
+            string me = CurrentUserSid();
+            try
+            {
+                using (RegistryKey users = Registry.Users)
+                {
+                    if (users == null) return 0;
+                    foreach (string sid in users.GetSubKeyNames())
+                    {
+                        if (!sid.StartsWith("S-1-5-21-", StringComparison.Ordinal)) continue;
+                        if (sid.EndsWith("_Classes", StringComparison.Ordinal)) continue;
+                        if (!string.IsNullOrEmpty(me) && string.Equals(sid, me, StringComparison.OrdinalIgnoreCase)) continue;
+                        try
+                        {
+                            using (RegistryKey uKey = users.OpenSubKey(sid + @"\Software\Microsoft\DirectX\UserGpuPreferences", true))
+                            {
+                                if (uKey == null) continue;
+                                uKey.DeleteValue(exePath, false);
+                            }
+                        }
+                        catch { failed++; }
+                    }
+                }
+            }
+            catch { }
+            return failed;
+        }
+
+        /// <summary>
+        /// 回读当前 CMP 显卡在驱动类里的 DriverDesc（只读注册表，不碰 WMI/NVML）。
+        /// 供「还原后校验」使用：DetectAll 会连带查传感器与硬件，代价过高。
+        /// 返回 null 表示读不到（无权限或没有匹配的驱动类项），调用方必须区分「读不到」与「值不对」。
+        /// </summary>
+        public static string ReadGpuDriverDesc()
+        {
+            try
+            {
+                const string classRoot = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(classRoot, false))
+                {
+                    if (key == null) return null;
+                    foreach (string sub in key.GetSubKeyNames())
+                    {
+                        if (sub.Length != 4) continue;
+                        using (RegistryKey sk = key.OpenSubKey(sub, false))
+                        {
+                            if (sk == null) continue;
+                            string matchId = Convert.ToString(sk.GetValue("MatchingDeviceId") ?? "");
+                            string desc = Convert.ToString(sk.GetValue("DriverDesc") ?? "");
+                            bool hit = IsCmpDevId(matchId) ||
+                                       desc.IndexOf("CMP", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                       (desc.IndexOf("GeForce", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                                        matchId.IndexOf("10DE", StringComparison.OrdinalIgnoreCase) >= 0);
+                            if (hit) return desc;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
         public static bool AddAppToGpuPreference(string exePath, Action<string, bool> log)
         {
             if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))

@@ -182,7 +182,27 @@ namespace CMP90HXToolbox
               .Append(",\"pciId\":").Append(Quote(t.DisplayGpuPciId)).Append("},");
             sb.Append("\"virtual\":{\"present\":").Append(Bool(t.HasVirtualGpu))
               .Append(",\"name\":").Append(Quote(t.VirtualGpuName)).Append("},");
-            sb.Append("\"gpus\":[],\"bindings\":[],\"drives\":[");
+            sb.Append("\"gpus\":[],\"bindings\":[");
+            try
+            {
+                // 列表必须与计数同源：前端把 bindings 当绑定列表渲染，
+                // 只给 boundGames 计数会出现「共 2 款」+「暂无绑定游戏」。
+                System.Collections.Generic.List<string> bound = NativeCore.GetConfiguredGpuPreferenceApps();
+                for (int i = 0; i < bound.Count; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    string exe = bound[i];
+                    string nm = "";
+                    // 注册表值名就是完整路径，没有记录绑定时间；
+                    // addedAt 留空让页面显示「未知」，不编一个日期出来。
+                    try { nm = System.IO.Path.GetFileName(exe); } catch { }
+                    sb.Append("{\"name\":").Append(Quote(nm))
+                      .Append(",\"exePath\":").Append(Quote(exe))
+                      .Append(",\"addedAt\":\"\"}");
+                }
+            }
+            catch { }
+            sb.Append("],\"drives\":[");
             try
             {
                 System.Collections.Generic.List<string[]> drives = GameScanner.ListDrives();
@@ -318,8 +338,9 @@ namespace CMP90HXToolbox
                         sb.Append(",\"createdAt\":").Append(Quote(fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")));
                         sb.Append(",\"sizeBytes\":").Append(fi.Length);
                         sb.Append(",\"kind\":").Append(Quote(isSnap ? "manual" : "auto"));
-                        // 回滚能力尚未接入，如实标注，避免界面给出不该有的承诺
-                        sb.Append(",\"restorable\":").Append(Bool(false)).Append('}');
+                        // 只有带 [ROLLBACK] 段的快照能真实回滚；旧快照如实标 false，
+                        // 别让界面给出「能回滚」的承诺（点了会被明确拒绝）。
+                        sb.Append(",\"restorable\":").Append(Bool(isSnap && Diagnostics.IsRestorable(fi.Name))).Append('}');
                         n++;
                     }
                 }

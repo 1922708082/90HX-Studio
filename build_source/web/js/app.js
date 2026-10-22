@@ -1682,12 +1682,13 @@
           return;
         }
 
-        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th></tr></thead><tbody>' +
+        listEl.innerHTML = '<table class="data-table"><thead><tr><th title="name">程序名</th><th title="exePath">路径</th><th title="addedAt">添加日期</th><th>操作</th></tr></thead><tbody>' +
           apps.map(app =>
             '<tr>' +
               '<td><strong>' + escapeHtml(valOrUnknown(app.name)) + '</strong></td>' +
               '<td>' + escapeHtml(valOrUnknown(app.exePath)) + '</td>' +
               '<td>' + escapeHtml(valOrUnknown(app.addedAt)) + '</td>' +
+              '<td><button class="btn btn-secondary" data-action="dual.unbind" data-exe-path="' + escapeHtml(valOrUnknown(app.exePath)) + '" style="padding:2px 10px;font-size:12px;">解绑</button></td>' +
             '</tr>'
           ).join('') +
           '</tbody></table>';
@@ -1749,7 +1750,8 @@
               '<div class="timeline-sub">' + escapeHtml(kLabel) + ' · ' + escapeHtml(kb) + '</div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-              '<button class="btn btn-secondary" data-action="snapshot.delete" data-snapshot-id="' + escapeHtml(item.id) + '">删除</button>' +
+              '<button class="btn btn-secondary" data-action="modal.confirm" data-confirm-type="snapshot.restore" data-snapshot-id="' + escapeHtml(item.id) + '">回滚</button>' +
+              '<button class="btn btn-danger" data-action="snapshot.delete" data-snapshot-id="' + escapeHtml(item.id) + '">删除</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -2279,6 +2281,10 @@
             if (navPage === 'logs') {
               sendCmd('logs.query', { offset: 0, limit: 200, level: state.logsFilterLevel }, target);
             }
+            /* DLSS 页仍是内测能力，每次进入都给一次风险提示 */
+            if (navPage === 'dlss') {
+              showToast('DLSS 5 / 帧生成 属于内测功能，可能不稳定；异常请反馈', 'warn');
+            }
             break;
           }
           case 'ui.toggleTheme': {
@@ -2408,6 +2414,10 @@
           case 'logs.clear':
             // 清空日志不可恢复，先走二次确认，确认后才发命令
             openDangerConfirmModal('logs.clear', target);
+            break;
+          case 'factory.reset':
+            // 出厂重置不可撤销且需手输 RESET，先开确认弹窗，确认后才发命令
+            openDangerConfirmModal('factory.reset', target);
             break;
           case 'logs.export':
           case 'update.check':

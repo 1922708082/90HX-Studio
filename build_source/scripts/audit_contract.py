@@ -81,19 +81,13 @@ local_only = {
     'banner.dismiss',   # 纯前端：关错误横幅，不发给宿主
 }
 
-# 后端尚未实现、但界面入口已经移除的（不是遗漏，是有意搁置）。
-# 单独统计并打印，避免「缺口」列表里长期挂着 4 条噪音 —— 也不能直接删掉，
-# 后端接上时按这份名单逐条恢复即可。
-known_pending = {
-    'dual.bind', 'dual.unbind', 'factory.reset', 'snapshot.restore',
-}
 
 print('=' * 68)
 print('前端发出的动作 %d 个 | 后端实现 %d 个 | 后端事件 %d 个 | 前端处理 %d 个'
       % (len(sent), len(implemented), len(emitted), len(evt_handled)))
 print('=' * 68)
 
-missing_host = sorted(a for a in sent - implemented - local_only - known_pending)
+missing_host = sorted(a for a in sent - implemented - local_only)
 missing_evt = sorted(a for a in evt_handled - emitted - local_only - implemented)
 dead_evt = sorted(a for a in emitted - evt_handled)
 
@@ -115,9 +109,3 @@ print('\n[4] 后端已实现（供核对）:')
 print('    ', ', '.join(sorted(implemented)))
 print('\n[5] 后端已发事件（供核对）:')
 print('    ', ', '.join(sorted(emitted)))
-
-pending_hit = sorted(a for a in sent - implemented - local_only if a in known_pending)
-if pending_hit:
-    print('\n[6] 已知待接入、界面入口已移除（不计入缺口）: %d' % len(pending_hit))
-    for a in pending_hit:
-        print('    - %s' % a)
