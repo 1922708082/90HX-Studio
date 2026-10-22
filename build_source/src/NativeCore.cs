@@ -1595,8 +1595,10 @@ namespace CMP90HXToolbox
                     // 写盘，把之前正确的状态冲掉。
                     // 两条命令各自的退出码都要为 0：
                     // 只看最后一条会把「bootmgr 读失败、firmware 读成功」误判为成功。
+                    // NVPermissive 只出现在 firmware 输出里，bootmgr 为空是正常现象；
+                    // 之前要求「fw 或 bootMgr 非空」等于把正常情况当失败。
                     bool readOk = ecBm == 0 && ecFw == 0
-                                  && (fw.Length > 0 || bootMgr.Length > 0)
+                                  && fw.Length > 0
                                   && fw.IndexOf("ERROR", StringComparison.OrdinalIgnoreCase) < 0;
                     if (readOk)
                     {

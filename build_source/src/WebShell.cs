@@ -1093,10 +1093,24 @@ namespace CMP90HXToolbox
                                 try
                                 {
                                     string bak = p + ".hxbak";
-                                    if (File.Exists(bak)) File.Delete(bak);
-                                    File.Move(p, bak);
-                                    moved++;
-                                    LogPower("已备份 DLSS5 文件: " + unlockFiles[i] + " → .hxbak", false);
+                                    if (File.Exists(bak))
+                                    {
+                                        // 已经有备份了：说明 p 是「打过补丁的文件」，bak 才是原件。
+                                        // 绝对不能删 bak 再 Move —— 那等于用补丁文件覆盖用户原件，
+                                        // 反复移除几次原始 DLL 就永久没了。
+                                        string extra = p + ".hxbak.new";
+                                        try { if (File.Exists(extra)) File.Delete(extra); } catch { }
+                                        File.Move(p, extra);
+                                        moved++;
+                                        LogPower("已移出补丁文件 " + unlockFiles[i] +
+                                                 "（原件备份 .hxbak 保留不动）", false);
+                                    }
+                                    else
+                                    {
+                                        File.Move(p, bak);
+                                        moved++;
+                                        LogPower("已备份 DLSS5 文件: " + unlockFiles[i] + " → .hxbak", false);
+                                    }
                                 }
                                 catch (Exception ex2) { LogPower("备份 " + unlockFiles[i] + " 失败: " + ex2.Message, true); }
                             }
