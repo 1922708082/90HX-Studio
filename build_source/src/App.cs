@@ -657,19 +657,6 @@ namespace CMP90HXToolbox
             }
         }
 
-        /// <summary>命令行开关判定：忽略大小写、允许带引号、允许出现在任意位置。</summary>
-        private static bool HasArgument(string[] args, string name)
-        {
-            if (args == null || args.Length == 0) return false;
-            for (int i = 0; i < args.Length; i++)
-            {
-                string a = args[i];
-                if (a == null) continue;
-                if (string.Equals(a.Trim('"', ' ', '\''), name, StringComparison.OrdinalIgnoreCase)) return true;
-            }
-            return false;
-        }
-
         /// <summary>
         /// 启动 WebView2 宿主窗口（新界面）。
         /// 与旧界面互不干扰：不接管单实例互斥体，可同时开着便于对照验收。

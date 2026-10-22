@@ -37,6 +37,12 @@
                   <span>保存</span>
                 </button>
               </div>
+              <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;">
+                <label style="font-size:12.5px;color:var(--text-sub);width:96px;">清单地址</label>
+                <input type="text" class="text-input" id="cfgUpdateManifestUrl" style="flex:1;min-width:260px;"
+                       placeholder="https://example.com/version.json 或 GitHub raw 地址">
+              </div>
+              <div class="page-desc" style="margin-top:6px;">「清单地址」指向一个 JSON（含 version / url / sha256）。加速前缀只影响下载，不能代替清单地址——两者都填才能真正检查并下载更新。</div>
               <div class="page-desc" style="margin-top:8px;">留空时自动依次尝试内置加速源（ghproxy.net / ghfast.top / gh-proxy.com / gitmirror），最后直连；填了则优先用你的。每次尝试都会写进日志。</div>
             </div>
 

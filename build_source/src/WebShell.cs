@@ -894,7 +894,7 @@ namespace CMP90HXToolbox
                 else if (action == "update.check")
                 {
                     string cur = HardwareBridge.CurrentVersion();
-                    AppSettings.Load();
+                    AppSettings.Reload();   // 强制重读，避免运行时改了配置却读到旧缓存
                     string url = AppSettings.UpdateManifestUrl;
                     if (string.IsNullOrEmpty(url))
                     {
@@ -1965,20 +1965,6 @@ namespace CMP90HXToolbox
             {
                 LogCrash("回复数据消息出错", ex);
             }
-        }
-
-        /// <summary>把字符串列表拼成 JSON 数组。</summary>
-        private static string JsonArray(System.Collections.Generic.List<string> items)
-        {
-            StringBuilder sb = new StringBuilder(256);
-            sb.Append('[');
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (i > 0) sb.Append(',');
-                sb.Append(HardwareBridge.Quote(items[i]));
-            }
-            sb.Append(']');
-            return sb.ToString();
         }
 
         private static string failingText(int failed)

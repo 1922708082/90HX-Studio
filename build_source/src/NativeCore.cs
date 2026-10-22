@@ -2866,32 +2866,6 @@ namespace CMP90HXToolbox
 
         #endregion
 
-        /// <summary>
-        /// 统计系统内 Windows 启动分区数量（只读）。
-        /// NVPermissiveEFI 的自动链启在检测到多个启动分区时会拒绝执行，
-        /// 因此部署前必须预检，多于 1 个时改用 startup.nsh 多路径链启。
-        /// </summary>
-        private static int CountWindowsBootPartitions()
-        {
-            try
-            {
-                int n = 0;
-                string outp = RunCmd("bcdedit", "/enum {fwbootmgr}");
-                foreach (Match m in Regex.Matches(outp, @"device\s+partition=([A-Za-z]:)"))
-                {
-                    if (!seenBootParts.Contains(m.Groups[1].Value.ToUpper()))
-                    {
-                        seenBootParts.Add(m.Groups[1].Value.ToUpper());
-                        n++;
-                    }
-                }
-                return n;
-            }
-            catch { return 1; }
-        }
-
-        private static readonly List<string> seenBootParts = new List<string>();
-
         public static Task<bool> Create90hxFirmwareUsbAsync(string driveLetter, bool computeOnly, Action<string, bool> log)
         {
             return Task.Factory.StartNew(() =>

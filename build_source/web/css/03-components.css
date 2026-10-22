@@ -1977,10 +1977,6 @@
     /* =========================================================================
        导航「封条」：功能未完成时盖住入口，但文字仍要能看清
        ========================================================================= */
-    .nav-item.nav-sealed {
-      position: relative;
-      overflow: hidden;
-    }
     .nav-item .seal-ribbon {
       position: absolute;
       right: 6px;
@@ -1996,15 +1992,4 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
       pointer-events: none;
       z-index: 2;
-    }
-    /* 文字浮在封条之上，保证可读 */
-    .nav-item.nav-sealed > span:not(.seal-ribbon) {
-      position: relative;
-      z-index: 2;
-      opacity: 0.85;
-    }
-    .nav-item.nav-sealed > svg {
-      position: relative;
-      z-index: 2;
-      opacity: 0.55;
     }

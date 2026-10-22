@@ -103,6 +103,18 @@ namespace CMP90HXToolbox
         /// 原来是 void + catch{}：磁盘只读、ACL 拒绝时静默失败，
         /// 调用方照样回「设置已保存」，重启后全回默认。
         /// </summary>
+        /// <summary>强制重新读盘。Load() 有 _loaded 缓存，配置文件在程序运行期间
+        /// 被手工改过（或在另一个窗口保存）时，不重读会一直用启动时那份旧值——
+        /// 表现就是「我明明配了清单地址，检查更新却说没配置」。</summary>
+        public static void Reload()
+        {
+            lock (_gate)
+            {
+                _loaded = false;
+                Load();
+            }
+        }
+
         public static bool Save()
         {
             lock (_gate)

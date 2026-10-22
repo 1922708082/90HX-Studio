@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 19:04:56" />
+  <meta name="hx-build" content="2026-10-22 19:23:55" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -2958,10 +2958,6 @@
     /* =========================================================================
        导航「封条」：功能未完成时盖住入口，但文字仍要能看清
        ========================================================================= */
-    .nav-item.nav-sealed {
-      position: relative;
-      overflow: hidden;
-    }
     .nav-item .seal-ribbon {
       position: absolute;
       right: 6px;
@@ -2977,17 +2973,6 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
       pointer-events: none;
       z-index: 2;
-    }
-    /* 文字浮在封条之上，保证可读 */
-    .nav-item.nav-sealed > span:not(.seal-ribbon) {
-      position: relative;
-      z-index: 2;
-      opacity: 0.85;
-    }
-    .nav-item.nav-sealed > svg {
-      position: relative;
-      z-index: 2;
-      opacity: 0.55;
     }
 
 /* =====================  04-pages.css  ===================== */
@@ -7098,6 +7083,12 @@ body.theme-light {
                   <span>保存</span>
                 </button>
               </div>
+              <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;">
+                <label style="font-size:12.5px;color:var(--text-sub);width:96px;">清单地址</label>
+                <input type="text" class="text-input" id="cfgUpdateManifestUrl" style="flex:1;min-width:260px;"
+                       placeholder="https://example.com/version.json 或 GitHub raw 地址">
+              </div>
+              <div class="page-desc" style="margin-top:6px;">「清单地址」指向一个 JSON（含 version / url / sha256）。加速前缀只影响下载，不能代替清单地址——两者都填才能真正检查并下载更新。</div>
               <div class="page-desc" style="margin-top:8px;">留空时自动依次尝试内置加速源（ghproxy.net / ghfast.top / gh-proxy.com / gitmirror），最后直连；填了则优先用你的。每次尝试都会写进日志。</div>
             </div>
 
@@ -7799,6 +7790,13 @@ body.theme-light {
           const keep = p.downloadProxy || '';
           sel.value = keep;
           if (sel.value !== keep) sel.value = '';
+
+          /* 清单地址回显：正在输入时不要覆盖用户手上的内容 */
+          const urlInput = document.getElementById('cfgUpdateManifestUrl');
+          if (urlInput && document.activeElement !== urlInput) {
+            const savedUrl = p.updateManifestUrl || '';
+            if (urlInput.value !== savedUrl) urlInput.value = savedUrl;
+          }
         } catch (e) { }
       }
 
@@ -9533,10 +9531,6 @@ body.theme-light {
             sendCmd('theme.set', { theme: t });
             break;
           }
-          case 'nav.sealed':
-            // 封条入口：不进页面，只提示
-            showToast('DLSS 5 / 帧生成 功能还没做好，敬请期待', 'warn');
-            break;
           case 'ui.togglePerfLow':
             togglePerfLowMode();
             break;
@@ -9624,7 +9618,8 @@ body.theme-light {
           case 'settings.save': {
             const g = function (id) { return document.getElementById(id); };
             sendCmd('settings.save', {
-              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value : ''
+              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value : '',
+              updateManifestUrl: g('cfgUpdateManifestUrl') ? g('cfgUpdateManifestUrl').value.trim() : ''
             }, target);
             break;
           }

@@ -565,6 +565,13 @@
           const keep = p.downloadProxy || '';
           sel.value = keep;
           if (sel.value !== keep) sel.value = '';
+
+          /* 清单地址回显：正在输入时不要覆盖用户手上的内容 */
+          const urlInput = document.getElementById('cfgUpdateManifestUrl');
+          if (urlInput && document.activeElement !== urlInput) {
+            const savedUrl = p.updateManifestUrl || '';
+            if (urlInput.value !== savedUrl) urlInput.value = savedUrl;
+          }
         } catch (e) { }
       }
 
@@ -2299,10 +2306,6 @@
             sendCmd('theme.set', { theme: t });
             break;
           }
-          case 'nav.sealed':
-            // 封条入口：不进页面，只提示
-            showToast('DLSS 5 / 帧生成 功能还没做好，敬请期待', 'warn');
-            break;
           case 'ui.togglePerfLow':
             togglePerfLowMode();
             break;
@@ -2390,7 +2393,8 @@
           case 'settings.save': {
             const g = function (id) { return document.getElementById(id); };
             sendCmd('settings.save', {
-              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value : ''
+              downloadProxy: g('cfgDownloadProxy') ? g('cfgDownloadProxy').value : '',
+              updateManifestUrl: g('cfgUpdateManifestUrl') ? g('cfgUpdateManifestUrl').value.trim() : ''
             }, target);
             break;
           }
