@@ -38,27 +38,43 @@ if (-not $pyExe) {
     $pc = Get-Command python -ErrorAction SilentlyContinue
     if ($pc) { $pyExe = $pc.Source }
 }
-if (-not $pyExe) { Write-Host "[WARN] 未找到 Python，契约检查跳过（安装 Python 或设置 PYTHON 环境变量）" -ForegroundColor Yellow }
+if (-not $pyExe) {
+    Write-Host "==================================================" -ForegroundColor Yellow
+    Write-Host "[SKIP] 未找到 Python，契约检查本次未执行（装 Python 或设 PYTHON 环境变量）" -ForegroundColor Yellow
+    Write-Host "==================================================" -ForegroundColor Yellow
+}
 if ($pyExe -and -not (Test-Path $auditScript)) {
     Write-Host "[WARN] 未找到 scripts/audit_contract.py，契约检查跳过" -ForegroundColor Yellow
 }
 if ($pyExe -and (Test-Path $auditScript)) {
     $auditOut = & $pyExe $auditScript 2>&1
-    # [1] 前端会发、后端未实现：只告警（这类可能是排期中，硬拦会让构建永远失败）
-    $missing = ($auditOut | Select-String "^\[1\] 前端会发" | Select-Object -First 1)
-    if ($missing -and $missing.Line -notmatch ": 0$") {
-        Write-Host "[契约告警] 有动作前端会发但后端未实现（点了会报 NOT_SUPPORTED）：" -ForegroundColor Yellow
-        $auditOut | Select-String "    - " | ForEach-Object { Write-Host $_.Line -ForegroundColor Yellow }
+    # 审计输出按小节切片。
+    # 不能直接用 Select-String "    - "：那是全文匹配，会把 [3] 的行也列进来
+    # （[3] 目前是识别器的假阳性，混进来会让「缺 4 个动作」看起来像「缺 13 个」）。
+    $lines2 = @($auditOut | ForEach-Object { "$_" })
+    function Get-SectionItems([string]$startTag, [string]$endTag) {
+        $i1 = -1; $i2 = $lines2.Count
+        for ($i = 0; $i -lt $lines2.Count; $i++) {
+            if ($i1 -lt 0 -and $lines2[$i] -match $startTag) { $i1 = $i; continue }
+            if ($i1 -ge 0 -and $lines2[$i] -match $endTag) { $i2 = $i; break }
+        }
+        if ($i1 -lt 0) { return @() }
+        return @($lines2[($i1 + 1)..([Math]::Max($i1 + 1, $i2 - 1))] | Where-Object { $_ -match '    - ' })
     }
 
-    $waiting = ($auditOut | Select-String "^\[2\] 前端在等" | Select-Object -First 1)
-    if ($waiting -and $waiting.Line -notmatch ": 0$") {
-        Write-Host "--------------------------------------------------" -ForegroundColor Yellow
-        Write-Host "[契约告警] 有页面在等待宿主从不发出的事件：" -ForegroundColor Yellow
-        $auditOut | Select-String "    - " | ForEach-Object { Write-Host $_.Line -ForegroundColor Yellow }
-        Write-Host "--------------------------------------------------" -ForegroundColor Yellow
-        # 这类缺口会让整页永远停在「等待中」，属于契约破坏，构建必须失败
-        Write-Host "[ERROR] 页面在等宿主从不发的事件，构建中止" -ForegroundColor Red
+    # [1] 前端会发、后端未实现：只告警（这类可能是排期中，硬拦会让构建永远失败）
+    $missing = ($lines2 | Where-Object { $_ -match '^\[1\] 前端会发' } | Select-Object -First 1)
+    if ($missing -and $missing -notmatch ": 0$") {
+        Write-Host "[契约告警] 有动作前端会发但后端未实现（点了会报 NOT_SUPPORTED）：" -ForegroundColor Yellow
+        Get-SectionItems '^\[1\]' '^\[2\]' | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+    }
+
+    $waiting = ($lines2 | Where-Object { $_ -match '^\[2\] 前端在等' } | Select-Object -First 1)
+    if ($waiting -and $waiting -notmatch ": 0$") {
+        Write-Host "--------------------------------------------------" -ForegroundColor Red
+        Write-Host "[契约错误] 有页面在等待宿主从不发出的事件，构建中止：" -ForegroundColor Red
+        Get-SectionItems '^\[2\]' '^\[3\]' | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+        Write-Host "--------------------------------------------------" -ForegroundColor Red
         exit 1
     }
 }
