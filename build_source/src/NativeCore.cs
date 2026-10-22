@@ -1881,8 +1881,26 @@ namespace CMP90HXToolbox
                     log("说明：本方案不再复制 {bootmgr} 生成备份项，避免开机出现系统选择框。", false);
 
                     log("[5/5] 接管 {bootmgr} 并设置最高优先级...", false);
-                    RunCmd("bcdedit", "/set {fwbootmgr} displayorder {bootmgr}");
-                    RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\NVPermissive\\NVPermissiveCompat.efi");
+                    int ecOrder, ecPath, ecVerify;
+                    RunCmd("bcdedit", "/set {fwbootmgr} displayorder {bootmgr}", out ecOrder);
+                    RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\NVPermissive\\NVPermissiveCompat.efi", out ecPath);
+                    // 必须回读：/set 返回 0 不代表真的指向了新路径（BCD 被占用、
+                    // 策略拦截时可能静默不生效），不回读就会在引导没改的情况下报「安装成功」。
+                    string verify1 = RunCmd("bcdedit", "/enum {bootmgr}", out ecVerify);
+                    bool mode1Ok = ecOrder == 0 && ecPath == 0 && ecVerify == 0
+                                   && verify1.IndexOf("NVPermissiveCompat.efi", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (!mode1Ok)
+                    {
+                        log("模式 1 引导写入未生效（order=" + ecOrder + " path=" + ecPath +
+                            " verify=" + ecVerify + "），正在回退...", true);
+                        int ecRevert;
+                        RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\Microsoft\\Boot\\bootmgfw.efi", out ecRevert);
+                        if (ecRevert != 0)
+                            log("回退也失败了，请进 PE 执行：bcdedit /set {bootmgr} path \\EFI\\Microsoft\\Boot\\bootmgfw.efi", true);
+                        else
+                            log("已回退到官方 bootmgfw.efi，机器可正常启动", false);
+                        return false;
+                    }
 
                     string stateDir = GetConfigDirectory();
                     if (!Directory.Exists(stateDir)) Directory.CreateDirectory(stateDir);
@@ -1969,8 +1987,23 @@ namespace CMP90HXToolbox
                     string gBackup = mBk.Success ? mBk.Value : null;
                     if (!string.IsNullOrEmpty(gBackup))
                     {
-                        RunCmd("bcdedit", "/set " + gBackup + " path \\EFI\\Microsoft\\Boot\\bootmgfw.efi");
+                        int ecBkPath;
+                        RunCmd("bcdedit", "/set " + gBackup + " path \\EFI\\Microsoft\\Boot\\bootmgfw.efi", out ecBkPath);
+                        if (ecBkPath != 0)
+                        {
+                            log("备份引导项路径配置失败（exit=" + ecBkPath + "），已中止安装，未改动 {bootmgr}", true);
+                            return false;
+                        }
                         log("独立原生备份项已生成: " + gBackup, false);
+                    }
+                    else
+                    {
+                        // 没有兜底项就接管 {bootmgr}：开机黄屏卡住时用户无路可退。
+                        // 这是「报成功但可能开不了机」里最危险的一条，必须中止。
+                        log("未能创建 Windows Boot Manager (Backup) 兜底项，已中止安装。" +
+                            "原因通常是 bcdedit /copy 被安全软件拦截或 BCD 被占用；" +
+                            "未改动 {bootmgr}，系统仍可正常启动。", true);
+                        return false;
                     }
 
                     RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\90HX\\Shell.efi");
@@ -1985,7 +2018,15 @@ namespace CMP90HXToolbox
                     }
                     else
                     {
-                        log("提示: BCD 校验未检测到期望的引导路径，请检查系统安全软件防护设置。", true);
+                        log("BCD 校验未检测到 \\EFI\\90HX\\Shell.efi，判定安装未生效，正在回退 {bootmgr}...", true);
+                        int ecRev2;
+                        RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\Microsoft\\Boot\\bootmgfw.efi", out ecRev2);
+                        if (ecRev2 == 0)
+                            log("已回退到官方 bootmgfw.efi，系统可正常启动", false);
+                        else
+                            log("回退失败！请进 PE 执行：bcdedit /set {bootmgr} path \\EFI\\Microsoft\\Boot\\bootmgfw.efi", true);
+                        // 不写 compat-state：状态文件代表「已安装」，这里并没有装上
+                        return false;
                     }
 
                     string stateDir = GetConfigDirectory();

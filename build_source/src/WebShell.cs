@@ -522,6 +522,9 @@ namespace CMP90HXToolbox
 
                         PostToPage(HardwareBridge.SpoofStateEvt());
                         PostToPage(HardwareBridge.DeviceSnapshotEvt());
+                        // 还原出厂名后必须重推显卡列表：列表里的 isSpoofed
+                        // 是构建时快照，不重推会一直显示「伪装:是」。
+                        PostToPage(HardwareBridge.GpuListEvt());
                     }));
                     return;
                 }
@@ -620,22 +623,30 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "logs.export")
                 {
+                    // SaveFileDialog 是 WinForms 控件，必须在 STA 的 UI 线程上开。
+                    // 原来放在 Task.Run（线程池 MTA）里 → ThreadStateException 被
+                    // ShowSaveDialog 的 catch 吞掉 → 返回 null → 永远报「已取消导出」，
+                    // 导出功能 100% 失效，还伪装成用户主动取消。
+                    string target = ShowSaveDialog("hx-studio-log.txt");
+                    if (string.IsNullOrEmpty(target))
+                    {
+                        ReplyFail(id, action, "CANCELLED", "已取消导出");
+                        return;
+                    }
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        string target = ShowSaveDialog("hx-studio-log.txt");
-                        if (string.IsNullOrEmpty(target))
-                        {
-                            ReplyFail(rid, action, "CANCELLED", "已取消导出");
-                            return;
-                        }
                         string okPath = Diagnostics.ExportLog(target);
                         if (string.IsNullOrEmpty(okPath))
                         {
                             ReplyFail(rid, action, "INTERNAL", "导出失败，请检查目标路径权限");
                             return;
                         }
-                        ReplyDataJson(rid, action, "{\"path\":" + HardwareBridge.Quote(okPath) + "}");
+                        // 带上 message，前端才会 toast 出「已导出到 X」；
+                        // 原来只回 path，用户点完没有任何反馈。
+                        ReplyDataJson(rid, action,
+                            "{\"path\":" + HardwareBridge.Quote(okPath) +
+                            ",\"message\":" + HardwareBridge.Quote("日志已导出：" + okPath) + "}");
                     }));
                     return;
                 }
@@ -878,13 +889,25 @@ namespace CMP90HXToolbox
                                 : NativeCore.InstallPcieMode1Async(LogPower).Result;
                         }
                         catch (Exception ex) { LogCrash("安装解锁载荷失败", ex); ok = false; }
-                        // 把结果落到状态文件：开机不读 BCD 也能正确显示「已解锁」
-                        try { NativeCore.MarkPcieUnlocked(ok); } catch { }
+                        // 只在成功时记账。
+                        // 失败时写 0 是错的：失败可能发生在预清理就中止（此时机器仍处于
+                        // 已解锁状态），写 0 会把「已解锁」翻成「未解锁」，比不写更糟。
+                        // 开机路径会用 BCD 回读自我校正，不写也能恢复正确值。
+                        if (ok) { try { NativeCore.MarkPcieUnlocked(true); } catch { } }
 
                         PostToPage(HardwareBridge.UnlockStateEvt());
                         PostToPage(HardwareBridge.GpuListEvt());   // PCIe 标志变了，列表要跟着刷新
-                        if (ok) ReplyOk(rid, action);
-                        else ReplyFail(rid, action, "NEED_REBOOT", "载荷安装未完成，详见日志");
+                        if (ok)
+                        {
+                            // 带 message：这项操作的关键是「冷启动才生效」，
+                            // 普通「操作完成」的绿字不够，用户会直接重启（热重启不生效）。
+                            ReplyDataJson(rid, action,
+                                "{\"message\":" + HardwareBridge.Quote(
+                                    "载荷已写入。请完全关机（断电 10 秒以上）再开机生效，热重启不生效。") + "}");
+                        }
+                        // 原来用 NEED_REBOOT，而前端码表里它的标签是
+                        // 「操作已提交，需重启系统生效」——成功语气，与「安装未完成」矛盾。
+                        else ReplyFail(rid, action, "INTERNAL", "载荷安装未完成，详见日志");
                     }));
                     return;
                 }
@@ -899,7 +922,9 @@ namespace CMP90HXToolbox
                         try { ok = NativeCore.CleanAllPcieUnlocks(LogPower); }
                         catch (Exception ex) { LogCrash("回滚失败", ex); }
                         // 还原成功后清除状态：开机不读 BCD 也能显示「未解锁」
-                        try { NativeCore.MarkPcieUnlocked(false); } catch { }
+                        // 同样只在成功时写：回滚失败时机器可能仍是解锁状态，
+                        // 写 0 会造成「显示未解锁、实际仍解锁」的反向误导。
+                        if (ok) { try { NativeCore.MarkPcieUnlocked(false); } catch { } }
 
                         PostToPage(HardwareBridge.UnlockStateEvt());
                         PostToPage(HardwareBridge.GpuListEvt());   // PCIe 标志变了，列表要跟着刷新

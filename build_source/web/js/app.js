@@ -220,10 +220,27 @@
         return new Promise((resolve) => {
           pendingCmds.set(id, { action, triggerBtn, resolve });
 
-          // 15 秒兜底：宿主异常/回执丢失时，按钮会永久 disabled + is-loading，
-          // 用户除了关窗重开没有别的办法。超时后必须把按钮还回去并明确报错。
+          /* 超时兜底必须分档，否则会自己制造事故：
+             引导注入 / DLSS 部署 / 下载这类操作本来就要几十秒到几分钟
+             （挂 ESP + 多次 bcdedit + 写几十 MB），
+             15 秒到点就报「超时失败」并放开按钮，用户一重试就会并发执行两次，
+             两次 bcdedit 序列交错 —— 这比「按钮卡住」危险得多。 */
+          const LONG_ACTIONS = [
+            'unlock.install', 'unlock.rollback', 'unlock.toolkit',
+            'dlss.deploy', 'dlss.checkUpdate', 'dlss.download',
+            'update.download', 'update.apply',
+            'dual.scanGames', 'logs.export'
+          ];
+          const isLongTask = LONG_ACTIONS.indexOf(action) >= 0;
           setTimeout(function () {
             if (!pendingCmds.has(id)) return;   // 已正常回执
+            if (isLongTask) {
+              // 长任务：只提醒，不删除 pending、不放开按钮、不 resolve 成失败。
+              // 否则上层会按失败画错误横幅，与宿主真实结果脱节。
+              try { showToast('任务仍在执行，请勿重复点击：' + action, 'warn'); } catch (e) { }
+              return;
+            }
+            // 短任务：确实可能回执丢失，恢复按钮并明确报错
             pendingCmds.delete(id);
             try {
               if (triggerBtn && triggerBtn.classList) {
@@ -233,7 +250,7 @@
             } catch (e) { }
             try { showToast('命令超时未响应：' + action + '，请重试', 'error'); } catch (e) { }
             try { resolve({ ok: false, data: null, error: { code: 'TIMEOUT', message: '命令超时' } }); } catch (e) { }
-          }, 15000);
+          }, isLongTask ? 600000 : 15000);
           if (hasHost && !usingMock) {
             try {
               window.chrome.webview.postMessage(envelope);
