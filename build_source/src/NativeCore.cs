@@ -1670,7 +1670,8 @@ namespace CMP90HXToolbox
                 // 原来全程丢弃 bcdedit 的返回值，被安全软件拦住、非管理员、
                 // BCD 被占用时照样 log「已恢复 100%」并 return true——
                 // 用户以为恢复了，重启后仍是解锁引导。
-                int bcdFail = 0;
+                int bcdFail = 0;      // bcdedit 调用失败
+                int fileFail = 0;     // ESP 文件操作失败（与 bcdedit 无关）
                 int ecTmp;
 
                 log("正在重置 {bootmgr} 启动路径为微软官方 bootmgfw.efi...", false);
@@ -1757,14 +1758,14 @@ namespace CMP90HXToolbox
                                 }
                                 else
                                 {
-                                    bcdFail++;
+                                    fileFail++;
                                     log("还原 bootx64.efi 后长度不一致（" + lenLive + " vs " + lenBak +
                                         "），已保留备份 .90hx.bak 供手动修复", true);
                                 }
                             }
                             catch (Exception exRestore)
                             {
-                                bcdFail++;
+                                fileFail++;
                                 log("还原 bootx64.efi 失败：" + exRestore.Message +
                                     "（备份仍保留在 " + p4Bak + "，可用 PE 手动还原）", true);
                             }
@@ -1775,7 +1776,7 @@ namespace CMP90HXToolbox
                         // 这里含 File.Move(bootx64.efi.hxbak → bootx64.efi) 的还原动作。
                         // 失败 = ESP 上仍是打过补丁的 bootx64.efi，下次启动依然走解锁载荷，
                         // 绝不能再当「提示」轻描淡写地带过去。
-                        bcdFail++;
+                        fileFail++;
                         log("ESP 清理/还原失败：" + ex.Message + "（引导可能仍处于解锁状态）", true);
                     }
                     finally
@@ -1791,13 +1792,18 @@ namespace CMP90HXToolbox
                 } catch { }
                 if (File.Exists(stateFile)) File.Delete(stateFile);
 
-                if (bcdFail > 0)
+                if (bcdFail > 0 || fileFail > 0)
                 {
-                    // 有 bcdedit 调用失败：不能声称「已恢复」。
-                    // 对比度很重要——这句骗人会让用户直接重启，然后发现还是解锁状态。
-                    log("引导恢复未完全成功：有 " + bcdFail + " 条 bcdedit 命令执行失败" +
-                        "（常见原因：被安全软件拦截、未以管理员运行、BCD 被占用）。" +
-                        "清理条目数: " + delCount + "，请排查后重试。", true);
+                    // 两类失败原因不同，混在一起说会把用户引错方向：
+                    // bcdedit 失败 → 查杀软/提权/BCD 占用；
+                    // ESP 文件失败 → 查分区只读/文件占用/权限。
+                    StringBuilder why = new StringBuilder();
+                    if (bcdFail > 0)
+                        why.Append(bcdFail + " 条 bcdedit 命令执行失败（常见原因：被安全软件拦截、未以管理员运行、BCD 被占用）；");
+                    if (fileFail > 0)
+                        why.Append(fileFail + " 项 ESP 文件操作失败（常见原因：ESP 分区只读、文件被占用、权限不足）；");
+                    log("引导恢复未完全成功：" + why.ToString() +
+                        "清理条目数: " + delCount + "，请按上述方向排查后重试。", true);
                     return false;
                 }
 
@@ -1826,7 +1832,13 @@ namespace CMP90HXToolbox
                     }
 
                     log("[2/5] 执行防冲突安全清理，规避多模式重复项...", false);
-                    CleanAllPcieUnlocks(log);
+                    // 预清理是安装的前置条件：清理没成功就继续写引导，
+                    // 会留下「旧项残留 + 新项叠加」的脏状态，而最后照样报安装成功。
+                    if (!CleanAllPcieUnlocks(log))
+                    {
+                        log("预清理未成功，已中止安装（避免在脏引导环境上继续写入）", true);
+                        return false;
+                    }
 
                     string bcdBak1 = BackupBcd(log);
                     if (string.IsNullOrEmpty(bcdBak1))
@@ -1905,7 +1917,13 @@ namespace CMP90HXToolbox
                         return false;
                     }
 
-                    CleanAllPcieUnlocks(log);
+                    // 预清理是安装的前置条件：清理没成功就继续写引导，
+                    // 会留下「旧项残留 + 新项叠加」的脏状态，而最后照样报安装成功。
+                    if (!CleanAllPcieUnlocks(log))
+                    {
+                        log("预清理未成功，已中止安装（避免在脏引导环境上继续写入）", true);
+                        return false;
+                    }
 
                     string bcdBak2 = BackupBcd(log);
                     if (string.IsNullOrEmpty(bcdBak2))
@@ -2300,7 +2318,11 @@ namespace CMP90HXToolbox
                     }
 
                     // ---------- 5) 清理工具自身的过期启动项残留 ----------
-                    try { CleanAllPcieUnlocks(log); }
+                    try
+                    {
+                        if (!CleanAllPcieUnlocks(log))
+                            log("注意：清理未能完全成功，引导可能仍残留解锁项，请按上方错误项排查。", true);
+                    }
                     catch { }
 
                     log("==================================================", false);
@@ -2903,7 +2925,13 @@ namespace CMP90HXToolbox
                     }
 
                     log("[2/5] 执行安全清理，规避多模式重复项...", false);
-                    CleanAllPcieUnlocks(log);
+                    // 预清理是安装的前置条件：清理没成功就继续写引导，
+                    // 会留下「旧项残留 + 新项叠加」的脏状态，而最后照样报安装成功。
+                    if (!CleanAllPcieUnlocks(log))
+                    {
+                        log("预清理未成功，已中止安装（避免在脏引导环境上继续写入）", true);
+                        return false;
+                    }
 
                     log("[3/5] 挂载 EFI 系统分区 (ESP) 并部署 WildFlash1st 纯算力固件...", false);
                     string esp = MountEsp();
@@ -2976,7 +3004,13 @@ namespace CMP90HXToolbox
                         return false;
                     }
 
-                    CleanAllPcieUnlocks(log);
+                    // 预清理是安装的前置条件：清理没成功就继续写引导，
+                    // 会留下「旧项残留 + 新项叠加」的脏状态，而最后照样报安装成功。
+                    if (!CleanAllPcieUnlocks(log))
+                    {
+                        log("预清理未成功，已中止安装（避免在脏引导环境上继续写入）", true);
+                        return false;
+                    }
 
                     log("[2/4] 挂载 ESP 分区并释放老主板兼容 Shell 套件...", false);
                     string esp = MountEsp();
