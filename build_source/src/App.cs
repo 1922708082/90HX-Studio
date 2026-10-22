@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 ﻿using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -839,7 +839,6 @@ namespace CMP90HXToolbox
                     _window.Activate();
                     RefreshSensors();
                     LogAudit("90HX Studio 已就绪。所有底层服务与安全防呆引擎已初始化完成。");
-                    try { AiAssistantController.EnsureInitialized(true); } catch { }
                 }
             }
         }
