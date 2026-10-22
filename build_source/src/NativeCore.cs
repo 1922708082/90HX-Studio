@@ -1580,8 +1580,9 @@ namespace CMP90HXToolbox
             if (!BcdReadAllowed || fresh) return;
             try
             {
-                bootMgr = RunCmd("bcdedit", "/enum {bootmgr}") ?? "";
-                fw = RunCmd("bcdedit", "/enum firmware") ?? "";
+                int ecBm, ecFw;
+                bootMgr = RunCmd("bcdedit", "/enum {bootmgr}", out ecBm) ?? "";
+                fw = RunCmd("bcdedit", "/enum firmware", out ecFw) ?? "";
                 _bcdCacheBootMgr = bootMgr;
                 _bcdCacheFw = fw;
                 _bcdCacheAt = DateTime.UtcNow;
@@ -1592,7 +1593,9 @@ namespace CMP90HXToolbox
                     // 只有「真的读成功」才允许覆盖状态文件。
                     // 否则 bcdedit 被拦/超时时输出里没有关键字，会被当成「未解锁」
                     // 写盘，把之前正确的状态冲掉。
-                    bool readOk = LastCmdExitCode == 0
+                    // 两条命令各自的退出码都要为 0：
+                    // 只看最后一条会把「bootmgr 读失败、firmware 读成功」误判为成功。
+                    bool readOk = ecBm == 0 && ecFw == 0
                                   && (fw.Length > 0 || bootMgr.Length > 0)
                                   && fw.IndexOf("ERROR", StringComparison.OrdinalIgnoreCase) < 0;
                     if (readOk)
@@ -7061,6 +7064,19 @@ namespace CMP90HXToolbox
 
         private static string RunCmd(string exe, string args)
         {
+            int ignored;
+            return RunCmd(exe, args, out ignored);
+        }
+
+        /// <summary>
+        /// 带退出码的版本。
+        /// 静态 LastCmdExitCode 在多线程下会被别的命令覆盖——
+        /// 两个 RunCmd 连着调用时，第二个的退出码会覆盖第一个，
+        /// 用它判断「第一条命令是否成功」必然误判。要用这个重载。
+        /// </summary>
+        private static string RunCmd(string exe, string args, out int exitCode)
+        {
+            exitCode = -1;
             try
             {
                 var psi = new ProcessStartInfo
@@ -7089,11 +7105,12 @@ namespace CMP90HXToolbox
                     if (!proc.WaitForExit(15000))
                     {
                         try { proc.Kill(); } catch { }
-                        LastCmdExitCode = -1;
+                        exitCode = -1;
                         return "ERROR: 命令超时（15s）: " + exe;
                     }
                     proc.WaitForExit();   // 等待异步读流结束
-                    LastCmdExitCode = proc.ExitCode;
+                    exitCode = proc.ExitCode;
+                    LastCmdExitCode = exitCode;   // 兼容旧调用方，勿用于成败判定
 
                     string outStr = so.ToString();
                     string errStr = se.ToString();
@@ -7104,7 +7121,7 @@ namespace CMP90HXToolbox
             }
             catch (Exception ex)
             {
-                LastCmdExitCode = -1;
+                exitCode = -1;
                 return "ERROR: " + ex.Message;
             }
         }

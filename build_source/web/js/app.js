@@ -219,6 +219,21 @@
 
         return new Promise((resolve) => {
           pendingCmds.set(id, { action, triggerBtn, resolve });
+
+          // 15 秒兜底：宿主异常/回执丢失时，按钮会永久 disabled + is-loading，
+          // 用户除了关窗重开没有别的办法。超时后必须把按钮还回去并明确报错。
+          setTimeout(function () {
+            if (!pendingCmds.has(id)) return;   // 已正常回执
+            pendingCmds.delete(id);
+            try {
+              if (triggerBtn && triggerBtn.classList) {
+                triggerBtn.classList.remove('is-loading');
+                triggerBtn.disabled = false;
+              }
+            } catch (e) { }
+            try { showToast('命令超时未响应：' + action + '，请重试', 'error'); } catch (e) { }
+            try { resolve({ ok: false, data: null, error: { code: 'TIMEOUT', message: '命令超时' } }); } catch (e) { }
+          }, 15000);
           if (hasHost && !usingMock) {
             try {
               window.chrome.webview.postMessage(envelope);

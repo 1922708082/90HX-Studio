@@ -1540,6 +1540,8 @@ pre, code, kbd, samp,
 .state-box, .state-box-text,
 .mono, .path-text,
 #dlssRuntimePathText,
+#overlayPathText,
+#updateSha256Text,
 .modal-text, .modal-detail {
   -webkit-user-select: text;
   user-select: text;
@@ -1556,7 +1558,8 @@ pre ::selection,
 /* 演示模式常驻徽标：数据来源不可信时必须显眼且关不掉 */
 .mock-badge {
   position: fixed;
-  top: 8px;
+  /* 下移到标题栏三键下方：原来 top:8 right:12 正好压住最小化/最大化/关闭 */
+  top: 38px;
   right: 12px;
   z-index: 99999;
   display: none;
