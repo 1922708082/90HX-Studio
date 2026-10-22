@@ -32,8 +32,21 @@ $out = $tpl.Replace('{{CSS}}', ($cssParts -join "`r`n"))
 $out = $out.Replace('{{PAGES}}', ($pageParts -join "`r`n"))
 $out = $out.Replace('{{JS}}', $jsText)
 
+# 构建戳：便于确认运行时用到的前端是哪一次合并出来的
+$stamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+$out = $out.Replace('{{BUILD_STAMP}}', $stamp)
+if ($out -notmatch 'hx-build') {
+    $out = $out.Replace('<head>', '<head>' + "`r`n  <meta name=""hx-build"" content=""" + $stamp + """ />")
+}
+
+# 原子写入：先写 .tmp 再 Move 覆盖。
+# 直接 WriteAllText 时若进程持有文件或中途失败，会留下半截 index.html，
+# 而它恰好就是要内嵌进 exe 的那份。
 $outPath = Join-Path $root 'index.html'
-[System.IO.File]::WriteAllText($outPath, $out, (New-Object System.Text.UTF8Encoding($false)))
+$tmpPath = $outPath + '.tmp'
+[System.IO.File]::WriteAllText($tmpPath, $out, (New-Object System.Text.UTF8Encoding($false)))
+if (Test-Path $outPath) { [System.IO.File]::Delete($outPath) }
+[System.IO.File]::Move($tmpPath, $outPath)
 
 $lines = ($out -split "`n").Count
 Write-Host ("[WEB] 已合并 index.html  {0} 行 / {1:N0} 字节" -f $lines, (Get-Item $outPath).Length)

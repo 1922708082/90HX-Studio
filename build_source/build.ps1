@@ -20,22 +20,46 @@ if (Test-Path $mergeScript) {
     & $mergeScript
     if (-not $?) { Write-Host "[ERROR] 前端合并失败" -ForegroundColor Red; exit 1 }
 } else {
-    Write-Host "[WARN] 未找到 merge-web.ps1，跳过合并" -ForegroundColor Yellow
+    Write-Host "[ERROR] 未找到 scripts/merge-web.ps1，无法合并前端，构建中止（继续会内嵌上一次的 index.html）" -ForegroundColor Red
+    exit 1
 }
 
 # 契约门禁：比对「前端发的/等的」与「后端实现的/发的」
 # 历史上多次出现「页面等某个事件、宿主从来不推」导致整页空白，
 # 这条检查让它在构建时就暴露，而不是等用户点进去发现。
 $auditScript = "$srcRoot\scripts\audit_contract.py"
-$pyExe = "C:\Users\19227\.workbuddy\binaries\python\versions\3.13.12\python.exe"
-if ((Test-Path $auditScript) -and (Test-Path $pyExe)) {
+# 解释器路径不能写死到某台机器的用户目录：换机/换人后 Test-Path 直接 false，
+# 整段检查会静默跳过，门禁等于不存在。按 环境变量 → 本机默认 → PATH 依次查找。
+$pyExe = $null
+foreach ($c in @($env:PYTHON, (Join-Path $env:USERPROFILE ".workbuddy\binaries\python\versions\3.13.12\python.exe"))) {
+    if ($c -and (Test-Path $c)) { $pyExe = $c; break }
+}
+if (-not $pyExe) {
+    $pc = Get-Command python -ErrorAction SilentlyContinue
+    if ($pc) { $pyExe = $pc.Source }
+}
+if (-not $pyExe) { Write-Host "[WARN] 未找到 Python，契约检查跳过（安装 Python 或设置 PYTHON 环境变量）" -ForegroundColor Yellow }
+if ($pyExe -and -not (Test-Path $auditScript)) {
+    Write-Host "[WARN] 未找到 scripts/audit_contract.py，契约检查跳过" -ForegroundColor Yellow
+}
+if ($pyExe -and (Test-Path $auditScript)) {
     $auditOut = & $pyExe $auditScript 2>&1
+    # [1] 前端会发、后端未实现：只告警（这类可能是排期中，硬拦会让构建永远失败）
+    $missing = ($auditOut | Select-String "^\[1\] 前端会发" | Select-Object -First 1)
+    if ($missing -and $missing.Line -notmatch ": 0$") {
+        Write-Host "[契约告警] 有动作前端会发但后端未实现（点了会报 NOT_SUPPORTED）：" -ForegroundColor Yellow
+        $auditOut | Select-String "    - " | ForEach-Object { Write-Host $_.Line -ForegroundColor Yellow }
+    }
+
     $waiting = ($auditOut | Select-String "^\[2\] 前端在等" | Select-Object -First 1)
     if ($waiting -and $waiting.Line -notmatch ": 0$") {
         Write-Host "--------------------------------------------------" -ForegroundColor Yellow
         Write-Host "[契约告警] 有页面在等待宿主从不发出的事件：" -ForegroundColor Yellow
         $auditOut | Select-String "    - " | ForEach-Object { Write-Host $_.Line -ForegroundColor Yellow }
         Write-Host "--------------------------------------------------" -ForegroundColor Yellow
+        # 这类缺口会让整页永远停在「等待中」，属于契约破坏，构建必须失败
+        Write-Host "[ERROR] 页面在等宿主从不发的事件，构建中止" -ForegroundColor Red
+        exit 1
     }
 }
 

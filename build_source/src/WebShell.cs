@@ -1363,7 +1363,9 @@ namespace CMP90HXToolbox
 
                         LogInfo("扫描完成: " + games.Count + " 个");
                         PostToPage(HardwareBridge.DualStateEvt());
-                        ReplyDataJson(rid, action, "{\"count\":" + games.Count + "}");
+                        ReplyDataJson(rid, action, "{\"count\":" + games.Count +
+                                ",\"message\":" + HardwareBridge.Quote(
+                                    "扫描完成：发现 " + games.Count + " 个游戏（绑定功能尚未接入）") + "}");
                     }));
                     return;
                 }
@@ -1426,7 +1428,9 @@ namespace CMP90HXToolbox
                         int count = 0;
                         string detail = Diagnostics.CleanGpuCache(out freed, out count);
                         LogInfo("已清理 GPU 缓存: " + count + " 个文件 / " + (freed / 1024.0 / 1024.0).ToString("0.0") + " MB （" + detail + "）");
-                        ReplyDataJson(rid, action, "{\"freedBytes\":" + freed + ",\"fileCount\":" + count + "}");
+                        ReplyDataJson(rid, action, "{\"freedBytes\":" + freed + ",\"fileCount\":" + count +
+                            ",\"message\":" + HardwareBridge.Quote(
+                                "已清理 " + count + " 个文件，释放 " + (freed / 1024 / 1024) + " MB") + "}");
                     }));
                     return;
                 }

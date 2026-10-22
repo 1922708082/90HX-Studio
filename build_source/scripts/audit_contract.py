@@ -77,7 +77,7 @@ local_only = {
     'nav.switch', 'modal.confirm', 'modal.close', 'modal.execute', 'ui.toggleTheme',
     'ui.togglePerfLow', 'ui.toggleSafetyCover', 'unlock.selectCard', 'unlock.selectChannel',
     'snapshot.filterKind', 'logs.filterLevel', 'logs.loadMore', 'logs.scrollToBottom',
-    'dual.bind', 'dual.unbind', 'power.setPreset', 'dlss.preflight',
+    'power.setPreset', 'dlss.preflight',   # dual.bind/unbind 会真发给宿主且未实现，不能再当纯前端动作
 }
 
 print('=' * 68)
