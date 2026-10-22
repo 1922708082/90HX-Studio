@@ -1589,9 +1589,18 @@ namespace CMP90HXToolbox
                 // 否则「已经解锁了却显示否」（isPcie 原本只能从 BCD 判断）。
                 try
                 {
-                    bool unlocked = fw.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0
-                                 || bootMgr.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0;
-                    File.WriteAllText(LastPcieStateFile, unlocked ? "1" : "0");
+                    // 只有「真的读成功」才允许覆盖状态文件。
+                    // 否则 bcdedit 被拦/超时时输出里没有关键字，会被当成「未解锁」
+                    // 写盘，把之前正确的状态冲掉。
+                    bool readOk = LastCmdExitCode == 0
+                                  && (fw.Length > 0 || bootMgr.Length > 0)
+                                  && fw.IndexOf("ERROR", StringComparison.OrdinalIgnoreCase) < 0;
+                    if (readOk)
+                    {
+                        bool unlocked = fw.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0
+                                     || bootMgr.IndexOf("NVPermissive", StringComparison.OrdinalIgnoreCase) >= 0;
+                        File.WriteAllText(LastPcieStateFile, unlocked ? "1" : "0");
+                    }
                 }
                 catch { }
             }
@@ -4010,6 +4019,15 @@ namespace CMP90HXToolbox
             catch { runDetail = "无法检查游戏进程"; }
             result.Items.Add(new DlssCheckItem("游戏进程", !gameRunning, true, runDetail));
             if (gameRunning) result.Passed = false;
+
+            // 兜底：只要存在未通过的「阻断项」，整体就不能算通过。
+            // 之前只有 gameRunning 一处会置 false，源运行库缺失这种致命项
+            // 也算「全部通过」，点部署必然失败。
+            for (int ci = 0; ci < result.Items.Count; ci++)
+            {
+                DlssCheckItem cItem = result.Items[ci];
+                if (cItem.Blocking && !cItem.Ok) { result.Passed = false; break; }
+            }
 
             // 目录里是否已有旧补丁
             bool hasOld = false;
@@ -7034,6 +7052,13 @@ namespace CMP90HXToolbox
             }
         }
 
+        /// <summary>
+        /// 最近一次 RunCmd 的进程退出码。
+        /// 之前所有调用方都靠「输出里有没有某个词」判断成败——本地化系统上必错，
+        /// 而且 bcdedit 失败时输出里也可能出现关键字。退出码是唯一可靠的。
+        /// </summary>
+        public static int LastCmdExitCode = 0;
+
         private static string RunCmd(string exe, string args)
         {
             try
@@ -7049,9 +7074,29 @@ namespace CMP90HXToolbox
                 };
                 using (var proc = Process.Start(psi))
                 {
-                    string outStr = proc.StandardOutput.ReadToEnd();
-                    string errStr = proc.StandardError.ReadToEnd();
-                    proc.WaitForExit();
+                    // 异步读两个流：先读完 stdout 再读 stderr，当 stderr 写满 4KB 管道时两边互等，
+                    // 表现为 bcdedit 永久不返回、按钮一直转圈。
+                    System.Text.StringBuilder so = new System.Text.StringBuilder();
+                    System.Text.StringBuilder se = new System.Text.StringBuilder();
+                    proc.OutputDataReceived += delegate(object o, DataReceivedEventArgs a)
+                    { if (a.Data != null) so.AppendLine(a.Data); };
+                    proc.ErrorDataReceived += delegate(object o, DataReceivedEventArgs a)
+                    { if (a.Data != null) se.AppendLine(a.Data); };
+                    proc.BeginOutputReadLine();
+                    proc.BeginErrorReadLine();
+
+                    // 必须有上限：BCD 被占用时 bcdedit 会一直挂着
+                    if (!proc.WaitForExit(15000))
+                    {
+                        try { proc.Kill(); } catch { }
+                        LastCmdExitCode = -1;
+                        return "ERROR: 命令超时（15s）: " + exe;
+                    }
+                    proc.WaitForExit();   // 等待异步读流结束
+                    LastCmdExitCode = proc.ExitCode;
+
+                    string outStr = so.ToString();
+                    string errStr = se.ToString();
                     if (string.IsNullOrEmpty(outStr)) return errStr;
                     if (string.IsNullOrEmpty(errStr)) return outStr;
                     return outStr + "\r\n" + errStr;
@@ -7059,6 +7104,7 @@ namespace CMP90HXToolbox
             }
             catch (Exception ex)
             {
+                LastCmdExitCode = -1;
                 return "ERROR: " + ex.Message;
             }
         }

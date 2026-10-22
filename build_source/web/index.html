@@ -2962,29 +2962,7 @@
       overflow: hidden;
       cursor: not-allowed;
     }
-    /* 封条：两条交叉成 X（用户要求「两杠一个叉」），半透明不遮文字 */
-    .nav-item.nav-sealed::before,
-    .nav-item.nav-sealed::after {
-      content: "";
-      position: absolute;
-      left: -12%;
-      right: -12%;
-      top: 50%;
-      height: 12px;
-      background: repeating-linear-gradient(
-        45deg,
-        rgba(239, 68, 68, 0.40) 0 6px,
-        rgba(239, 68, 68, 0.18) 6px 12px
-      );
-      border-top: 1px solid rgba(239, 68, 68, 0.50);
-      border-bottom: 1px solid rgba(239, 68, 68, 0.50);
-      pointer-events: none;
-      z-index: 1;
-    }
-    .nav-item.nav-sealed::before { transform: translateY(-50%) rotate(-8deg); }
-    .nav-item.nav-sealed::after  { transform: translateY(-50%) rotate(8deg); }
-
-    .nav-item.nav-sealed .seal-ribbon {
+    .nav-item .seal-ribbon {
       position: absolute;
       right: 6px;
       top: 50%;
@@ -2993,7 +2971,7 @@
       font-weight: 800;
       letter-spacing: 0.5px;
       color: #fff;
-      background: #e5484d;
+      background: rgba(239, 68, 68, 0.85);
       padding: 1px 6px;
       border-radius: 3px;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -5280,11 +5258,104 @@
       display: block;
     }
 
-  
+/* =========================================================================
+   去网页感（最后加载，覆盖前面所有规则）
+   目标：用起来像原生窗口，而不是浏览器页面
+   1) 全局禁止选中与文字光标（输入类控件除外）
+   2) 禁止拖拽图片/链接（拖出去会变成浏览器行为）
+   3) 去掉双击选中蓝框与长按选择手柄
+   ========================================================================= */
+html, body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* 输入类必须恢复可选，否则无法编辑 */
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
+}
+
+/* 图片与链接一律不许拖 */
+img,
+a,
+svg {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+a {
+  cursor: pointer;   /* 仍是可点的样子，但不触发浏览器拖拽 */
+}
+
+/* 拖选时不要出现蓝色选区 */
+::selection {
+  background: transparent;
+}
+input::selection,
+textarea::selection {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+/* 去掉浏览器的点击高亮（移动端/触屏会闪一个灰块） */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 例外：这些地方用户需要复制取证，必须允许选中。
+   全局 user-select:none 曾经把这些也锁死，属于体验倒退。 */
+#view-logs *,
+pre, code, kbd, samp,
+.state-box, .state-box-text,
+.mono, .path-text,
+#dlssRuntimePathText,
+.modal-text, .modal-detail {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
+}
+#view-logs ::selection,
+pre ::selection,
+.state-box ::selection,
+.mono ::selection,
+#dlssRuntimePathText ::selection {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+/* 演示模式常驻徽标：数据来源不可信时必须显眼且关不掉 */
+.mock-badge {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 99999;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 4px;
+  color: #fff;
+  background: rgba(239, 68, 68, 0.92);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+body.is-mock .mock-badge {
+  display: flex;
+}
+
   </style>
 </head>
 
 <body class="theme-light">
+  <!-- 数据来自演示模式时必须显眼：否则用户会以为解锁真的成功了 -->
+  <div class="mock-badge" id="mockBadge">演示数据 · 未连接宿主</div>
 
   <!-- GLOBAL SVG GRADIENT DEFS -->
   <svg viewBox="0 0 24 24" width="0" height="0" style="position:absolute">
@@ -5405,11 +5476,11 @@
                 </button>
               </li>
               <li>
-                <button class="nav-item nav-sealed" data-action="nav.sealed" data-page="dlss" title="该功能尚未完成">
+                <button class="nav-item" data-action="nav.switch" data-page="dlss" title="DLSS 5 / 帧生成">
                   <svg class="nav-icon" data-tone="violet" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="6" width="20" height="12" rx="5"/><rect x="2" y="6" width="20" height="12" rx="5"/><path class="svg-line" d="M7 12h4M9 10v4"/><circle class="svg-dot" cx="16.5" cy="12" r="1.6"/></svg>
                   <span>DLSS 5 / 帧生成</span>
-                  <!-- 封条：文字仍可见，点击只提示未完成，不进页面 -->
-                  <span class="seal-ribbon" aria-hidden="true">未完成</span>
+                  <!-- 内测标记：只做提示，不阻断进入（之前封条把整页挡死，连自测都进不去） -->
+                  <span class="seal-ribbon">内测</span>
                 </button>
               </li>
               <li>
@@ -6979,6 +7050,24 @@
       let isPerfLow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       /* 用户手动点过「低功耗」就尊重其选择，自动恢复不再覆盖 */
       let perfLowManual = false;
+
+      /* 去网页感：拦掉浏览器特有的交互。
+         WebView2 层已经关了右键菜单/开发者工具/快捷缩放，
+         这里再挡一层页面内的默认行为，避免出现「像网页」的破绽。 */
+      (function killBrowserFeel() {
+        // 右键菜单（自定义菜单不受影响，只有浏览器默认菜单会被拦）
+        document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        // 拖拽图片/链接/文字，防止拖出浏览器行为
+        document.addEventListener('dragstart', function (e) { e.preventDefault(); });
+        // 常用浏览器快捷键
+        document.addEventListener('keydown', function (e) {
+          if (!e.ctrlKey && !e.metaKey) return;
+          const k = (e.key || '').toLowerCase();
+          if (k === 's' || k === 'p' || k === 'u' || k === 'f' || k === 'o') {
+            e.preventDefault();
+          }
+        });
+      })();
       if (isPerfLow) {
         document.body.classList.add('perf-low');
       }
@@ -8731,7 +8820,7 @@
           }
           const usbVal = (document.getElementById('unlockUsbSelect') || {}).value || '';
           const payload = { cardType: state.selectedUnlockCard, channel: state.selectedUnlockChannel };
-          if (state.selectedUnlockChannel === 'B' || state.selectedUnlockChannel === 'C') {
+          if (state.selectedUnlockChannel === 'B') {   // C 未接线，不再发 usbDrive
             payload.usbDrive = usbVal;
           }
           titleEl.textContent = '确认执行固件引导注入';
@@ -10191,12 +10280,36 @@
         (MOCK.logsInitial || []).forEach(entry => pushEvt('logs.append', entry));
       }
 
+      /* 演示模式里绝不能执行破坏性操作。
+         之前 mock 对 unlock.install / spoof.apply 之类照样回 ok，
+         用户会以为真的解锁了——这是所有「假成功」里最坏的一种。 */
+      const MOCK_BLOCKED_ACTIONS = [
+        'unlock.install', 'unlock.rollback', 'unlock.toolkit',
+        'spoof.apply', 'spoof.restore',
+        'dlss.deploy', 'dlss.remove',
+        'power.enable', 'power.disable',
+        'update.download', 'update.apply',
+        'factory.reset', 'snapshot.restore',
+        'dual.bind', 'dual.unbind'
+      ];
+
       function dispatchToMockHost(envelope) {
         const { id, action, payload } = envelope;
         const replyOk = (data) => setTimeout(() => {
           handleIncomingEnvelope({ kind: 'res', id: id, action: action, payload: { ok: true, data: data || {}, error: null } });
         }, 180);
         const pushEvt = (act, pl) => handleIncomingEnvelope({ kind: 'evt', id: null, action: act, payload: pl });
+
+        if (MOCK_BLOCKED_ACTIONS.indexOf(action) >= 0) {
+          // 明确失败，不假装成功
+          setTimeout(() => {
+            handleIncomingEnvelope({
+              kind: 'res', id: id, action: action,
+              payload: { ok: false, data: null, error: { code: 'MOCK_MODE', message: '演示模式不会执行系统改动，请用桌面程序运行' } }
+            });
+          }, 120);
+          return;
+        }
 
         if (!window.MOCK && typeof MOCK === 'undefined') { replyOk({}); return; }
         if (!MOCK) {

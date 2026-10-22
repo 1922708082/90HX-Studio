@@ -528,9 +528,13 @@ namespace CMP90HXToolbox
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        PowerPresets.Apply("adaptive", secs <= 0 ? 8 : secs, LogPower);
-                        ReplyOk(rid, action);
+                        bool okE = false;
+                        try { okE = PowerPresets.Apply("adaptive", secs <= 0 ? 8 : secs, LogPower); }
+                        catch (Exception exE) { LogCrash("启用节能失败", exE); }
                         PostToPage(HardwareBridge.PowerStateEvt());
+                        // 驱动拒绝写功耗墙时必须如实报失败，否则界面回「已启用」而频率没变
+                        if (okE) ReplyOk(rid, action);
+                        else ReplyFail(rid, action, "DRIVER_REJECT", "启用节能失败，驱动未接受设置，详见日志");
                     }));
                     return;
                 }
@@ -649,23 +653,42 @@ namespace CMP90HXToolbox
                 else if (action == "settings.save")
                 {
                     AppSettings.Load();
+                    // 关键：只更新本次真正提交的字段。
+                    // 之前 null 一律当空串写回，而前端只提交下载源，
+                    // 于是每次保存都会把已配置的「更新清单地址」清空，
+                    // 导致 update.download 永远报「未配置更新源」。
                     string proxy = ExtractPayloadString(json, "downloadProxy");
                     string upd = ExtractPayloadString(json, "updateManifestUrl");
-                    if (proxy == null) proxy = "";
-                    if (upd == null) upd = "";
-                    proxy = proxy.Trim();
-                    upd = upd.Trim();
-                    if (proxy.Length > 0 && !proxy.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+
+                    if (proxy != null)
                     {
-                        ReplyFail(id, action, "INTERNAL", "加速前缀必须以 http(s):// 开头");
+                        proxy = proxy.Trim();
+                        if (proxy.Length > 0 && !proxy.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ReplyFail(id, action, "INTERNAL", "加速前缀必须以 http(s):// 开头");
+                            return;
+                        }
+                        AppSettings.DownloadProxy = proxy;
+                    }
+                    if (upd != null)
+                    {
+                        upd = upd.Trim();
+                        if (upd.Length > 0 && !upd.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ReplyFail(id, action, "INTERNAL", "更新清单地址必须以 http(s):// 开头");
+                            return;
+                        }
+                        AppSettings.UpdateManifestUrl = upd;
+                    }
+                    if (!AppSettings.Save())
+                    {
+                        ReplyFail(id, action, "INTERNAL", "设置写入失败：" + AppSettings.LastError);
                         return;
                     }
-                    AppSettings.DownloadProxy = proxy;
-                    AppSettings.UpdateManifestUrl = upd;
-                    AppSettings.Save();
                     string pdesc;
                     DlssPack.ResolveProxy(out pdesc);
-                    LogInfo("下载源已保存: 前缀=" + (proxy.Length == 0 ? "自动" : proxy) +
+                    LogInfo("设置已保存: 前缀=" + (string.IsNullOrEmpty(AppSettings.DownloadProxy) ? "自动" : AppSettings.DownloadProxy) +
+                            " / 清单=" + (string.IsNullOrEmpty(AppSettings.UpdateManifestUrl) ? "未配置" : AppSettings.UpdateManifestUrl) +
                             " / 代理=" + pdesc);
                     PostToPage(HardwareBridge.SettingsStateEvt());
                 }
@@ -800,6 +823,15 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.install")
                 {
+                    // 必须先短路再放开 BCD 读取：通道 C 目前没接线，
+                    // 落到下面会被当成 Mode1 去改本机 {bootmgr}。
+                    string chGuard = ExtractPayloadString(json, "channel");
+                    if (string.Equals(chGuard, "C", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ReplyFail(id, action, "NOT_SUPPORTED",
+                                  "U 盘引导通道尚未接入，请改用通道 A（UEFI 直启）或 B（Shell 链启）");
+                        return;
+                    }
                     NativeCore.BcdReadAllowed = true;
                     // channel: A=UEFI 直启(Mode1) / B=UEFI Shell 链启(Mode2)
                     string ch = ExtractPayloadString(json, "channel");
@@ -1094,7 +1126,10 @@ namespace CMP90HXToolbox
                             if (!File.Exists(exe))
                             {
                                 LogInfo("工具不存在: " + exeName + "，目录: " + dir);
-                                ReplyFail(rid, action, "FILE_LOCKED", "未找到 " + exeName);
+                                // 只回文件名等于没说：用户需要知道去哪找、为什么没有
+                                ReplyFail(rid, action, "FILE_NOT_FOUND",
+                                          "未找到 " + exeName + "（应为 " + dir + "\\" + exeName +
+                                          "）。可能是内置资源包缺失或不完整。");
                                 return;
                             }
 

@@ -1788,7 +1788,7 @@
           }
           const usbVal = (document.getElementById('unlockUsbSelect') || {}).value || '';
           const payload = { cardType: state.selectedUnlockCard, channel: state.selectedUnlockChannel };
-          if (state.selectedUnlockChannel === 'B' || state.selectedUnlockChannel === 'C') {
+          if (state.selectedUnlockChannel === 'B') {   // C 未接线，不再发 usbDrive
             payload.usbDrive = usbVal;
           }
           titleEl.textContent = '确认执行固件引导注入';
@@ -3248,12 +3248,36 @@
         (MOCK.logsInitial || []).forEach(entry => pushEvt('logs.append', entry));
       }
 
+      /* 演示模式里绝不能执行破坏性操作。
+         之前 mock 对 unlock.install / spoof.apply 之类照样回 ok，
+         用户会以为真的解锁了——这是所有「假成功」里最坏的一种。 */
+      const MOCK_BLOCKED_ACTIONS = [
+        'unlock.install', 'unlock.rollback', 'unlock.toolkit',
+        'spoof.apply', 'spoof.restore',
+        'dlss.deploy', 'dlss.remove',
+        'power.enable', 'power.disable',
+        'update.download', 'update.apply',
+        'factory.reset', 'snapshot.restore',
+        'dual.bind', 'dual.unbind'
+      ];
+
       function dispatchToMockHost(envelope) {
         const { id, action, payload } = envelope;
         const replyOk = (data) => setTimeout(() => {
           handleIncomingEnvelope({ kind: 'res', id: id, action: action, payload: { ok: true, data: data || {}, error: null } });
         }, 180);
         const pushEvt = (act, pl) => handleIncomingEnvelope({ kind: 'evt', id: null, action: act, payload: pl });
+
+        if (MOCK_BLOCKED_ACTIONS.indexOf(action) >= 0) {
+          // 明确失败，不假装成功
+          setTimeout(() => {
+            handleIncomingEnvelope({
+              kind: 'res', id: id, action: action,
+              payload: { ok: false, data: null, error: { code: 'MOCK_MODE', message: '演示模式不会执行系统改动，请用桌面程序运行' } }
+            });
+          }, 120);
+          return;
+        }
 
         if (!window.MOCK && typeof MOCK === 'undefined') { replyOk({}); return; }
         if (!MOCK) {

@@ -95,14 +95,22 @@ namespace CMP90HXToolbox
             }
         }
 
-        public static void Save()
+        /// <summary>最近一次写设置失败的原因（给界面展示，不要静默吞掉）。</summary>
+        public static string LastError { get; private set; }
+
+        /// <summary>
+        /// 写入设置，返回是否成功。
+        /// 原来是 void + catch{}：磁盘只读、ACL 拒绝时静默失败，
+        /// 调用方照样回「设置已保存」，重启后全回默认。
+        /// </summary>
+        public static bool Save()
         {
             lock (_gate)
             {
                 try
                 {
                     string p = FilePath;
-                    if (string.IsNullOrEmpty(p)) return;
+                    if (string.IsNullOrEmpty(p)) { LastError = "设置文件路径不可用"; return false; }
                     string d = Dir;
                     if (!string.IsNullOrEmpty(d) && !Directory.Exists(d)) Directory.CreateDirectory(d);
 
@@ -117,8 +125,14 @@ namespace CMP90HXToolbox
                     sb.AppendLine("proxyMode=" + (ProxyMode ?? "system"));
                     sb.AppendLine("proxyAddress=" + (ProxyAddress ?? ""));
                     File.WriteAllText(p, sb.ToString(), new UTF8Encoding(false));
+                    LastError = null;
+                    return true;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    LastError = ex.Message;
+                    return false;
+                }
             }
         }
 

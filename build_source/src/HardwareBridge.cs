@@ -449,7 +449,11 @@ namespace CMP90HXToolbox
             sb.Append("\"channels\":[");
             sb.Append("{\"id\":\"A\",\"label\":\"UEFI 直启\",\"available\":").Append(Bool(st.IsUefi)).Append(",\"installed\":").Append(Bool(unlocked)).Append("},");
             sb.Append("{\"id\":\"B\",\"label\":\"UEFI Shell 链启\",\"available\":").Append(Bool(st.IsUefi)).Append(",\"installed\":false},");
-            sb.Append("{\"id\":\"C\",\"label\":\"U 盘引导\",\"available\":true,\"installed\":false},");
+            // 通道 C 的 usbDrive 宿主没有解析，unlock.install 会按 Mode1 走
+            // 本机 BCD 直启注入（改的是本机 ESP，不是 U 盘）。
+            // NativeCore.CreateMode3UsbDriveAsync 已写好但没有调用方。
+            // 在接线之前一律标不可用，避免用户以为插 U 盘就能撤。
+            sb.Append("{\"id\":\"C\",\"label\":\"U 盘引导（未接线）\",\"available\":false,\"installed\":false},");
             sb.Append("{\"id\":\"D\",\"label\":\"恢复官方引导\",\"available\":true,\"installed\":false}");
             sb.Append("],\"usbDrives\":[]");
             sb.Append("}}");
