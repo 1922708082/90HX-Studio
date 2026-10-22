@@ -7151,6 +7151,8 @@ body.is-mock .mock-badge {
         GPU_NOT_FOUND: '未检测到目标显卡',
         DRIVER_REJECT: '驱动程序拒绝该操作',
         BUSY: '同类操作正在执行中',
+        FILE_NOT_FOUND: '未找到所需的工具文件',
+        VALIDATION_FAILED: '参数未通过校验',
         MOCK_MODE: '演示模式，未连接宿主',
         TIMEOUT: '命令超时未响应',
         FILE_LOCKED: '目标文件被占用或锁定',
@@ -7363,6 +7365,11 @@ body.is-mock .mock-badge {
       }
 
       function handleCommandResponse(action, resPayload, resolve) {
+        // 命令有结果就撤掉顶部忙碌条，避免它一直挂在上面
+        try {
+          const bar0 = document.getElementById('globalBusyBar');
+          if (bar0) bar0.classList.remove('active');
+        } catch (e) { }
         const ok = !!resPayload.ok;
         const err = resPayload.error;
         // resolve === null 表示迟到的回执（pendingCmds 里已没有这条命令）。
@@ -7474,6 +7481,19 @@ body.is-mock .mock-badge {
             }
           }
         } else {
+          /* 页面里并不存在 #dlssProgressWrap（10 个页面都没有这个 id），
+             原来的写法把所有非 update 的进度都写进了 null——
+             解锁 / 回滚 / 部署期间唯一反馈就是按钮变暗，看起来像卡死。
+             这里回落到顶部全局忙碌条：#globalBusyBar 一直没人点亮，正好用它。 */
+          const bar = document.getElementById('globalBusyBar');
+          if (bar) {
+            bar.classList.add('active');
+            const txt = document.getElementById('globalBusyText');
+            if (txt) {
+              txt.textContent = stage + detail +
+                (percent > 0 ? ' ' + Math.round(percent) + '%' : '');
+            }
+          }
           const wrap = document.getElementById('dlssProgressWrap');
           const stageEl = document.getElementById('dlssProgressStage');
           const pctEl = document.getElementById('dlssProgressPercent');
