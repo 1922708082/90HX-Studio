@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 19:23:55" />
+  <meta name="hx-build" content="2026-10-22 20:03:23" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -7086,9 +7086,9 @@ body.theme-light {
               <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;">
                 <label style="font-size:12.5px;color:var(--text-sub);width:96px;">清单地址</label>
                 <input type="text" class="text-input" id="cfgUpdateManifestUrl" style="flex:1;min-width:260px;"
-                       placeholder="https://example.com/version.json 或 GitHub raw 地址">
+                       placeholder="留空则使用官方仓库 1922708082/90HX-Studio；也可填其它 GitHub 仓库或 version.json 地址">
               </div>
-              <div class="page-desc" style="margin-top:6px;">「清单地址」指向一个 JSON（含 version / url / sha256）。加速前缀只影响下载，不能代替清单地址——两者都填才能真正检查并下载更新。</div>
+              <div class="page-desc" style="margin-top:6px;">直接读 GitHub Release 的 tag 与附件，不需要自己搭 JSON；留空即用官方仓库。也兼容旧的 version.json 清单（含 version / url / sha256）。加速前缀只影响下载与接口访问。</div>
               <div class="page-desc" style="margin-top:8px;">留空时自动依次尝试内置加速源（ghproxy.net / ghfast.top / gh-proxy.com / gitmirror），最后直连；填了则优先用你的。每次尝试都会写进日志。</div>
             </div>
 
@@ -9094,7 +9094,9 @@ body.theme-light {
         }
         if (verTxt) {
           verTxt.innerHTML = isVerified
-            ? '<span class="tag success" title="verified: true">校验通过</span>'
+            ? (u.unverified === true
+                ? '<span class="tag warning" title="未取到 GitHub 官方 sha256，仅校验了直链来源与文件头">已下载 · 未校验哈希</span>'
+                : '<span class="tag success" title="sha256 校验通过">校验通过</span>')
             : '<span class="tag danger" title="verified: false">待校验</span>';
         }
         if (notesBox) {

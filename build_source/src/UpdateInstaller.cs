@@ -20,6 +20,11 @@ namespace CMP90HXToolbox
     /// 1. 不关闭 TLS 证书校验（不要碰 ServicePointManager.ServerCertificateValidationCallback）；
     /// 2. 不跳过哈希校验。清单没给合法 sha256、或算出来对不上，
     ///    就地删除文件并失败——宁可让用户重下，也不能把来路不明的 exe 换到主程序位置。
+    ///
+    /// 唯一的例外是 GitHub 页面降级链路（UpdateChecker.Unverified）：
+    /// API 被限流时页面上拿不到官方 sha256，此时只放行 **github.com 直链**，
+    /// 并用「主机白名单 + PE 头 + 体积下限」代替哈希做最低限度验真；
+    /// 非 github.com 直链仍然一律拒绝，原规则不变。
     /// </summary>
     internal static class UpdateInstaller
     {
@@ -34,6 +39,17 @@ namespace CMP90HXToolbox
             get
             {
                 try { return !string.IsNullOrEmpty(_pendingPackage) && File.Exists(_pendingPackage); }
+                catch { return false; }
+            }
+        }
+
+        /// <summary>当前待应用的包是否来自「GitHub 页面降级」链路（没有官方 sha256，
+        /// 只做了 github.com 直链 + PE 头 + 体积校验）。界面必须区分显示，不能标成"已校验"。</summary>
+        public static bool PendingUnverified
+        {
+            get
+            {
+                try { return _pendingUnverified && HasVerifiedPackage; }
                 catch { return false; }
             }
         }
@@ -64,6 +80,8 @@ namespace CMP90HXToolbox
         private static string _pendingPackage;
         private static string _pendingVersion;
         private static string _pendingSha;
+        // 无摘要放行的包：值为 true 时 _pendingSha 为 null，应用前改用 PE 校验复核
+        private static bool _pendingUnverified;
 
         /// <summary>更新包目录：ProgramData\CMP90HX_Toolbox\update。</summary>
         public static string UpdateDir
@@ -99,14 +117,13 @@ namespace CMP90HXToolbox
             _pendingPackage = null;
             _pendingVersion = null;
             _pendingSha = null;
+            _pendingUnverified = false;
 
             try
             {
                 AppSettings.Load();
-                string manifestUrl = AppSettings.UpdateManifestUrl == null
-                    ? "" : AppSettings.UpdateManifestUrl.Trim();
-                if (manifestUrl.Length == 0)
-                    return Fail(r, "NETWORK", "未配置更新源，请先在「下载源设置」里填写更新清单地址");
+                // 留空 = 官方 GitHub 仓库，不再报「未配置」；填了别的才覆盖
+                string manifestUrl = AppSettings.EffectiveUpdateSource;
 
                 string fetchErr;
                 ManifestInfo mi = FetchManifest(manifestUrl, log, out fetchErr);
@@ -125,15 +142,34 @@ namespace CMP90HXToolbox
                     return Fail(r, "NETWORK", "更新清单里的 url 必须是完整的 http:// 或 https:// 地址");
 
                 string expectSha = NormalizeSha256(mi.Sha256);
-                if (expectSha == null)
+                // 无摘要放行的唯一入口：GitHub 页面降级链路（API 被限流时页面上没有 sha256）。
+                // 条件是「必须是 github.com 直链」且「必须是 .exe」，两者缺一即按原策略拒绝。
+                bool unverified = expectSha == null && mi.Unverified &&
+                                  string.Equals(mi.Source, "github", StringComparison.Ordinal);
+                if (expectSha == null && !unverified)
+                {
                     return Fail(r, "CHECKSUM_MISMATCH",
-                        "更新清单缺少合法的 sha256（需 64 位十六进制），为防止装到被篡改的包已拒绝下载");
+                        string.Equals(mi.Source, "github", StringComparison.Ordinal)
+                            ? "该 Release 附件缺少 sha256 摘要，为防止装到被篡改的包已拒绝下载"
+                            : "更新清单缺少合法的 sha256（需 64 位十六进制），为防止装到被篡改的包已拒绝下载");
+                }
+                if (unverified)
+                {
+                    if (!IsGitHubDirectUrl(mi.PackageUrl))
+                        return Fail(r, "CHECKSUM_MISMATCH",
+                            "未获取到 GitHub 官方 sha256，且安装包地址不是 github.com 直链（可能是镜像或前缀代理），已拒绝下载");
+                    if (!mi.PackageUrl.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        return Fail(r, "CHECKSUM_MISMATCH",
+                            "未获取到 GitHub 官方 sha256，且附件不是 .exe（无法做 PE 头校验），已拒绝下载");
+                    if (log != null)
+                        log("未获取到 GitHub 官方 sha256，已按直连 + PE 头校验放行（仅允许 github.com 直链）", true);
+                }
 
                 string cur = HardwareBridge.CurrentVersion();
                 if (log != null)
                 {
-                    log("更新清单: 当前 v" + cur + " / 最新 v" + mi.Version +
-                        (UpdateChecker.IsNewer(mi.Version, cur) ? "（有新版本）" : "（不比当前新，仍按清单下载）"), false);
+                    log("更新源: 当前 v" + cur + " / 最新 v" + mi.Version +
+                        (UpdateChecker.IsNewer(mi.Version, cur) ? "（有新版本）" : "（不比当前新，仍按更新源下载）"), false);
                 }
 
                 string dir = UpdateDir;
@@ -147,7 +183,10 @@ namespace CMP90HXToolbox
 
                 // 候选源：有加速前缀且是 GitHub 地址时先走前缀，失败回落直连。
                 // 两条路都只认「传输成功」，内容是否可信统一交给后面的 SHA-256 判定。
-                string[] urls = Candidates(mi.PackageUrl);
+                // 例外：无摘要放行时只能走 github.com 直链，不套前缀（镜像不在白名单里）。
+                string[] urls = unverified
+                    ? new string[] { mi.PackageUrl }
+                    : Candidates(mi.PackageUrl);
                 string lastErr = null;
                 long gotBytes = 0;
                 bool transferred = false;
@@ -172,16 +211,35 @@ namespace CMP90HXToolbox
                     return Fail(r, "NETWORK", "更新包下载失败" + (string.IsNullOrEmpty(lastErr) ? "" : "：" + lastErr));
 
                 // 校验：这是唯一决定「能不能装」的地方，失败必须删文件
-                string actual = Sha256Hex(part, log);
-                if (actual == null || !string.Equals(actual, expectSha, StringComparison.OrdinalIgnoreCase))
+                if (unverified)
                 {
-                    long badLen = 0;
-                    try { if (File.Exists(part)) badLen = new FileInfo(part).Length; } catch { }
-                    try { if (File.Exists(part)) File.Delete(part); } catch { }
+                    string why;
+                    if (!ValidateUnverifiedPackage(part, out why))
+                    {
+                        long badLen = 0;
+                        try { if (File.Exists(part)) badLen = new FileInfo(part).Length; } catch { }
+                        try { if (File.Exists(part)) File.Delete(part); } catch { }
+                        if (log != null)
+                            log("PE 头/体积校验不通过，已删除该文件（" + why + "，" + badLen + " 字节）", true);
+                        return Fail(r, "CHECKSUM_MISMATCH",
+                            "安装包校验不通过（未获取到 GitHub 官方 sha256，按直连 + PE 头校验）：" + why + "，已删除");
+                    }
                     if (log != null)
-                        log("SHA-256 不匹配，已删除该文件（期望 " + expectSha + " / 实际 " +
-                            (actual == null ? "无法读取" : actual) + "，" + badLen + " 字节）", true);
-                    return Fail(r, "CHECKSUM_MISMATCH", "SHA-256 校验不通过，安装包已删除，拒绝安装");
+                        log("未获取到 GitHub 官方 sha256，已按直连 + PE 头校验放行（这不是哈希校验）", true);
+                }
+                else
+                {
+                    string actual = Sha256Hex(part, log);
+                    if (actual == null || !string.Equals(actual, expectSha, StringComparison.OrdinalIgnoreCase))
+                    {
+                        long badLen = 0;
+                        try { if (File.Exists(part)) badLen = new FileInfo(part).Length; } catch { }
+                        try { if (File.Exists(part)) File.Delete(part); } catch { }
+                        if (log != null)
+                            log("SHA-256 不匹配，已删除该文件（期望 " + expectSha + " / 实际 " +
+                                (actual == null ? "无法读取" : actual) + "，" + badLen + " 字节）", true);
+                        return Fail(r, "CHECKSUM_MISMATCH", "SHA-256 校验不通过，安装包已删除，拒绝安装");
+                    }
                 }
 
                 try
@@ -197,12 +255,16 @@ namespace CMP90HXToolbox
                 _pendingPackage = dest;
                 _pendingVersion = mi.Version;
                 _pendingSha = expectSha;
+                _pendingUnverified = unverified;
 
                 r.Ok = true;
                 r.PackagePath = dest;
                 r.AssetName = Path.GetFileName(dest);
                 r.Sha256 = expectSha;
-                r.Message = "更新包下载完成，SHA-256 校验通过";
+                // 回执措辞必须如实反映「没做哈希校验」，不能让用户以为验过 sha256
+                r.Message = unverified
+                    ? "更新包下载完成：未获取到 GitHub 官方 sha256，已按直连 + PE 头校验放行"
+                    : "更新包下载完成，SHA-256 校验通过";
                 if (log != null) log(r.Message + "（" + Mb(gotBytes) + "）→ " + dest, false);
                 return r;
             }
@@ -218,11 +280,41 @@ namespace CMP90HXToolbox
             public string Version;
             public string PackageUrl;
             public string Sha256;
+            /// <summary>来源：github / manifest（只用于失败提示措辞）。</summary>
+            public string Source;
+            /// <summary>true = 来自 GitHub 页面降级链路，页面拿不到 sha256。</summary>
+            public bool Unverified;
         }
 
+        /// <summary>
+        /// 取发布信息。GitHub 仓库直接读 Release（tag + 附件 + digest），
+        /// 其余地址仍按旧的文本/JSON 清单解析——两条路最终都归一成 ManifestInfo，
+        /// 后续「下载 + 校验 sha256」完全复用。
+        /// </summary>
         private static ManifestInfo FetchManifest(string manifestUrl, Action<string, bool> log, out string error)
         {
             error = null;
+
+            string owner, repo;
+            if (UpdateChecker.TryParseGitHubRepo(manifestUrl, out owner, out repo))
+            {
+                UpdateChecker.ReleaseInfo info = UpdateChecker.Fetch(manifestUrl, log);
+                if (info == null)
+                {
+                    error = string.IsNullOrEmpty(UpdateChecker.LastError)
+                        ? "无法获取 GitHub Release 信息" : UpdateChecker.LastError;
+                    return null;
+                }
+
+                ManifestInfo gh = new ManifestInfo();
+                gh.Version = info.Version;
+                gh.PackageUrl = info.PackageUrl;
+                gh.Sha256 = info.Sha256;
+                gh.Source = "github";
+                gh.Unverified = info.Unverified;
+                return gh;
+            }
+
             string[] urls = Candidates(manifestUrl);
             string lastErr = null;
             for (int i = 0; i < urls.Length; i++)
@@ -422,13 +514,28 @@ namespace CMP90HXToolbox
                 if (!inside)
                     return Fail(r, "INTERNAL", "安装包不在更新目录内，已中止（安全检查）");
 
-                // 落地后又被人换过的包同样不能放行：这里再算一次哈希
-                string again = Sha256Hex(_pendingPackage, log);
-                if (again == null || !string.Equals(again, _pendingSha, StringComparison.OrdinalIgnoreCase))
+                // 落地后又被人换过的包同样不能放行：
+                // 有摘要的再算一次哈希；无摘要放行的包退回 PE 头 + 体积复核。
+                if (_pendingUnverified)
                 {
-                    try { File.Delete(_pendingPackage); } catch { }
-                    _pendingPackage = null;
-                    return Fail(r, "CHECKSUM_MISMATCH", "安装包在下载后被改动（SHA-256 不一致），已删除，请重新下载");
+                    string why;
+                    if (!ValidateUnverifiedPackage(_pendingPackage, out why))
+                    {
+                        try { File.Delete(_pendingPackage); } catch { }
+                        _pendingPackage = null;
+                        return Fail(r, "CHECKSUM_MISMATCH",
+                            "安装包在下载后复核失败（未获取到 GitHub 官方 sha256，按直连 + PE 头校验）：" + why + "，已删除，请重新下载");
+                    }
+                }
+                else
+                {
+                    string again = Sha256Hex(_pendingPackage, log);
+                    if (again == null || !string.Equals(again, _pendingSha, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { File.Delete(_pendingPackage); } catch { }
+                        _pendingPackage = null;
+                        return Fail(r, "CHECKSUM_MISMATCH", "安装包在下载后被改动（SHA-256 不一致），已删除，请重新下载");
+                    }
                 }
 
                 // 没有备份就绝不覆盖：回滚完全依赖这个文件
@@ -495,6 +602,7 @@ namespace CMP90HXToolbox
 
                 // 只能应用一次：脚本已经把包拷走了，再点一次没有意义
                 _pendingPackage = null;
+                _pendingUnverified = false;
                 return r;
             }
             catch (Exception ex)
@@ -693,6 +801,19 @@ namespace CMP90HXToolbox
                     return new string[] { p + url, url };
                 }
             }
+
+            // 更新检查阶段可能已经把前缀拼进 PackageUrl（UpdateChecker.WithProxy），
+            // 这里补回直连候选，镜像挂了还能自动回落。
+            if (!string.IsNullOrEmpty(prefix))
+            {
+                string p = prefix.Trim().TrimEnd('/') + "/";
+                if (p.Length > 1 && url.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+                {
+                    string direct = url.Substring(p.Length);
+                    if (direct.StartsWith("https://github.com", StringComparison.OrdinalIgnoreCase))
+                        return new string[] { url, direct };
+                }
+            }
             return new string[] { url };
         }
 
@@ -700,6 +821,68 @@ namespace CMP90HXToolbox
         {
             return url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                    url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 无摘要放行的最低门槛：只认 https://github.com/... 的 releases 下载直链。
+        /// 镜像、前缀代理（github.com 出现在路径而不是主机名）、github.com 上的任意路径全部拒绝。
+        /// </summary>
+        private static bool IsGitHubDirectUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return false;
+
+            Uri u;
+            if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out u)) return false;
+            if (!string.Equals(u.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return false;
+            if (!string.Equals(u.Host, "github.com", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!u.IsDefaultPort) return false;
+            return u.AbsolutePath.IndexOf("/releases/download/", StringComparison.Ordinal) >= 0;
+        }
+
+        /// <summary>
+        /// 页面降级（拿不到官方 sha256）时的替代校验，只能证明「像个 exe」，
+        /// 不能证明「就是发布者那个 exe」——所以日志与回执必须如实写明未做哈希校验：
+        ///   1) 体积必须大于 5 MB（GitHub 的错误页/登录页只有几十 KB）；
+        ///   2) 文件头必须是 MZ（有效 PE）。
+        /// </summary>
+        private static bool ValidateUnverifiedPackage(string path, out string error)
+        {
+            error = null;
+
+            long len = 0;
+            try { len = new FileInfo(path).Length; }
+            catch (Exception ex) { error = "读取安装包大小失败：" + ex.Message; return false; }
+
+            const long MinSize = 5L * 1024 * 1024;
+            if (len <= MinSize)
+            {
+                error = "体积仅 " + Mb(len) + "（要求大于 5 MB）";
+                return false;
+            }
+
+            try
+            {
+                byte[] head = new byte[2];
+                using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    if (fs.Read(head, 0, 2) < 2)
+                    {
+                        error = "文件过短，读不到 PE 头";
+                        return false;
+                    }
+                }
+                if (head[0] != (byte)'M' || head[1] != (byte)'Z')
+                {
+                    error = "文件头不是 MZ，不是有效的 PE 文件";
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = "读取 PE 头失败：" + ex.Message;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>从下载地址里取文件名；取不到就用版本号兜底，绝不把 URL 当文件名。</summary>

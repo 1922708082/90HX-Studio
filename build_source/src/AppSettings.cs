@@ -23,7 +23,12 @@ namespace CMP90HXToolbox
         public static string Theme = "light";
         /// <summary>DLSS 资源包下载基址（留空用官方 raw，可换国内镜像）。</summary>
         public static string DlssBaseUrl = "";
-        /// <summary>更新清单地址（留空则只提示当前版本，不联网）。</summary>
+        /// <summary>官方更新仓库（owner/repo）。settings.ini 留空时用它，开箱即用。</summary>
+        public const string DefaultUpdateRepo = "1922708082/90HX-Studio";
+        /// <summary>
+        /// 更新源地址。留空 = 走官方 GitHub 仓库 DefaultUpdateRepo；
+        /// 也可填其它 GitHub 仓库（owner/repo 或完整地址）或自建 version.json。
+        /// </summary>
         public static string UpdateManifestUrl = "";
         /// <summary>全局加速前缀（作用于 GitHub 下载），留空则直连。</summary>
         public static string DownloadProxy = "";
@@ -97,6 +102,20 @@ namespace CMP90HXToolbox
 
         /// <summary>最近一次写设置失败的原因（给界面展示，不要静默吞掉）。</summary>
         public static string LastError { get; private set; }
+
+        /// <summary>
+        /// 实际生效的更新源：settings.ini 留空就用官方仓库，填了才覆盖。
+        /// update.check / update.download 都从这里取，避免两处各自判空。
+        /// </summary>
+        public static string EffectiveUpdateSource
+        {
+            get
+            {
+                Load();
+                string v = UpdateManifestUrl == null ? "" : UpdateManifestUrl.Trim();
+                return v.Length == 0 ? DefaultUpdateRepo : v;
+            }
+        }
 
         /// <summary>
         /// 写入设置，返回是否成功。

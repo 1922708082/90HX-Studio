@@ -872,9 +872,14 @@ namespace CMP90HXToolbox
                     if (upd != null)
                     {
                         upd = upd.Trim();
-                        if (upd.Length > 0 && !upd.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                        // 现在允许留空（= 官方仓库）与裸 owner/repo，只有既不是
+                        // GitHub 仓库、又不是 http(s) 地址时才拒绝。
+                        string ow, rp;
+                        if (upd.Length > 0 &&
+                            !upd.StartsWith("http", StringComparison.OrdinalIgnoreCase) &&
+                            !UpdateChecker.TryParseGitHubRepo(upd, out ow, out rp))
                         {
-                            ReplyFail(id, action, "INTERNAL", "更新清单地址必须以 http(s):// 开头");
+                            ReplyFail(id, action, "INTERNAL", "更新源需为 GitHub 仓库（owner/repo）或 http(s) 地址");
                             return;
                         }
                         AppSettings.UpdateManifestUrl = upd;
@@ -887,7 +892,9 @@ namespace CMP90HXToolbox
                     string pdesc;
                     DlssPack.ResolveProxy(out pdesc);
                     LogInfo("设置已保存: 前缀=" + (string.IsNullOrEmpty(AppSettings.DownloadProxy) ? "自动" : AppSettings.DownloadProxy) +
-                            " / 清单=" + (string.IsNullOrEmpty(AppSettings.UpdateManifestUrl) ? "未配置" : AppSettings.UpdateManifestUrl) +
+                            " / 更新源=" + (string.IsNullOrEmpty(AppSettings.UpdateManifestUrl)
+                                ? "官方仓库 " + AppSettings.DefaultUpdateRepo
+                                : AppSettings.UpdateManifestUrl) +
                             " / 代理=" + pdesc);
                     PostToPage(HardwareBridge.SettingsStateEvt());
                 }
@@ -895,32 +902,48 @@ namespace CMP90HXToolbox
                 {
                     string cur = HardwareBridge.CurrentVersion();
                     AppSettings.Reload();   // 强制重读，避免运行时改了配置却读到旧缓存
-                    string url = AppSettings.UpdateManifestUrl;
-                    if (string.IsNullOrEmpty(url))
-                    {
-                        LogInfo("更新检查: v" + cur + "，未配置更新地址");
-                        ReplyDataJson(id, action, "{\"currentVersion\":" + HardwareBridge.Quote(cur) +
-                            ",\"latestVersion\":" + HardwareBridge.Quote(cur) +
-                            ",\"hasUpdate\":false,\"configured\":false" +
-                            ",\"message\":\"未配置更新地址，请在上方「下载源设置」里填写\"}");
-                        return;
-                    }
+                    // 留空 = 官方仓库：不再回「未配置」，开箱就能查
+                    string url = AppSettings.EffectiveUpdateSource;
+                    string shown = string.IsNullOrEmpty((AppSettings.UpdateManifestUrl ?? "").Trim())
+                        ? AppSettings.DefaultUpdateRepo
+                        : AppSettings.UpdateManifestUrl.Trim();
                     string rid = id;
                     Task.Run(new Action(delegate
                     {
-                        string latest = UpdateChecker.FetchLatestVersion(url, LogPower);
-                        if (string.IsNullOrEmpty(latest))
+                        UpdateChecker.ReleaseInfo info = UpdateChecker.Fetch(url, LogPower);
+                        if (info == null || string.IsNullOrEmpty(info.Version))
                         {
-                            ReplyFail(rid, action, "NETWORK", "无法获取更新信息");
+                            string why = UpdateChecker.LastError;
+                            if (string.IsNullOrEmpty(why)) why = "无法获取更新信息";
+                            ReplyFail(rid, action, "NETWORK", why);
                             return;
                         }
+
+                        string latest = info.Version;
                         bool hasNew = UpdateChecker.IsNewer(latest, cur);
-                        LogInfo("更新检查: 当前 v" + cur + " / 最新 v" + latest + (hasNew ? "（有更新）" : "（已最新）"));
-                        PostToPage(HardwareBridge.UpdateStateEvt(cur, latest, hasNew));
+                        LogInfo("更新检查: 当前 v" + cur + " / 最新 v" + latest +
+                                "（源 " + info.Source + ": " + shown + "）" +
+                                (hasNew ? "（有更新）" : "（已最新）"));
+
+                        // 事件里带上 Release 说明，更新页的「更新说明」才有内容
+                        bool verified = false;
+                        try { verified = UpdateInstaller.HasVerifiedPackage; } catch { }
+                        PostToPage("{\"kind\":\"evt\",\"action\":\"update.state\",\"payload\":{" +
+                                   "\"currentVersion\":" + HardwareBridge.Quote(cur) +
+                                   ",\"latestVersion\":" + HardwareBridge.Quote(latest) +
+                                   ",\"hasUpdate\":" + (hasNew ? "true" : "false") +
+                                   ",\"verified\":" + (verified ? "true" : "false") +
+                                   ",\"assetName\":" + HardwareBridge.Quote(UpdateInstaller.VerifiedPackageName) +
+                                   ",\"releaseNotes\":" + HardwareBridge.Quote(info.Notes ?? "") + "}}");
+
                         ReplyDataJson(rid, action, "{\"currentVersion\":" + HardwareBridge.Quote(cur) +
                             ",\"latestVersion\":" + HardwareBridge.Quote(latest) +
                             ",\"hasUpdate\":" + (hasNew ? "true" : "false") +
-                            ",\"configured\":true}");
+                            ",\"configured\":true" +
+                            ",\"source\":" + HardwareBridge.Quote(info.Source) +
+                            ",\"sourceUrl\":" + HardwareBridge.Quote(shown) +
+                            ",\"releaseNotes\":" + HardwareBridge.Quote(info.Notes ?? "") +
+                            ",\"message\":" + HardwareBridge.Quote("更新源: " + shown) + "}");
                     }));
                     return;
                 }
@@ -974,6 +997,7 @@ namespace CMP90HXToolbox
                                    ",\"latestVersion\":" + HardwareBridge.Quote(r.Version) +
                                    ",\"hasUpdate\":" + (UpdateChecker.IsNewer(r.Version, cur) ? "true" : "false") +
                                    ",\"verified\":true" +
+                                   ",\"unverified\":" + (UpdateInstaller.PendingUnverified ? "true" : "false") +
                                    ",\"assetName\":" + HardwareBridge.Quote(r.AssetName) +
                                    ",\"sha256\":" + HardwareBridge.Quote(r.Sha256) +
                                    ",\"releaseNotes\":\"\"}}");

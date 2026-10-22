@@ -1869,7 +1869,9 @@
         }
         if (verTxt) {
           verTxt.innerHTML = isVerified
-            ? '<span class="tag success" title="verified: true">校验通过</span>'
+            ? (u.unverified === true
+                ? '<span class="tag warning" title="未取到 GitHub 官方 sha256，仅校验了直链来源与文件头">已下载 · 未校验哈希</span>'
+                : '<span class="tag success" title="sha256 校验通过">校验通过</span>')
             : '<span class="tag danger" title="verified: false">待校验</span>';
         }
         if (notesBox) {
