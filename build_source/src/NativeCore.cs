@@ -1595,10 +1595,12 @@ namespace CMP90HXToolbox
                     // 写盘，把之前正确的状态冲掉。
                     // 两条命令各自的退出码都要为 0：
                     // 只看最后一条会把「bootmgr 读失败、firmware 读成功」误判为成功。
-                    // NVPermissive 只出现在 firmware 输出里，bootmgr 为空是正常现象；
-                    // 之前要求「fw 或 bootMgr 非空」等于把正常情况当失败。
+                    // 两个来源都要看：Mode 1 是把关键字写进 {bootmgr} 的
+                    // （/set {bootmgr} path \EFI\NVPermissive\NVPermissiveCompat.efi），
+                    // 而 firmware 列表在非 UEFI 或固件项不可枚举时可能是空的。
+                    // 只认 fw 会让 Mode 1 用户重新出现「已解锁却显示未解锁」。
                     bool readOk = ecBm == 0 && ecFw == 0
-                                  && fw.Length > 0
+                                  && (fw.Length > 0 || bootMgr.Length > 0)
                                   && fw.IndexOf("ERROR", StringComparison.OrdinalIgnoreCase) < 0;
                     if (readOk)
                     {
@@ -1664,11 +1666,20 @@ namespace CMP90HXToolbox
         {
             try
             {
+                // 回滚是「改引导」这种高危操作的最后一道保险。
+                // 原来全程丢弃 bcdedit 的返回值，被安全软件拦住、非管理员、
+                // BCD 被占用时照样 log「已恢复 100%」并 return true——
+                // 用户以为恢复了，重启后仍是解锁引导。
+                int bcdFail = 0;
+                int ecTmp;
+
                 log("正在重置 {bootmgr} 启动路径为微软官方 bootmgfw.efi...", false);
-                RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\Microsoft\\Boot\\bootmgfw.efi");
+                RunCmd("bcdedit", "/set {bootmgr} path \\EFI\\Microsoft\\Boot\\bootmgfw.efi", out ecTmp);
+                if (ecTmp != 0) bcdFail++;
 
                 log("正在扫描并清理所有 90HX 与 Backup 引导项...", false);
-                string fwOut = RunCmd("bcdedit", "/enum firmware");
+                string fwOut = RunCmd("bcdedit", "/enum firmware", out ecTmp);
+                if (ecTmp != 0) bcdFail++;
                 var matches = ParseBcdEntries(fwOut);
                 int delCount = 0;
                 foreach (var entry in matches)
@@ -1680,7 +1691,13 @@ namespace CMP90HXToolbox
                         entry.Path.IndexOf("WildCompute", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         entry.Path.IndexOf("Shell.efi", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        RunCmd("bcdedit", "/delete " + entry.Guid + " /f");
+                        RunCmd("bcdedit", "/delete " + entry.Guid + " /f", out ecTmp);
+                        if (ecTmp != 0)
+                        {
+                            bcdFail++;
+                            log("移除引导项失败（bcdedit 退出码 " + ecTmp + "）: " + entry.Guid, true);
+                            continue;
+                        }
                         log("已彻底移除冗余引导项: " + entry.Guid + " (" + entry.Description + ")", false);
                         delCount++;
                     }
@@ -1689,7 +1706,12 @@ namespace CMP90HXToolbox
                 // 删完旧项后重建启动顺序，避免 displayorder 残留悬空 GUID
                 if (delCount > 0)
                 {
-                    RunCmd("bcdedit", "/set {fwbootmgr} displayorder {bootmgr}");
+                    RunCmd("bcdedit", "/set {fwbootmgr} displayorder {bootmgr}", out ecTmp);
+                    if (ecTmp != 0)
+                    {
+                        bcdFail++;
+                        log("重建启动顺序失败（bcdedit 退出码 " + ecTmp + "），可能残留悬空 GUID", true);
+                    }
                 }
 
                 log("正在挂载 ESP 分区清理残留固件...", false);
@@ -1714,14 +1736,41 @@ namespace CMP90HXToolbox
                         string p4Live = Path.Combine(esp, @"EFI\Boot\bootx64.efi");
                         if (File.Exists(p4Bak))
                         {
-                            if (File.Exists(p4Live)) File.Delete(p4Live);
-                            File.Move(p4Bak, p4Live);
-                            log("已还原原始 EFI\\Boot\\bootx64.efi", false);
+                            // 这里绝对不能「先删后搬」：File.Move 失败时
+                            // bootx64.efi 已经没了 → Windows 直接开不了机。
+                            // 改成 复制 → 校验长度 → 才删备份；任一步失败都保留现场。
+                            try
+                            {
+                                File.Copy(p4Bak, p4Live, true);
+                                long lenBak = new FileInfo(p4Bak).Length;
+                                long lenLive = new FileInfo(p4Live).Length;
+                                if (lenLive == lenBak && lenLive > 0)
+                                {
+                                    File.Delete(p4Bak);
+                                    log("已还原原始 EFI\\Boot\\bootx64.efi", false);
+                                }
+                                else
+                                {
+                                    bcdFail++;
+                                    log("还原 bootx64.efi 后长度不一致（" + lenLive + " vs " + lenBak +
+                                        "），已保留备份 .90hx.bak 供手动修复", true);
+                                }
+                            }
+                            catch (Exception exRestore)
+                            {
+                                bcdFail++;
+                                log("还原 bootx64.efi 失败：" + exRestore.Message +
+                                    "（备份仍保留在 " + p4Bak + "，可用 PE 手动还原）", true);
+                            }
                         }
                     }
                     catch (Exception ex)
                     {
-                        log("清理 ESP 文件提示: " + ex.Message, false);
+                        // 这里含 File.Move(bootx64.efi.hxbak → bootx64.efi) 的还原动作。
+                        // 失败 = ESP 上仍是打过补丁的 bootx64.efi，下次启动依然走解锁载荷，
+                        // 绝不能再当「提示」轻描淡写地带过去。
+                        bcdFail++;
+                        log("ESP 清理/还原失败：" + ex.Message + "（引导可能仍处于解锁状态）", true);
                     }
                     finally
                     {
@@ -1736,7 +1785,17 @@ namespace CMP90HXToolbox
                 } catch { }
                 if (File.Exists(stateFile)) File.Delete(stateFile);
 
-                log("系统引导环境已恢复 100% 微软官方原生状态 (清理条目数: " + delCount + ")。", false);
+                if (bcdFail > 0)
+                {
+                    // 有 bcdedit 调用失败：不能声称「已恢复」。
+                    // 对比度很重要——这句骗人会让用户直接重启，然后发现还是解锁状态。
+                    log("引导恢复未完全成功：有 " + bcdFail + " 条 bcdedit 命令执行失败" +
+                        "（常见原因：被安全软件拦截、未以管理员运行、BCD 被占用）。" +
+                        "清理条目数: " + delCount + "，请排查后重试。", true);
+                    return false;
+                }
+
+                log("系统引导环境已恢复微软官方原生状态（清理条目数: " + delCount + "）。", false);
                 return true;
             }
             catch (Exception ex)
