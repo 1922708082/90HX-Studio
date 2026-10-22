@@ -1585,3 +1585,81 @@ code::selection,
 body.is-mock .mock-badge {
   display: flex;
 }
+
+/* =========================================================================
+   交互反馈补丁（追加在文件末尾，依旧晚于 01~04 加载，层叠上必赢）
+   1. .btn.is-loading 的转圈指示器
+   2. .log-stream-box 的可见滚动条
+   ========================================================================= */
+
+/* --- 1) 按钮执行中：右内边距内的小圆环 ---------------------------------
+   定位依据：.btn 的 padding 是 8px 12px，右侧正好空出 12px；
+   圆环用绝对定位（11px × 11px，right:1px）完整落在内边距里：
+   脱离 inline-flex 排版 → 不撑宽按钮（无布局跳动），不进入内容区 → 不压文字。
+   颜色用 currentColor：primary/danger 是白字、secondary 是 --text-main，
+   两套主题自适应，不写死颜色。 */
+.btn.is-loading {
+  position: relative;
+}
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.9;
+  pointer-events: none;
+  animation: spin 0.85s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* 系统开启“减少动态效果”时保留静态圆环（仍有“正在执行”的提示），只停掉旋转 */
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-loading::after {
+    animation: none;
+    opacity: 0.75;
+  }
+}
+
+/* --- 2) 日志区滚动条 ---------------------------------------------------
+   02-layout.css 把 .log-stream-box::-webkit-scrollbar 设成 display:none/宽度 0，
+   03-components.css 又写了 scrollbar-width:none。
+   这里用同选择器 + 同属性在更晚的文件里覆盖（特异性相同 → 后者胜），
+   不改动原规则，只做恢复性声明。 */
+.log-stream-box {
+  scrollbar-width: thin;                                  /* Firefox：细滚动条 */
+  scrollbar-color: rgba(148, 163, 184, 0.34) transparent; /* Firefox：滑块/轨道 */
+}
+.log-stream-box::-webkit-scrollbar {
+  display: block;   /* 覆盖 02 的 display:none */
+  width: 8px;       /* 覆盖 02 的 width:0 */
+  height: 8px;
+}
+.log-stream-box::-webkit-scrollbar-track {
+  background: transparent;
+}
+.log-stream-box::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.30); /* 深色底：半透明浅灰 */
+  border-radius: 999px;
+}
+.log-stream-box::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.55);
+}
+/* 亮色主题：浅底改用深色半透明滑块，避免看不见 */
+body.theme-light .log-stream-box {
+  scrollbar-color: rgba(15, 23, 42, 0.24) transparent;
+}
+body.theme-light .log-stream-box::-webkit-scrollbar-thumb {
+  background-color: rgba(15, 23, 42, 0.22);
+}
+body.theme-light .log-stream-box::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(15, 23, 42, 0.38);
+}

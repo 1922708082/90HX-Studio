@@ -53,6 +53,7 @@
         logsSearchKeyword: '',
         logsAutoScroll: true,
         logsList: [],
+        filteredLogs: [],   // 当前筛选后的日志（渲染与「复制当前筛选」共用同一份）
         pendingConfirm: null,
 
         // Section 5 Data Contracts + 3-state tracking ('loading' | 'ready' | 'error')
@@ -1744,16 +1745,19 @@
         if (statWarn) statWarn.textContent = String(allLogs.filter(x => x.level === 'warn').length);
         if (statError) statError.textContent = String(allLogs.filter(x => x.level === 'error').length);
 
-        if (!box) return;
-
         const lvlFilter = state.logsFilterLevel;
         const kw = (state.logsSearchKeyword || '').trim().toLowerCase();
 
+        /* 筛选结果存到 state.filteredLogs：渲染和「复制」共用同一份，
+           避免两处各写一遍过滤逻辑，出现「看到的」和「复制到的」不一致。 */
         const filtered = allLogs.filter(item => {
           if (lvlFilter !== 'all' && item.level !== lvlFilter) return false;
           if (kw && !(String(item.text || '').toLowerCase().includes(kw) || String(item.at || '').toLowerCase().includes(kw))) return false;
           return true;
         });
+        state.filteredLogs = filtered;
+
+        if (!box) return;
 
         if (cntTxt) {
           cntTxt.textContent = '当前显示 ' + filtered.length + ' 条 / 总计缓存 ' + allLogs.length + ' 条';
@@ -1978,6 +1982,44 @@
           resetWrap.style.display = 'block';
           if (confirmBtn) confirmBtn.disabled = true;
           state.pendingConfirm = { action: 'factory.reset', payload: { confirmText: '' }, triggerBtn: triggerEl };
+        } else if (confirmType === 'logs.clear') {
+          const cached = (state.logsList || []).length;
+          titleEl.textContent = '确认清空全部日志';
+          chgEl.textContent = '删除日志目录下的全部记录文件，并清空当前已加载的 ' + cached + ' 条日志缓存。';
+          impEl.textContent = '解锁、伪装、回滚等历史审计痕迹一并消失，事后无法追溯问题发生过什么。';
+          revEl.textContent = '不可恢复（日志文件不进回收站，也没有备份副本）。';
+          rebEl.textContent = '否（删除后立即生效）。';
+          state.pendingConfirm = { action: 'logs.clear', payload: {}, triggerBtn: triggerEl };
+        } else if (confirmType === 'snapshot.delete') {
+          const snapId = (triggerEl && triggerEl.dataset) ? (triggerEl.dataset.snapshotId || '') : '';
+          titleEl.textContent = '确认删除该还原点';
+          chgEl.textContent = '从快照清单中永久删除还原点 [' + (snapId || '未指定') + ']，连同它备份的注册表键值与引导配置。';
+          impEl.textContent = '删除后无法再回滚到这个还原点记录的状态；其它快照不受影响。';
+          revEl.textContent = '不可直接撤销（重新创建快照记住的是「当前」状态，不是当时状态）。';
+          rebEl.textContent = '否（删除后立即生效）。';
+          state.pendingConfirm = { action: 'snapshot.delete', payload: { snapshotId: snapId }, triggerBtn: triggerEl };
+        } else if (confirmType === 'unlock.toolkit') {
+          const card = (triggerEl && triggerEl.dataset && triggerEl.dataset.card) ? triggerEl.dataset.card : '40HX';
+          const op = (triggerEl && triggerEl.dataset && triggerEl.dataset.op) ? triggerEl.dataset.op : 'check';
+          const isUninstall = op === 'uninstall';
+          titleEl.textContent = isUninstall ? ('确认卸载 ' + card + ' 查询工具') : ('确认安装 ' + card + ' 查询工具');
+          chgEl.textContent = isUninstall
+            ? ('从系统目录移除已部署的 ' + card + ' 查询工具，并注销随装注册的驱动与服务项。')
+            : ('把 ' + card + ' 查询工具释放到系统目录，并注册对应的驱动与服务项。');
+          impEl.textContent = isUninstall
+            ? '卸载后该卡的实时状态查询入口失效，直到重新安装工具才恢复。'
+            : '会改动系统目录并写入驱动/服务注册项，安全软件可能拦截，安装过程中请勿断电。';
+          revEl.textContent = isUninstall ? '可重新点击 [解锁安装] 再次部署。' : '可随时点击 [卸载还原] 移除工具。';
+          rebEl.textContent = isUninstall ? '否（服务停止后即生效，必要时重启确认）。' : '建议重启（驱动与服务重新注册后重新枚举设备）。';
+          state.pendingConfirm = { action: 'unlock.toolkit', payload: { card: card, op: op }, triggerBtn: triggerEl };
+        } else if (confirmType === 'spoof.restore') {
+          const slot = Number(state.selectedSpoofSlot) || 0;
+          titleEl.textContent = '确认恢复出厂显卡型号';
+          chgEl.textContent = '把槽位 #' + slot + ' 的驱动类注册表项 DriverDesc 改回出厂型号名，清掉当前的伪装值。';
+          impEl.textContent = '设备管理器与游戏会按原厂型号重新识别，针对伪装型号调好的覆盖/插帧配置可能失效。';
+          revEl.textContent = '可重新选择目标型号再次应用伪装。';
+          rebEl.textContent = '是（出厂型号名需重启系统后才完全生效）。';
+          state.pendingConfirm = { action: 'spoof.restore', payload: { gpuSlot: slot }, triggerBtn: triggerEl };
         }
 
         modal.classList.add('open');
@@ -2225,9 +2267,17 @@
             showToast(state.safetyCoverOpen ? '机械安全盖已掀开，可执行引导操作' : '机械安全盖已闭合', 'warn');
             break;
           }
-          case 'unlock.toolkit':
-            sendCmd('unlock.toolkit', { card: target.dataset.card || '40HX', op: target.dataset.op || 'check' }, target);
+          case 'unlock.toolkit': {
+            const toolkitOp = target.dataset.op || 'check';
+            // check 只是读状态，无副作用，不打扰用户；
+            // install / uninstall 会改动系统目录与驱动服务项，必须先过危险确认。
+            if (toolkitOp === 'install' || toolkitOp === 'uninstall') {
+              openDangerConfirmModal('unlock.toolkit', target);
+              break;
+            }
+            sendCmd('unlock.toolkit', { card: target.dataset.card || '40HX', op: toolkitOp }, target);
             break;
+          }
           case 'unlock.selectCard': {
             const card = target.dataset.card || '90HX';
             if (card === '50HX') {
@@ -2289,8 +2339,11 @@
             // 这两个必须单独走自己的 action，不能落到上面的个案里
             sendCmd(action, {}, target);
             break;
-          case 'logs.export':
           case 'logs.clear':
+            // 清空日志不可恢复，先走二次确认，确认后才发命令
+            openDangerConfirmModal('logs.clear', target);
+            break;
+          case 'logs.export':
           case 'update.check':
           case 'update.download':
           case 'update.apply':
@@ -2303,7 +2356,8 @@
             sendCmd(action, {}, target);
             break;
           case 'spoof.restore':
-            sendCmd('spoof.restore', { gpuSlot: Number(state.selectedSpoofSlot) || 0 }, target);
+            // 改回出厂型号需要重启，且会覆盖当前伪装，先确认
+            openDangerConfirmModal('spoof.restore', target);
             break;
           case 'power.enable': {
             const sec = parseInt((document.getElementById('powerIdleSecondsInput') || {}).value, 10) || 8;
@@ -2397,8 +2451,8 @@
             break;
           }
           case 'snapshot.delete': {
-            const snapId = target.dataset.snapshotId || '';
-            sendCmd('snapshot.delete', { snapshotId: snapId }, target);
+            // 删除还原点不可逆，先确认再发命令
+            openDangerConfirmModal('snapshot.delete', target);
             break;
           }
           case 'snapshot.filterKind': {
@@ -2432,11 +2486,17 @@
             break;
           }
           case 'logs.copy': {
-            const text = state.logsList.map(i => '[' + i.at + '] [' + (i.level || 'info').toUpperCase() + '] ' + i.text).join('\n');
+            // 复制「当前筛选结果」，与界面显示的列表保持一致（不再复制全量缓存）
+            const rows = state.filteredLogs || [];
+            if (!rows.length) {
+              showToast('当前筛选结果为空，没有可复制的日志', 'warn');
+              break;
+            }
+            const text = rows.map(i => '[' + i.at + '] [' + (i.level || 'info').toUpperCase() + '] ' + i.text).join('\n');
             if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(text).then(() => showToast('日志已复制到剪贴板', 'success'));
+              navigator.clipboard.writeText(text).then(() => showToast('已复制 ' + rows.length + ' 条（当前筛选）', 'success'));
             } else {
-              showToast('已准备 ' + state.logsList.length + ' 条日志文本', 'info');
+              showToast('已准备 ' + rows.length + ' 条日志文本（当前筛选）', 'info');
             }
             break;
           }
@@ -3680,7 +3740,7 @@
       (function initHxTooltip() {
         let tipEl = null;
 
-        // 只保留右上角窗口三键的悬停提示，其余页面一律不弹
+        // 右上角窗口三键走自绘浮层；其它地方只保留含中文的说明文案（见 convert）
         const TIP_ALLOWED = '.window-dots';
 
         function allowed(el) {
@@ -3697,8 +3757,17 @@
             }
             return el.getAttribute('data-tip');
           }
-          // 非白名单：把 title 和 data-tip 一起抹掉，原生框和自绘框都不会出现
-          if (t) el.removeAttribute('title');
+          /* 非白名单：只抹掉「不含中文」的 title（TU102、PCIe x16 这类技术代号，
+             没必要弹系统灰黄框）。含中文的是写给用户看的解释文案，必须保留；
+             保留时统一转成 data-tip 交给自绘浮层显示，原生 tooltip 依旧不会出现。 */
+          if (t) {
+            if (/[\u4e00-\u9fa5]/.test(t)) {
+              el.setAttribute('data-tip', t);
+              el.removeAttribute('title');
+              return el.getAttribute('data-tip');
+            }
+            el.removeAttribute('title');
+          }
           if (el.hasAttribute('data-tip')) el.removeAttribute('data-tip');
           return null;
         }
