@@ -1736,9 +1736,11 @@ namespace CMP90HXToolbox
                         string p4Live = Path.Combine(esp, @"EFI\Boot\bootx64.efi");
                         if (File.Exists(p4Bak))
                         {
-                            // 这里绝对不能「先删后搬」：File.Move 失败时
-                            // bootx64.efi 已经没了 → Windows 直接开不了机。
-                            // 改成 复制 → 校验长度 → 才删备份；任一步失败都保留现场。
+                            // 不能「先删后搬」：File.Move 失败会留下半成品状态——
+                            // bootx64.efi 缺失、只剩备份。正常启动走的是
+                            // {bootmgr} 指向的 bootmgfw.efi（本函数开头已重置），
+                            // 所以不是"开不了机"，而是 ESP 上少了兜底入口、需人工介入。
+                            // 改成 复制 → 校验长度 → 再删备份；任一步失败都保留现场。
                             try
                             {
                                 File.Copy(p4Bak, p4Live, true);
@@ -1746,7 +1748,11 @@ namespace CMP90HXToolbox
                                 long lenLive = new FileInfo(p4Live).Length;
                                 if (lenLive == lenBak && lenLive > 0)
                                 {
-                                    File.Delete(p4Bak);
+                                    // 删备份单独 try：删不掉只影响磁盘占用，
+                                    // 若让它落到外层 catch 会误报「还原失败」——
+                                    // 实际已经还原成功，属于反向误导。
+                                    try { File.Delete(p4Bak); }
+                                    catch (Exception exDel) { log("已还原，但清理备份失败（可手动删除 " + p4Bak + "）：" + exDel.Message, false); }
                                     log("已还原原始 EFI\\Boot\\bootx64.efi", false);
                                 }
                                 else
