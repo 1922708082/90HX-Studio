@@ -42,10 +42,13 @@ namespace CMP90HXToolbox
         private static int _lockPcie;      // unlock.install / unlock.rollback
         private static int _lockDlss;      // dlss.deploy / dlss.remove / dlss.checkUpdate
         private static int _lockUpdate;    // update.download / update.apply
+        private static string _lockPcieToken = "";
         private static string _lockPcieOwner = "";
         private static DateTime _lockPcieAt = DateTime.MinValue;
+        private static string _lockDlssToken = "";
         private static string _lockDlssOwner = "";
         private static DateTime _lockDlssAt = DateTime.MinValue;
+        private static string _lockUpdateToken = "";
         private static string _lockUpdateOwner = "";
         private static DateTime _lockUpdateAt = DateTime.MinValue;
 
@@ -59,23 +62,23 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>尝试取组锁；已被占用则返回 false。</summary>
-        private static bool TryEnterGroup(string action)
+        private static bool TryEnterGroup(string action, string id)
         {
             int g = GroupOf(action);
             if (g == 1)
             {
                 if (System.Threading.Interlocked.CompareExchange(ref _lockPcie, 1, 0) != 0) return false;
-                _lockPcieOwner = action; _lockPcieAt = DateTime.UtcNow; return true;
+                _lockPcieToken = id; _lockPcieOwner = action; _lockPcieAt = DateTime.UtcNow; return true;
             }
             if (g == 2)
             {
                 if (System.Threading.Interlocked.CompareExchange(ref _lockDlss, 1, 0) != 0) return false;
-                _lockDlssOwner = action; _lockDlssAt = DateTime.UtcNow; return true;
+                _lockDlssToken = id; _lockDlssOwner = action; _lockDlssAt = DateTime.UtcNow; return true;
             }
             if (g == 3)
             {
                 if (System.Threading.Interlocked.CompareExchange(ref _lockUpdate, 1, 0) != 0) return false;
-                _lockUpdateOwner = action; _lockUpdateAt = DateTime.UtcNow; return true;
+                _lockUpdateToken = id; _lockUpdateOwner = action; _lockUpdateAt = DateTime.UtcNow; return true;
             }
             return true;
         }
@@ -94,12 +97,33 @@ namespace CMP90HXToolbox
         }
 
         /// <summary>回执时释放组锁。任何操作最终都会回执，所以这里释放是可靠的。</summary>
-        private static void ExitGroup(string action)
+        /// <summary>
+        /// 只释放「自己持有的那把锁」。
+        /// 按 action 直接清 0 是错的：BUSY 分支也会走到这里，
+        /// 于是「提示忙」反而把正在运行那一方的锁放掉，第三次点击就真并发了。
+        /// 用命令 id 做 token，id 不匹配（含 BUSY、迟到回执）一律不放。
+        /// </summary>
+        private static void ExitGroup(string action, string id)
         {
             int g = GroupOf(action);
-            if (g == 1) { _lockPcieOwner = ""; System.Threading.Interlocked.Exchange(ref _lockPcie, 0); }
-            else if (g == 2) { _lockDlssOwner = ""; System.Threading.Interlocked.Exchange(ref _lockDlss, 0); }
-            else if (g == 3) { _lockUpdateOwner = ""; System.Threading.Interlocked.Exchange(ref _lockUpdate, 0); }
+            if (g == 1)
+            {
+                if (!string.Equals(_lockPcieToken, id, StringComparison.Ordinal)) return;
+                _lockPcieToken = ""; _lockPcieOwner = "";
+                System.Threading.Interlocked.Exchange(ref _lockPcie, 0);
+            }
+            else if (g == 2)
+            {
+                if (!string.Equals(_lockDlssToken, id, StringComparison.Ordinal)) return;
+                _lockDlssToken = ""; _lockDlssOwner = "";
+                System.Threading.Interlocked.Exchange(ref _lockDlss, 0);
+            }
+            else if (g == 3)
+            {
+                if (!string.Equals(_lockUpdateToken, id, StringComparison.Ordinal)) return;
+                _lockUpdateToken = ""; _lockUpdateOwner = "";
+                System.Threading.Interlocked.Exchange(ref _lockUpdate, 0);
+            }
         }
 
         private static byte[] _htmlCache;
@@ -833,7 +857,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "update.download")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -893,7 +917,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "update.apply")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -939,7 +963,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.install")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -996,7 +1020,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.rollback")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -1023,7 +1047,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.checkUpdate")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -1129,7 +1153,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.deploy")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -1186,7 +1210,7 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.remove")
                 {
-                    if (!TryEnterGroup(action))
+                    if (!TryEnterGroup(action, id))
                     {
                         ReplyFail(id, action, "BUSY", BusyMessage(action));
                         return;
@@ -1519,7 +1543,7 @@ namespace CMP90HXToolbox
 
         private void ReplyOk(string id, string action)
         {
-            ExitGroup(action);
+            ExitGroup(action, id);
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(delegate { ReplyOk(id, action); }));
@@ -1544,7 +1568,7 @@ namespace CMP90HXToolbox
         /// <summary>失败应答。页面会弹「[错误码] 原因」并把对应页面置为错误态。</summary>
         private void ReplyFail(string id, string action, string code, string message)
         {
-            ExitGroup(action);
+            ExitGroup(action, id);
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(delegate { ReplyFail(id, action, code, message); }));
@@ -1569,6 +1593,9 @@ namespace CMP90HXToolbox
 
         private void ReplyWithPath(string id, string action, string path)
         {
+            // 与 ReplyOk / ReplyFail / ReplyDataJson 一致：任何回执都必须释放组锁。
+            // 这里之前漏了——只要将来有组内命令走这条路，锁就会永久占住。
+            ExitGroup(action, id);
             try
             {
                 if (_webView == null || _webView.CoreWebView2 == null) return;
@@ -1605,7 +1632,7 @@ namespace CMP90HXToolbox
         {
             // 必须在这里也释放组锁：下载类命令成功时走的正是 ReplyDataJson，
             // 漏掉它会导致 update.download 成功后 update.apply 永远 BUSY。
-            ExitGroup(action);
+            ExitGroup(action, id);
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(delegate { ReplyDataJson(id, action, dataJson); }));
