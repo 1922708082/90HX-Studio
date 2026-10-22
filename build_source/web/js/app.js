@@ -2169,11 +2169,6 @@
         switch (action) {
           case 'nav.switch': {
             const navPage = target.dataset.page;
-            /* DLSS 页带「内测」封条：进得去，但必须让用户知道自己在用内测功能。
-               之前封条把整页挡死，后来改成可进入，提示也跟着没了 —— 用户以为功能转正了。 */
-            if (navPage === 'dlss') {
-              showToast('DLSS 5 / 帧生成 属于内测功能，可能不稳定；异常请反馈', 'warn');
-            }
             if (navPage) switchPage(navPage);
             /* 进入日志页时主动拉一次：宿主不推 logs.append，
                不查的话日志页永远是空的。 */
