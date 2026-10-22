@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 14:11:43" />
+  <meta name="hx-build" content="2026-10-22 14:16:29" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -647,6 +647,7 @@
       gap: 9px;
       padding: 8px 12px;
       border-radius: 12px;
+      overflow: hidden;   /* 封条斜跨时不外溢到上下菜单项 */
       color: var(--sidebar-btn);
       font-size: 12.5px;
       font-weight: 600;
@@ -2968,15 +2969,16 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 132%;
-      height: 15px;
-      transform: translate(-50%, -50%) rotate(-18deg);
+      /* 宽度收到 86%：原来 132% 斜着会溢出到上下相邻的菜单项上 */
+      width: 86%;
+      height: 17px;
+      transform: translate(-50%, -50%) rotate(-14deg);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 800;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
       color: #fff;
       background: linear-gradient(
         90deg,
@@ -9219,14 +9221,21 @@ body.is-mock .mock-badge {
         const action = target.dataset.action;
 
         switch (action) {
-          case 'nav.switch':
-            if (target.dataset.page) switchPage(target.dataset.page);
+          case 'nav.switch': {
+            const navPage = target.dataset.page;
+            /* DLSS 页带「内测」封条：进得去，但必须让用户知道自己在用内测功能。
+               之前封条把整页挡死，后来改成可进入，提示也跟着没了 —— 用户以为功能转正了。 */
+            if (navPage === 'dlss') {
+              showToast('DLSS 5 / 帧生成 属于内测功能，可能不稳定；异常请反馈', 'warn');
+            }
+            if (navPage) switchPage(navPage);
             /* 进入日志页时主动拉一次：宿主不推 logs.append，
                不查的话日志页永远是空的。 */
-            if (target.dataset.page === 'logs') {
+            if (navPage === 'logs') {
               sendCmd('logs.query', { offset: 0, limit: 200, level: state.logsFilterLevel }, target);
             }
             break;
+          }
           case 'ui.toggleTheme': {
             const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
             applyThemeVisual(nextTheme);
