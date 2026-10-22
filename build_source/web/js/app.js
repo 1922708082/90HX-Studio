@@ -238,6 +238,16 @@
 
       function handleIncomingEnvelope(raw) {
         if (!raw) return;
+        // 真实宿主一旦说话，立刻退出演示态并清掉 mock 灌入的数据。
+        // 顺序很重要：先同步清状态，再补发一次 app.init，否则界面会短暂停在「演示数据」。
+        try {
+          if (raw && raw.kind === 'evt' && raw.src !== 'mock' && usingMock) {
+            usingMock = false;
+            resetMockState();
+            document.body.classList.remove('is-mock');
+            try { sendCmd('app.init', {}); } catch (e) { }
+          }
+        } catch (e) { }
         let msg = raw;
         if (typeof raw === 'string') {
           try {
@@ -251,7 +261,7 @@
         if (!msg || !msg.kind) return;
 
         if (msg.kind === 'evt') {
-          receivedAnyEvt = true;
+          if (!raw || raw.src !== 'mock') receivedAnyEvt = true;   // mock 的 evt 不算宿主已连接
           handleEvent(msg.action, msg.payload || {});
         } else if (msg.kind === 'prg') {
           handleProgress(msg.id, msg.action, msg.payload || {});
@@ -1261,12 +1271,15 @@
             const keepU = cbU ? cbU.checked : false;
             listEl.innerHTML = d.components.map(function (c) {
               const id = c.key === 'frame' ? 'dlssCbFrame' : 'dlssCbUnlock';
-              const checked = c.key === 'frame' ? keepF : keepU;
-              const cls = c.ready ? 'success' : 'warning';
+              // 资源没就绪的组件不允许勾选：勾了部署也必失败（DLSS5 包未内置时就是这种情况）
+              const enabledOne = !!c.ready;
+              const checked = enabledOne && (c.key === 'frame' ? keepF : keepU);
+              const cls = c.ready ? 'success' : 'danger';
               const txt = c.ready ? '可用' : '未内置';
               return '' +
                 '<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);cursor:pointer;">' +
-                  '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' style="width:15px;height:15px;flex:0 0 auto;" />' +
+                  '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') +
+                    (enabledOne ? '' : ' disabled') + ' style="width:15px;height:15px;flex:0 0 auto;" />' +
                   '<span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">' +
                     '<span style="font-size:13px;font-weight:700;color:var(--text-main);">' + escapeHtml(c.name) + '</span>' +
                     '<span style="font-size:11px;color:var(--text-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(c.detail || '') + '</span>' +
@@ -2211,6 +2224,14 @@
             const cbU = document.getElementById('dlssCbUnlock');
             payload.frame = cbF ? cbF.checked : true;
             payload.unlock = cbU ? cbU.checked : false;
+            if (payload.unlock && cbU && cbU.disabled) {
+              showToast('DLSS 5 资源包未内置，请先获取资源包再部署', 'error');
+              break;
+            }
+            if (!payload.frame && !payload.unlock) {
+              showToast('请至少勾选一个组件', 'warn');
+              break;
+            }
             sendCmd('dlss.deploy', payload, target);
             break;
           }
@@ -2951,6 +2972,7 @@
         sendCmd('app.ready', { ms: firstPaintMs });
         if (!receivedAnyEvt) {
           usingMock = true;
+          document.body.classList.add('is-mock');   // 常驻徽标：演示数据必须显眼
           bootMockDataPipe();
         }
       }, hasHost ? 800 : 20);
@@ -3258,15 +3280,37 @@
         'power.enable', 'power.disable',
         'update.download', 'update.apply',
         'factory.reset', 'snapshot.restore',
-        'dual.bind', 'dual.unbind'
+        'dual.bind', 'dual.unbind',
+        // 这两个同样会产生「我改了硬件」的错觉（功耗墙/快照），一并拦
+        'power.setPreset', 'snapshot.create', 'snapshot.delete',
+        'settings.save', 'dlss.checkUpdate'
       ];
+
+      /* 清掉 mock 灌进 state 的假数据。
+         漏掉任意一项，界面就会「一半真实一半演示」——比纯演示更难判断。 */
+      function resetMockState() {
+        try {
+          state.spoofModels = [];
+          state.selectedSpoofTarget = null;
+          state.dualState = null;
+          state.dlssState = null;
+          state.gpuList = [];
+          state.unlockState = null;
+          state.powerState = null;
+          state.overlayState = null;
+          state.updateState = null;
+          state.settingsState = null;
+        } catch (e) { }
+      }
 
       function dispatchToMockHost(envelope) {
         const { id, action, payload } = envelope;
+        // src:'mock' 是唯一的来源凭证：没有它，页面无法区分「真实宿主」与「演示数据」
         const replyOk = (data) => setTimeout(() => {
-          handleIncomingEnvelope({ kind: 'res', id: id, action: action, payload: { ok: true, data: data || {}, error: null } });
+          handleIncomingEnvelope({ kind: 'res', id: id, action: action, src: 'mock',
+            payload: { ok: true, data: data || {}, error: null } });
         }, 180);
-        const pushEvt = (act, pl) => handleIncomingEnvelope({ kind: 'evt', id: null, action: act, payload: pl });
+        const pushEvt = (act, pl) => handleIncomingEnvelope({ kind: 'evt', id: null, action: act, src: 'mock', payload: pl });
 
         if (MOCK_BLOCKED_ACTIONS.indexOf(action) >= 0) {
           // 明确失败，不假装成功
@@ -3634,7 +3678,7 @@
           selectTag: diagSel ? diagSel.tagName : 'none',
           hasWait: diagSel ? diagSel.innerHTML.indexOf('等待宿主') >= 0 : null,
           host: hasHost,
-          mock: usingMock
+          mockDataMode: usingMock   // 仅诊断用；真实判定看事件上的 src 标记
         });
       } catch (e) { }
     })();

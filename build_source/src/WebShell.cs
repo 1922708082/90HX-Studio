@@ -452,6 +452,33 @@ namespace CMP90HXToolbox
                 else if (action == "spoof.apply")
                 {
                     string targetName = ExtractPayloadString(json, "targetName");
+                    // 型号只能来自内置目录：这一串会被写进注册表 DriverDesc，
+                    // 任意字符串等于把别人的驱动描述改乱，且无从校验。
+                    // （proxyName 在 NativeCore 里已有 IsKnownProxyName 兜底，型号之前没有。）
+                    bool modelKnown = false;
+                    try
+                    {
+                        System.Collections.Generic.List<SpoofCatalog.Group> groups = SpoofCatalog.All();
+                        for (int gi = 0; gi < groups.Count; gi++)
+                        {
+                            string[] ms = groups[gi].Models;
+                            for (int mi = 0; mi < ms.Length; mi++)
+                            {
+                                if (string.Equals(ms[mi], targetName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    modelKnown = true; break;
+                                }
+                            }
+                            if (modelKnown) break;
+                        }
+                    }
+                    catch { }
+                    if (!modelKnown)
+                    {
+                        ReplyFail(id, action, "VALIDATION_FAILED",
+                                  "目标型号不在内置目录中，已拒绝执行：" + (targetName ?? "（空）"));
+                        return;
+                    }
                     if (string.IsNullOrEmpty(targetName)) targetName = "NVIDIA GeForce RTX 3080";
                     string rid = id;
                     string tgt = targetName;
@@ -855,6 +882,7 @@ namespace CMP90HXToolbox
                         try { NativeCore.MarkPcieUnlocked(ok); } catch { }
 
                         PostToPage(HardwareBridge.UnlockStateEvt());
+                        PostToPage(HardwareBridge.GpuListEvt());   // PCIe 标志变了，列表要跟着刷新
                         if (ok) ReplyOk(rid, action);
                         else ReplyFail(rid, action, "NEED_REBOOT", "载荷安装未完成，详见日志");
                     }));
@@ -874,6 +902,7 @@ namespace CMP90HXToolbox
                         try { NativeCore.MarkPcieUnlocked(false); } catch { }
 
                         PostToPage(HardwareBridge.UnlockStateEvt());
+                        PostToPage(HardwareBridge.GpuListEvt());   // PCIe 标志变了，列表要跟着刷新
                         if (ok) ReplyOk(rid, action);
                         else ReplyFail(rid, action, "INTERNAL", "回滚未完成，详见日志");
                     }));
@@ -1243,6 +1272,7 @@ namespace CMP90HXToolbox
                     Task.Run(new Action(delegate
                     {
                         PostToPage(HardwareBridge.UnlockStateEvt());
+                        PostToPage(HardwareBridge.GpuListEvt());   // PCIe 标志变了，列表要跟着刷新
                         ReplyOk(id, action);
                     }));
                     return;
