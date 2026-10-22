@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta name="hx-build" content="2026-10-22 14:16:29" />
+  <meta name="hx-build" content="2026-10-22 14:24:44" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HX家族多功能工具箱 · v6.1</title>
@@ -2962,32 +2962,37 @@
     .nav-item.nav-sealed {
       position: relative;
       overflow: hidden;
-      cursor: not-allowed;
+      cursor: pointer;   /* 现在是可以进去的，别再显示禁止手势 */
     }
-    /* 封条：单条斜杠，从左下角拉到右上角（不再做两杠交叉的叉） */
+    /* 封条 = 一条真正的对角线。
+       SVG 的 viewBox 0 0 100 100 配上 preserveAspectRatio="none"，
+       (0,100) 永远映射到盒子左下角、(100,0) 永远映射到右上角，
+       所以不管菜单多宽多高，这条带子一定贴着两个角，不会飘到中间。 */
     .nav-item .seal-ribbon {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      /* 宽度收到 86%：原来 132% 斜着会溢出到上下相邻的菜单项上 */
-      width: 86%;
-      height: 17px;
-      transform: translate(-50%, -50%) rotate(-14deg);
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
-      color: #fff;
-      background: linear-gradient(
-        90deg,
-        rgba(239, 68, 68, 0) 0%,
-        rgba(239, 68, 68, 0.55) 18%,
-        rgba(239, 68, 68, 0.55) 82%,
-        rgba(239, 68, 68, 0) 100%);
+      color: rgba(239, 68, 68, 0.62);
       pointer-events: none;
-      z-index: 2;
+      z-index: 3;
+    }
+    .nav-item .seal-ribbon .seal-line {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .nav-item .seal-ribbon b {
+      position: relative;
+      z-index: 1;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
     }
     /* 文字浮在封条之上，保证可读 */
     .nav-item.nav-sealed > span:not(.seal-ribbon) {
@@ -5498,11 +5503,16 @@ body.is-mock .mock-badge {
                 </button>
               </li>
               <li>
-                <button class="nav-item" data-action="nav.switch" data-page="dlss" title="DLSS 5 / 帧生成">
+                <button class="nav-item nav-sealed" data-action="nav.switch" data-page="dlss" title="DLSS 5 / 帧生成">
                   <svg class="nav-icon" data-tone="violet" viewBox="0 0 24 24"><rect class="svg-tone" x="2" y="6" width="20" height="12" rx="5"/><rect x="2" y="6" width="20" height="12" rx="5"/><path class="svg-line" d="M7 12h4M9 10v4"/><circle class="svg-dot" cx="16.5" cy="12" r="1.6"/></svg>
                   <span>DLSS 5 / 帧生成</span>
                   <!-- 内测标记：只做提示，不阻断进入（之前封条把整页挡死，连自测都进不去） -->
-                  <span class="seal-ribbon">内测</span>
+                  <span class="seal-ribbon" aria-hidden="true">
+                    <svg class="seal-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <line x1="0" y1="100" x2="100" y2="0" stroke="currentColor" stroke-width="26" />
+                    </svg>
+                    <b>内测</b>
+                  </span>
                 </button>
               </li>
               <li>

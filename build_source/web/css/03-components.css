@@ -1980,32 +1980,37 @@
     .nav-item.nav-sealed {
       position: relative;
       overflow: hidden;
-      cursor: not-allowed;
+      cursor: pointer;   /* 现在是可以进去的，别再显示禁止手势 */
     }
-    /* 封条：单条斜杠，从左下角拉到右上角（不再做两杠交叉的叉） */
+    /* 封条 = 一条真正的对角线。
+       SVG 的 viewBox 0 0 100 100 配上 preserveAspectRatio="none"，
+       (0,100) 永远映射到盒子左下角、(100,0) 永远映射到右上角，
+       所以不管菜单多宽多高，这条带子一定贴着两个角，不会飘到中间。 */
     .nav-item .seal-ribbon {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      /* 宽度收到 86%：原来 132% 斜着会溢出到上下相邻的菜单项上 */
-      width: 86%;
-      height: 17px;
-      transform: translate(-50%, -50%) rotate(-14deg);
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
-      color: #fff;
-      background: linear-gradient(
-        90deg,
-        rgba(239, 68, 68, 0) 0%,
-        rgba(239, 68, 68, 0.55) 18%,
-        rgba(239, 68, 68, 0.55) 82%,
-        rgba(239, 68, 68, 0) 100%);
+      color: rgba(239, 68, 68, 0.62);
       pointer-events: none;
-      z-index: 2;
+      z-index: 3;
+    }
+    .nav-item .seal-ribbon .seal-line {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .nav-item .seal-ribbon b {
+      position: relative;
+      z-index: 1;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
     }
     /* 文字浮在封条之上，保证可读 */
     .nav-item.nav-sealed > span:not(.seal-ribbon) {
