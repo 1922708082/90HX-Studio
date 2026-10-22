@@ -343,6 +343,12 @@
         } catch (e) { }
         const ok = !!resPayload.ok;
         const err = resPayload.error;
+        // 追加型动作不能在无主回执里执行：logs.query 会改列表长度，
+        // 迟到执行等于把同一批日志重复插一次。
+        if (resolve === null && (action === 'logs.query' || action === 'logs.loadMore')) {
+          try { console.warn('[HX] 迟到的日志回执已忽略:', action); } catch (e) { }
+          return;
+        }
         // resolve === null 表示迟到的回执（pendingCmds 里已没有这条命令）。
         // 此时不能弹错误、不能把页面画成错误态——操作可能早就成功了，
         // 弹一条红字只会让用户以为刚失败，进而重复操作。
@@ -413,7 +419,22 @@
             showToast(data.passed ? '前置检查全部通过' : ('有 ' + data.failedCount + ' 项未通过'),
                       data.passed ? 'success' : 'error');
           } else if (action === 'logs.query' && Array.isArray(data.items)) {
-            state.logsList = data.items.concat(state.logsList);
+            /* offset=0 是「进页面/刷新」→ 必须替换；
+               offset>0 是「加载更多」→ 才追加，并按 时间+内容 去重兜底。
+               原来无条件 concat，进一次页面就把同样的最后 200 条再插一遍。 */
+            const off = typeof data.offset === 'number' ? data.offset : 0;
+            if (off === 0) {
+              state.logsList = data.items.slice();
+            } else {
+              const seen = {};
+              state.logsList.forEach(function (it) {
+                seen[(it.at || '') + '|' + (it.text || '')] = 1;
+              });
+              const added = data.items.filter(function (it) {
+                return !seen[(it.at || '') + '|' + (it.text || '')];
+              });
+              state.logsList = state.logsList.concat(added);
+            }
             state.logsStatus = 'ready';
             renderLogsPage();
           } else if (action === 'logs.clear') {

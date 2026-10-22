@@ -674,19 +674,52 @@ namespace CMP90HXToolbox
                 else if (action == "logs.query")
                 {
                     int limit = ExtractPayloadNumber(json, "limit");
+                    int offset = ExtractPayloadNumber(json, "offset");
                     string level = ExtractPayloadString(json, "level");
-                    System.Collections.Generic.List<string[]> rows = Diagnostics.ReadLogTail(limit, level);
-                    StringBuilder sb = new StringBuilder(8192);
-                    sb.Append("{\"items\":[");
-                    for (int i = 0; i < rows.Count; i++)
+                    if (limit <= 0) limit = 200;
+                    if (offset < 0) offset = 0;
+                    string rid = id;
+
+                    // 必须离开 UI 线程：ReadLogTail 会整文件读入内存，
+                    // 日志到几十万行时同步执行会把界面冻住，并且触发前端 15 秒超时，
+                    // 超时后的迟到回执还会把同一批日志再追加一遍。
+                    Task.Run(new Action(delegate
                     {
-                        if (i > 0) sb.Append(',');
-                        sb.Append("{\"at\":").Append(HardwareBridge.Quote(rows[i][0]))
-                          .Append(",\"level\":").Append(HardwareBridge.Quote(rows[i][1]))
-                          .Append(",\"text\":").Append(HardwareBridge.Quote(rows[i][2])).Append('}');
-                    }
-                    sb.Append("]}");
-                    ReplyDataJson(id, action, sb.ToString());
+                        try
+                        {
+                            // 读尾部 offset+limit 行，再切出这一页——
+                            // 原来完全忽略 offset，「加载更多」只是把最近 N 行重复插一遍。
+                            System.Collections.Generic.List<string[]> tail =
+                                Diagnostics.ReadLogTail(offset + limit, level);
+                            int total = tail.Count;
+                            int end = Math.Max(0, total - offset);
+                            int start = Math.Max(0, end - limit);
+
+                            StringBuilder sb = new StringBuilder(8192);
+                            sb.Append("{\"offset\":").Append(offset)
+                              .Append(",\"total\":").Append(total)
+                              .Append(",\"items\":[");
+                            for (int i = start; i < end; i++)
+                            {
+                                if (i > start) sb.Append(',');
+                                sb.Append("{\"at\":").Append(HardwareBridge.Quote(tail[i][0]))
+                                  .Append(",\"level\":").Append(HardwareBridge.Quote(tail[i][1]))
+                                  .Append(",\"text\":").Append(HardwareBridge.Quote(tail[i][2])).Append('}');
+                            }
+                            sb.Append("]}");
+                            // 记一行「本轮取的是哪一段」，用来证明 offset 真的生效：
+                            // 只看界面行数会被前端去重骗过，只有这个区间能说明取到了更早的记录。
+                            LogInfo("[日志] offset=" + offset + " limit=" + limit +
+                                    " → 取第 " + start + "~" + (end - 1) + " 行 / 共 " + total + " 行" +
+                                    (offset > 0 && start == 0 ? "（已到最早）" : ""));
+                            ReplyDataJson(rid, action, sb.ToString());
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash("读取日志失败", ex);
+                            ReplyFail(rid, action, "INTERNAL", "读取日志失败：" + ex.Message);
+                        }
+                    }));
                     return;
                 }
                 else if (action == "logs.copy")
