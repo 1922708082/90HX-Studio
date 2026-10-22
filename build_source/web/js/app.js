@@ -18,6 +18,24 @@
       let isPerfLow = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       /* 用户手动点过「低功耗」就尊重其选择，自动恢复不再覆盖 */
       let perfLowManual = false;
+
+      /* 去网页感：拦掉浏览器特有的交互。
+         WebView2 层已经关了右键菜单/开发者工具/快捷缩放，
+         这里再挡一层页面内的默认行为，避免出现「像网页」的破绽。 */
+      (function killBrowserFeel() {
+        // 右键菜单（自定义菜单不受影响，只有浏览器默认菜单会被拦）
+        document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        // 拖拽图片/链接/文字，防止拖出浏览器行为
+        document.addEventListener('dragstart', function (e) { e.preventDefault(); });
+        // 常用浏览器快捷键
+        document.addEventListener('keydown', function (e) {
+          if (!e.ctrlKey && !e.metaKey) return;
+          const k = (e.key || '').toLowerCase();
+          if (k === 's' || k === 'p' || k === 'u' || k === 'f' || k === 'o') {
+            e.preventDefault();
+          }
+        });
+      })();
       if (isPerfLow) {
         document.body.classList.add('perf-low');
       }

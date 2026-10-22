@@ -1483,4 +1483,52 @@
       display: block;
     }
 
-  
+/* =========================================================================
+   去网页感（最后加载，覆盖前面所有规则）
+   目标：用起来像原生窗口，而不是浏览器页面
+   1) 全局禁止选中与文字光标（输入类控件除外）
+   2) 禁止拖拽图片/链接（拖出去会变成浏览器行为）
+   3) 去掉双击选中蓝框与长按选择手柄
+   ========================================================================= */
+html, body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* 输入类必须恢复可选，否则无法编辑 */
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
+}
+
+/* 图片与链接一律不许拖 */
+img,
+a,
+svg {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+a {
+  cursor: pointer;   /* 仍是可点的样子，但不触发浏览器拖拽 */
+}
+
+/* 拖选时不要出现蓝色选区 */
+::selection {
+  background: transparent;
+}
+input::selection,
+textarea::selection {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+/* 去掉浏览器的点击高亮（移动端/触屏会闪一个灰块） */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
