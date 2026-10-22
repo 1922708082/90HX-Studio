@@ -34,6 +34,74 @@ namespace CMP90HXToolbox
 
         private WebView2 _webView;
         private CoreWebView2Environment _env;
+        /* 后端单飞锁。
+           前端超时只是「别让用户再点」，两个窗口各点一次照样会并发：
+           引导组并发 = 两串 bcdedit 交错（可以写坏 BCD）；
+           下载组并发 = 两个线程写同一个 .part（文件损坏）。
+           锁在收到该组的 ReplyOk/ReplyFail 时释放。 */
+        private static int _lockPcie;      // unlock.install / unlock.rollback
+        private static int _lockDlss;      // dlss.deploy / dlss.remove / dlss.checkUpdate
+        private static int _lockUpdate;    // update.download / update.apply
+        private static string _lockPcieOwner = "";
+        private static DateTime _lockPcieAt = DateTime.MinValue;
+        private static string _lockDlssOwner = "";
+        private static DateTime _lockDlssAt = DateTime.MinValue;
+        private static string _lockUpdateOwner = "";
+        private static DateTime _lockUpdateAt = DateTime.MinValue;
+
+        private static int GroupOf(string action)
+        {
+            if (action == null) return 0;
+            if (action == "unlock.install" || action == "unlock.rollback") return 1;
+            if (action == "dlss.deploy" || action == "dlss.remove" || action == "dlss.checkUpdate") return 2;
+            if (action == "update.download" || action == "update.apply") return 3;
+            return 0;
+        }
+
+        /// <summary>尝试取组锁；已被占用则返回 false。</summary>
+        private static bool TryEnterGroup(string action)
+        {
+            int g = GroupOf(action);
+            if (g == 1)
+            {
+                if (System.Threading.Interlocked.CompareExchange(ref _lockPcie, 1, 0) != 0) return false;
+                _lockPcieOwner = action; _lockPcieAt = DateTime.UtcNow; return true;
+            }
+            if (g == 2)
+            {
+                if (System.Threading.Interlocked.CompareExchange(ref _lockDlss, 1, 0) != 0) return false;
+                _lockDlssOwner = action; _lockDlssAt = DateTime.UtcNow; return true;
+            }
+            if (g == 3)
+            {
+                if (System.Threading.Interlocked.CompareExchange(ref _lockUpdate, 1, 0) != 0) return false;
+                _lockUpdateOwner = action; _lockUpdateAt = DateTime.UtcNow; return true;
+            }
+            return true;
+        }
+
+        /// <summary>BUSY 时告诉用户「谁在跑、跑了多久」，避免一句「请稍等」被当成敷衍。</summary>
+        private static string BusyMessage(string action)
+        {
+            int g = GroupOf(action);
+            string owner = ""; DateTime at = DateTime.MinValue;
+            if (g == 1) { owner = _lockPcieOwner; at = _lockPcieAt; }
+            else if (g == 2) { owner = _lockDlssOwner; at = _lockDlssAt; }
+            else if (g == 3) { owner = _lockUpdateOwner; at = _lockUpdateAt; }
+            int secs = at == DateTime.MinValue ? 0 : (int)(DateTime.UtcNow - at).TotalSeconds;
+            string who = string.IsNullOrEmpty(owner) ? "同类操作" : owner;
+            return who + " 仍在执行（已 " + secs + " 秒），完成前不能重复触发。";
+        }
+
+        /// <summary>回执时释放组锁。任何操作最终都会回执，所以这里释放是可靠的。</summary>
+        private static void ExitGroup(string action)
+        {
+            int g = GroupOf(action);
+            if (g == 1) { _lockPcieOwner = ""; System.Threading.Interlocked.Exchange(ref _lockPcie, 0); }
+            else if (g == 2) { _lockDlssOwner = ""; System.Threading.Interlocked.Exchange(ref _lockDlss, 0); }
+            else if (g == 3) { _lockUpdateOwner = ""; System.Threading.Interlocked.Exchange(ref _lockUpdate, 0); }
+        }
+
         private static byte[] _htmlCache;
 
         public WebShellWindow()
@@ -765,6 +833,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "update.download")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     string rid = id;
                     LogInfo("开始下载更新包…");
                     // 安装包动辄上百 MB，下载绝不能占 UI 线程——历史事故里同步执行直接闪退
@@ -820,6 +893,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "update.apply")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     string rid = id;
                     LogInfo("准备应用更新…");
                     // 备份 exe、写脚本、起 cmd 都不能占 UI 线程
@@ -861,6 +939,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.install")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     // 必须先短路再放开 BCD 读取：通道 C 目前没接线，
                     // 落到下面会被当成 Mode1 去改本机 {bootmgr}。
                     string chGuard = ExtractPayloadString(json, "channel");
@@ -913,6 +996,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "unlock.rollback")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     NativeCore.BcdReadAllowed = true;
                     LogInfo("回滚引导与解锁载荷…");
                     string rid = id;
@@ -935,6 +1023,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.checkUpdate")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     LogInfo("检查 DLSS 5 资源包…");
                     string rid = id;
                     Task.Run(new Action(delegate
@@ -1036,6 +1129,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.deploy")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     string gameDir = ExtractPayloadString(json, "gameDir");
                     if (string.IsNullOrEmpty(gameDir))
                     {
@@ -1088,6 +1186,11 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "dlss.remove")
                 {
+                    if (!TryEnterGroup(action))
+                    {
+                        ReplyFail(id, action, "BUSY", BusyMessage(action));
+                        return;
+                    }
                     string gd = ExtractPayloadString(json, "gameDir");
                     if (string.IsNullOrEmpty(gd))
                     {
@@ -1416,6 +1519,7 @@ namespace CMP90HXToolbox
 
         private void ReplyOk(string id, string action)
         {
+            ExitGroup(action);
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(delegate { ReplyOk(id, action); }));
@@ -1440,6 +1544,7 @@ namespace CMP90HXToolbox
         /// <summary>失败应答。页面会弹「[错误码] 原因」并把对应页面置为错误态。</summary>
         private void ReplyFail(string id, string action, string code, string message)
         {
+            ExitGroup(action);
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(delegate { ReplyFail(id, action, code, message); }));
@@ -1498,6 +1603,9 @@ namespace CMP90HXToolbox
         /// <summary>带自定义 data 的应答（data 已是合法 JSON 片段）。</summary>
         private void ReplyDataJson(string id, string action, string dataJson)
         {
+            // 必须在这里也释放组锁：下载类命令成功时走的正是 ReplyDataJson，
+            // 漏掉它会导致 update.download 成功后 update.apply 永远 BUSY。
+            ExitGroup(action);
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(delegate { ReplyDataJson(id, action, dataJson); }));
@@ -1547,7 +1655,7 @@ namespace CMP90HXToolbox
                     dlg.Title = "导出日志";
                     dlg.FileName = defaultName;
                     dlg.Filter = "文本文件 (*.txt)|*.txt|日志文件 (*.log)|*.log|所有文件 (*.*)|*.*";
-                    if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return null;
+                    if (dlg.ShowDialog(OwnerForm) != System.Windows.Forms.DialogResult.OK) return null;
                     return dlg.FileName;
                 }
             }
@@ -1584,6 +1692,31 @@ namespace CMP90HXToolbox
             LogInfo((isError ? "[WARN] " : "") + message);
         }
 
+        /// <summary>
+        /// 原生对话框的 owner 窗口。
+        /// 不指定 owner 时对话框可能出现在主窗口之后，WPF 视觉上完全没变化，
+        /// 用户会判定"卡死了"；指定后对话框始终挂在主窗口上方、任务栏归属正确。
+        /// </summary>
+        private System.Windows.Forms.IWin32Window OwnerForm
+        {
+            get
+            {
+                try
+                {
+                    IntPtr h = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                    return h == IntPtr.Zero ? null : new Win32Owner(h);
+                }
+                catch { return null; }
+            }
+        }
+
+        private sealed class Win32Owner : System.Windows.Forms.IWin32Window
+        {
+            private readonly IntPtr _h;
+            public Win32Owner(IntPtr h) { _h = h; }
+            public IntPtr Handle { get { return _h; } }
+        }
+
         private string ShowBrowseDialog(string kind)
         {
             try
@@ -1595,13 +1728,13 @@ namespace CMP90HXToolbox
                         dlg.Title = "选择游戏主程序";
                         dlg.Filter = "可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*";
                         dlg.CheckFileExists = true;
-                        return (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK) ? dlg.FileName : null;
+                        return (dlg.ShowDialog(OwnerForm) == System.Windows.Forms.DialogResult.OK) ? dlg.FileName : null;
                     }
                 }
                 using (System.Windows.Forms.FolderBrowserDialog dlg2 = new System.Windows.Forms.FolderBrowserDialog())
                 {
                     dlg2.Description = "选择目录";
-                    return (dlg2.ShowDialog() == System.Windows.Forms.DialogResult.OK) ? dlg2.SelectedPath : null;
+                    return (dlg2.ShowDialog(OwnerForm) == System.Windows.Forms.DialogResult.OK) ? dlg2.SelectedPath : null;
                 }
             }
             catch (Exception ex)

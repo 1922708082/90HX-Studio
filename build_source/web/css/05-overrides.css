@@ -1547,12 +1547,20 @@ pre, code, kbd, samp,
   user-select: text;
   cursor: auto;
 }
-#view-logs ::selection,
-pre ::selection,
-.state-box ::selection,
-.mono ::selection,
-#dlssRuntimePathText ::selection {
-  background: rgba(59, 130, 246, 0.35);
+/* 注意：#view-logs * 本身可选中，但它的子元素几乎都是行级元素，
+   选区样式必须写在元素自己身上，写在祖先后代选择器上不会命中。 */
+#view-logs *::selection,
+pre *::selection,
+pre::selection,
+code::selection,
+.state-box *::selection,
+.state-box::selection,
+.mono::selection,
+#dlssRuntimePathText::selection,
+#overlayPathText::selection,
+#updateSha256Text::selection {
+  background: rgba(59, 130, 246, 0.45);
+  color: var(--text-main);
 }
 
 /* 演示模式常驻徽标：数据来源不可信时必须显眼且关不掉 */

@@ -5322,12 +5322,20 @@ pre, code, kbd, samp,
   user-select: text;
   cursor: auto;
 }
-#view-logs ::selection,
-pre ::selection,
-.state-box ::selection,
-.mono ::selection,
-#dlssRuntimePathText ::selection {
-  background: rgba(59, 130, 246, 0.35);
+/* 注意：#view-logs * 本身可选中，但它的子元素几乎都是行级元素，
+   选区样式必须写在元素自己身上，写在祖先后代选择器上不会命中。 */
+#view-logs *::selection,
+pre *::selection,
+pre::selection,
+code::selection,
+.state-box *::selection,
+.state-box::selection,
+.mono::selection,
+#dlssRuntimePathText::selection,
+#overlayPathText::selection,
+#updateSha256Text::selection {
+  background: rgba(59, 130, 246, 0.45);
+  color: var(--text-main);
 }
 
 /* 演示模式常驻徽标：数据来源不可信时必须显眼且关不掉 */
@@ -7142,6 +7150,9 @@ body.is-mock .mock-badge {
         NO_ADMIN: '缺少管理员权限',
         GPU_NOT_FOUND: '未检测到目标显卡',
         DRIVER_REJECT: '驱动程序拒绝该操作',
+        BUSY: '同类操作正在执行中',
+        MOCK_MODE: '演示模式，未连接宿主',
+        TIMEOUT: '命令超时未响应',
         FILE_LOCKED: '目标文件被占用或锁定',
         NETWORK: '网络连接失败或镜像不可达',
         CHECKSUM_MISMATCH: 'SHA-256 校验和不匹配',
@@ -7255,27 +7266,31 @@ body.is-mock .mock-badge {
         return new Promise((resolve) => {
           pendingCmds.set(id, { action, triggerBtn, resolve });
 
-          /* 超时兜底必须分档，否则会自己制造事故：
-             引导注入 / DLSS 部署 / 下载这类操作本来就要几十秒到几分钟
-             （挂 ESP + 多次 bcdedit + 写几十 MB），
-             15 秒到点就报「超时失败」并放开按钮，用户一重试就会并发执行两次，
-             两次 bcdedit 序列交错 —— 这比「按钮卡住」危险得多。 */
-          const LONG_ACTIONS = [
-            'unlock.install', 'unlock.rollback', 'unlock.toolkit',
-            'dlss.deploy', 'dlss.checkUpdate', 'dlss.download',
-            'update.download', 'update.apply',
-            'dual.scanGames', 'logs.export'
+          /* 超时策略：默认「只提醒、不判失败」。
+             原因：前端无法知道宿主是否真的在执行。一旦判失败并放开按钮，
+             用户重试就会产生第二次真实副作用（伪装写注册表、清日志、删快照、
+             功耗墙下发），而第一次可能已经成功——重复执行比按钮卡住危险得多。
+             只有明确只读、重试无副作用的命令才允许自动恢复按钮。 */
+          const SAFE_TO_RETRY = [
+            'device.refresh', 'app.init', 'app.diag', 'gpu.list',
+            'logs.query', 'snapshots.query', 'dlss.preflight',
+            'settings.get', 'update.check'
           ];
-          const isLongTask = LONG_ACTIONS.indexOf(action) >= 0;
+          /* 模态对话框整类豁免：dialog.browse 在宿主 UI 线程同步开原生窗口，
+             用户翻目录久一点就超过 15 秒，超时后弹红字是纯误报。 */
+          const NO_TIMEOUT = ['dialog.browse', 'dialog.save', 'dialog.confirm', 'dialog.pick'];
+          if (NO_TIMEOUT.indexOf(action) >= 0) return;
+
+          const retrySafe = SAFE_TO_RETRY.indexOf(action) >= 0;
           setTimeout(function () {
             if (!pendingCmds.has(id)) return;   // 已正常回执
-            if (isLongTask) {
-              // 长任务：只提醒，不删除 pending、不放开按钮、不 resolve 成失败。
-              // 否则上层会按失败画错误横幅，与宿主真实结果脱节。
-              try { showToast('任务仍在执行，请勿重复点击：' + action, 'warn'); } catch (e) { }
+            if (!retrySafe) {
+              // 有副作用的命令：只提醒，保留 pending 与按钮禁用，不 resolve 成失败
+              try {
+                showToast('任务仍在执行，请勿重复点击：' + action, 'warn');
+              } catch (e) { }
               return;
             }
-            // 短任务：确实可能回执丢失，恢复按钮并明确报错
             pendingCmds.delete(id);
             try {
               if (triggerBtn && triggerBtn.classList) {
@@ -7285,7 +7300,7 @@ body.is-mock .mock-badge {
             } catch (e) { }
             try { showToast('命令超时未响应：' + action + '，请重试', 'error'); } catch (e) { }
             try { resolve({ ok: false, data: null, error: { code: 'TIMEOUT', message: '命令超时' } }); } catch (e) { }
-          }, isLongTask ? 600000 : 15000);
+          }, retrySafe ? 15000 : 600000);
           if (hasHost && !usingMock) {
             try {
               window.chrome.webview.postMessage(envelope);
@@ -7350,6 +7365,22 @@ body.is-mock .mock-badge {
       function handleCommandResponse(action, resPayload, resolve) {
         const ok = !!resPayload.ok;
         const err = resPayload.error;
+        // resolve === null 表示迟到的回执（pendingCmds 里已没有这条命令）。
+        // 此时不能弹错误、不能把页面画成错误态——操作可能早就成功了，
+        // 弹一条红字只会让用户以为刚失败，进而重复操作。
+        if (!ok && err && resolve === null) {
+          try { console.warn('[HX] 迟到的失败回执已忽略:', action, err); } catch (e) { }
+          return;
+        }
+        // 用户主动取消不是错误：红字会让人以为出问题了
+        if (!ok && err && (err.code === 'CANCELLED' || err.code === 'BUSY')) {
+          const softMsg = err.code === 'CANCELLED'
+            ? (err.message || '已取消')
+            : (err.message || '操作正在进行中');
+          try { showToast(softMsg, err.code === 'CANCELLED' ? 'info' : 'warn'); } catch (e) { }
+          if (resolve) { try { resolve({ ok: false, error: err }); } catch (e) { } }
+          return;
+        }
         if (!ok && err) {
           const code = err.code || 'INTERNAL';
           const cn = ERROR_CODE_LABELS[code] || '';
