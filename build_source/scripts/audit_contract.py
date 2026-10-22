@@ -97,6 +97,8 @@ print('\n[2] 前端在等、后端从不发（页面停在等待态）: %d' % le
 for a in missing_evt:
     print('    -', a)
 
+# 注意：[3] 目前是文本匹配的假阳性重灾区（只认 case 下一行直接赋值），
+# 不要用它做构建门禁，仅作参考；要修先修识别器再纳入。
 print('\n[3] 后端会发、前端不处理（白推）: %d' % len(dead_evt))
 for a in dead_evt:
     print('    -', a)

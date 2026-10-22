@@ -1354,18 +1354,34 @@ namespace CMP90HXToolbox
                     Task.Run(new Action(delegate
                     {
                         System.Collections.Generic.List<GameScanner.GameEntry> games = null;
+                        string scanErr = null;
                         try { games = GameScanner.Scan(drive); }
-                        catch (Exception ex) { LogCrash("扫描游戏目录失败", ex); }
-                        if (games == null) games = new System.Collections.Generic.List<GameScanner.GameEntry>();
+                        catch (Exception ex)
+                        {
+                            scanErr = ex.Message;
+                            LogCrash("扫描游戏目录失败", ex);
+                        }
+
+                        // 扫描抛异常时绝不能回「扫描完成：0 个」——
+                        // 用户会以为机器上真的没装游戏，而实际是盘掉线/权限不足。
+                        if (games == null)
+                        {
+                            PostToPage(HardwareBridge.DualStateEvt());
+                            ReplyFail(rid, action, "INTERNAL",
+                                      "扫描失败：" + (scanErr ?? "未知原因") + "（请检查磁盘是否在线、是否有读取权限）");
+                            return;
+                        }
 
                         for (int i = 0; i < games.Count && i < 60; i++)
                             LogInfo("  发现 " + games[i].Source + " 游戏: " + games[i].Name + " → " + games[i].Path);
 
                         LogInfo("扫描完成: " + games.Count + " 个");
                         PostToPage(HardwareBridge.DualStateEvt());
+                        string scanMsg = games.Count > 0
+                            ? "扫描完成：发现 " + games.Count + " 个游戏（绑定功能尚未接入）"
+                            : "扫描完成：未发现游戏（可能未安装，或安装路径不在扫描范围内）";
                         ReplyDataJson(rid, action, "{\"count\":" + games.Count +
-                                ",\"message\":" + HardwareBridge.Quote(
-                                    "扫描完成：发现 " + games.Count + " 个游戏（绑定功能尚未接入）") + "}");
+                                ",\"message\":" + HardwareBridge.Quote(scanMsg) + "}");
                     }));
                     return;
                 }

@@ -1,4 +1,5 @@
-﻿$OutputEncoding = [System.Text.Encoding]::UTF8
+﻿param([switch]$SkipContractAudit)
+$OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $gacPath = "C:\Windows\Microsoft.NET\assembly\GAC_MSIL"
@@ -39,9 +40,20 @@ if (-not $pyExe) {
     if ($pc) { $pyExe = $pc.Source }
 }
 if (-not $pyExe) {
-    Write-Host "==================================================" -ForegroundColor Yellow
-    Write-Host "[SKIP] 未找到 Python，契约检查本次未执行（装 Python 或设 PYTHON 环境变量）" -ForegroundColor Yellow
-    Write-Host "==================================================" -ForegroundColor Yellow
+    if ($SkipContractAudit) {
+        Write-Host "==================================================" -ForegroundColor Yellow
+        Write-Host "[SKIP] 已指定 -SkipContractAudit，契约检查跳过（本次构建不校验前后端契约）" -ForegroundColor Yellow
+        Write-Host "==================================================" -ForegroundColor Yellow
+    } else {
+        # 不能静默降级：没有解释器就等于门禁不存在，
+        # 而「页面等一个永远不发的事件」正是历史上最难排查的一类。
+        Write-Host "==================================================" -ForegroundColor Red
+        Write-Host "[ERROR] 未找到 Python，契约检查无法执行，构建中止" -ForegroundColor Red
+        Write-Host "        安装 Python 或设置 PYTHON 环境变量；" -ForegroundColor Red
+        Write-Host "        确实需要跳过请显式加 -SkipContractAudit 参数。" -ForegroundColor Red
+        Write-Host "==================================================" -ForegroundColor Red
+        exit 1
+    }
 }
 if ($pyExe -and -not (Test-Path $auditScript)) {
     Write-Host "[WARN] 未找到 scripts/audit_contract.py，契约检查跳过" -ForegroundColor Yellow
