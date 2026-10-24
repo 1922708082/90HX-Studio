@@ -14,7 +14,7 @@
 | 是什么 | NVIDIA CMP 全系矿卡（30HX/40HX/50HX/70HX/90HX/170HX）的 Windows 桌面工作台 |
 | 干什么 | 固件解锁、型号伪装、双卡绑定、动态省电、快照回滚、恢复出厂、游戏覆盖 |
 | 技术栈 | C# / .NET Framework 4.x（csc 直接编译）+ WPF 外壳 + WebView2 承载 HTML 界面 |
-| 代码规模 | C# 约 22,600 行（14 个文件）；前端 app.js 3,961 行 + CSS 9,466 行（5 个文件） |
+| 代码规模 | C# 约 22,600 行（21 个文件）；前端 app.js 3,961 行 + CSS 9,466 行（5 个文件） |
 | 产物 | 单个 50MB exe，**无安装包、无同目录依赖** |
 | 界面入口 | `index.html` 以资源形式内嵌，运行时通过 `https://hx.local/index.html` 加载 |
 | 数据目录 | `C:\ProgramData\CMP90HX_Toolbox\`（settings.ini / logs / toolkit / webview2_udf） |
