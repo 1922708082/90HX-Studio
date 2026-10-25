@@ -52,3 +52,5 @@ release_notes.md
 release_payload.json
 release_resp.json
 upload_resp.json
+rel_pub.json
+latest.json
