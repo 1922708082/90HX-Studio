@@ -46,3 +46,9 @@ build_source/smoke_*.png
 build_source/screen_tuba.png
 build_source/ui_review/
 .rea_work/
+
+# 发布临时文件（脚本生成，不入库）
+release_notes.md
+release_payload.json
+release_resp.json
+upload_resp.json
