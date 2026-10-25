@@ -382,8 +382,26 @@ namespace CMP90HXToolbox
         #endregion
 
         /// <summary>
+        /// 6.2.1：动态节能整体暂停后，--powersave 不再进入守护循环。
+        /// 遗留的计划任务每次登录仍会拉起本程序，这里顺手解除一次残留限制再退出，
+        /// 保证升级后不会再有降频/功耗墙留在驱动里。
+        /// </summary>
+        private static void RestorePowerSaveOnDisabledBuild()
+        {
+            Action<string, bool> silent = delegate { };
+            try { NativeCore.SuspendPowerSaverTask(silent); }
+            catch { }
+            try { PowerPresets.StopAll(silent); }
+            catch { }
+        }
+
+        /// <summary>
         /// 后台省电进程：不创建任何窗口，只按空闲/负载动态限制 P-State。
         /// 由主程序以 --powersave 拉起，主程序关闭后仍继续运行，直到被显式停止或重启。
+        ///
+        /// <para>6.2.1 起本方法**不再被调用**：多位用户反馈开启后风扇不转，
+        /// 功能整体暂停，--powersave 改为只清理后退出（见 RestorePowerSaveOnDisabledBuild）。
+        /// 实现完整保留，排查清楚后把 Main 里的入口改回来即可恢复。</para>
         /// </summary>
         private static void RunPowerSaverBackground()
         {
@@ -567,7 +585,10 @@ namespace CMP90HXToolbox
 
             if (isPowerSaveMode)
             {
-                RunPowerSaverBackground();
+                // 6.2.1：动态节能整体暂停。计划任务若仍留在系统里，登录时还会以
+                // --powersave 拉起本程序；这里不再进入守护循环，只做一次清理后退出，
+                // 让「风扇不转」在用户升级后自然恢复。
+                RestorePowerSaveOnDisabledBuild();
                 return;
             }
 
@@ -1003,6 +1024,9 @@ namespace CMP90HXToolbox
 
             if (_btnDashUnlock != null)
             {
+                // 6.2.1：动态节能已暂停，旧界面的按钮一并隐藏，
+                // 避免有人从 --legacy 界面把计划任务重新装回去
+                _btnDashUnlock.Visibility = Visibility.Collapsed;
                 UpdatePowerSaverButtonVisual();
 
                 _btnDashUnlock.Click += (s, e) =>

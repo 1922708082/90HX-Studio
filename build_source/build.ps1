@@ -11,7 +11,7 @@ $srcRoot  = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyIn
 $repoRoot = Split-Path -Parent $srcRoot
 
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "HX家族多功能工具箱 v6.2 绿色免安装版构建流程" -ForegroundColor Cyan
+Write-Host "HX家族多功能工具箱 v6.2.1 绿色免安装版构建流程" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
 # 先把 web/ 下的模块化源文件（css/ + pages/ + js/）合并成单文件 index.html，

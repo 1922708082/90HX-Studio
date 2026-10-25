@@ -2281,6 +2281,14 @@
         if (!target || target.disabled) return;
         const action = target.dataset.action;
 
+        /* 动态节能已暂停：后端同样拒绝这两个动作，这里先拦一道并说明原因，
+           否则用户点了没反应会以为界面卡住。power.disable 保留可用，
+           用于清理已经留在显卡上的旧设置。 */
+        if (action === 'power.enable' || action === 'power.setPreset') {
+          showToast('动态节能已暂停：近期多位用户反馈会导致风扇不转，本版本不接受新设置', 'warn');
+          return;
+        }
+
         switch (action) {
           case 'nav.switch': {
             const navPage = target.dataset.page;
@@ -2293,6 +2301,11 @@
             /* DLSS 页仍是内测能力，每次进入都给一次风险提示 */
             if (navPage === 'dlss') {
               showToast('DLSS 5 / 帧生成 属于内测功能，可能不稳定；异常请反馈', 'warn');
+            }
+            /* 动态节能已暂停：页面仍可查看（方便用户看到旧状态并关闭守护），
+               但不接受新的节能设置 */
+            if (navPage === 'power') {
+              showToast('动态节能已暂停：近期多位用户反馈会导致风扇不转，本版本已禁用', 'warn');
             }
             break;
           }
@@ -3507,7 +3520,7 @@
           { at: '2026-10-20 17:22:31', level: 'warn', text: '空闲达 8 秒阈值，已切换待机节能状态（功耗 36.5W）' }
         ],
         updateState: {
-          currentVersion: '6.1.0',
+          currentVersion: '6.2.1',
           latestVersion: '6.1.2',
           hasUpdate: true,
           releaseNotes: '· 优化界面排版与图标细节\n· 支持 90HX/50HX/40HX 四通道解锁\n· 扩展 6 大架构 76 款显卡伪装型号\n· 增强更新包签名与完整性校验',

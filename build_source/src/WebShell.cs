@@ -185,11 +185,16 @@ namespace CMP90HXToolbox
                 if (_sensorTimer != null) _sensorTimer.Stop();
             }
             catch { }
-            // 交还控制权：程序退出后由后台计划任务继续做动态调节
+            // 6.2.1：动态节能已暂停，退出时不再恢复后台计划任务。
+            // 原来这里会 /enable + /run 把守护进程拉起来，等于用户关掉程序后
+            // 降频仍在继续——那正是「风扇不转」最难排查的一环。
             try
             {
                 if (NativeCore.IsPowerSaverTaskInstalled())
-                    NativeCore.ResumePowerSaverTask(LogPower);
+                {
+                    NativeCore.SuspendPowerSaverTask(LogPower);
+                    LogPower("动态节能已暂停：退出时不再恢复后台省电任务", false);
+                }
             }
             catch { }
             try
@@ -434,21 +439,41 @@ namespace CMP90HXToolbox
             PostToPage(HardwareBridge.VersionEvt());
             LogInfo("已发送握手事件 theme.apply / app.version");
 
-            // 单控制器原则 + 设置恢复：暂停后台任务，并把上次的档位重新应用上
+            // 动态节能已暂停（6.2.1）：这里**不再**恢复上次档位。
+            // 以前每次启动都会重新 Apply 上次的预设，把频率与功耗墙锁回节能值；
+            // 用户关掉程序后这些锁仍留在驱动里，表现就是「风扇不转、频率上不去」。
+            // 现在改成一次性清理：解除残留限制、移除计划任务、把存档档位复位。
             Task.Run(new Action(delegate
             {
-                NativeCore.SuspendPowerSaverTask(LogPower);
                 try
                 {
+                    NativeCore.SuspendPowerSaverTask(LogPower);
                     AppSettings.Load();
-                    if (!string.IsNullOrEmpty(AppSettings.Preset) && AppSettings.Preset != "none")
+                    string saved = AppSettings.Preset;
+                    bool needHeal = !string.IsNullOrEmpty(saved) && saved != "none";
+
+                    if (needHeal)
                     {
-                        LogInfo("恢复上次档位: " + AppSettings.Preset + " / " + AppSettings.IdleSeconds + "s");
-                        PowerPresets.Apply(AppSettings.Preset, AppSettings.IdleSeconds, LogPower);
-                        PostToPage(HardwareBridge.PowerStateEvt());
+                        LogPower("动态节能已暂停：清理上次档位 " + saved + " 留下的频率/功耗锁", true);
                     }
+
+                    // 存档里没有档位也要清一次：旧版本可能已经把锁写进驱动，
+                    // 而存档在别处被清空（或用户手工删过 settings.ini）。
+                    if (needHeal || NativeCore.IsPowerSaverTaskInstalled())
+                    {
+                        try { PowerPresets.StopAll(LogPower); }
+                        catch (Exception exStop) { LogCrash("清理省电残留失败", exStop); }
+                    }
+
+                    if (needHeal)
+                    {
+                        AppSettings.SetPreset("none", AppSettings.IdleSeconds);
+                        LogPower("已把存档档位复位为「关闭」，后续启动不会再自动降频", false);
+                    }
+
+                    PostToPage(HardwareBridge.PowerStateEvt());
                 }
-                catch (Exception ex) { LogCrash("恢复上次档位失败", ex); }
+                catch (Exception ex) { LogCrash("启动清理省电残留失败", ex); }
             }));
         }
 
@@ -631,35 +656,17 @@ namespace CMP90HXToolbox
                 }
                 else if (action == "power.setPreset")
                 {
-                    string preset = ExtractPayloadString(json, "preset");
-                    int secs = ExtractPayloadNumber(json, "idleSeconds");
-                    string rid = id;
-                    // 平滑降频是分步执行的，必须放后台，否则会把界面卡住 1.5 秒
-                    Task.Run(new Action(delegate
-                    {
-                        // 未带 idleSeconds 时沿用当前设定，不能重置成 8
-                        int useSecs = secs <= 0 ? PowerPresets.IdleSeconds : secs;
-                        bool ok = PowerPresets.Apply(preset, useSecs, LogPower);
-                        if (ok) ReplyOk(rid, action);
-                        else ReplyFail(rid, action, "DRIVER_REJECT", "设置失败：" + (PowerPresets.LastError ?? ""));
-                        PostToPage(HardwareBridge.PowerStateEvt());
-                    }));
+                    // 6.2.1：动态节能已暂停（多位用户反馈开启后风扇不转），
+                    // 后端硬拦，避免旧界面、脚本或残留页面把限制重新写回驱动。
+                    ReplyFail(id, action, "FEATURE_DISABLED",
+                        "动态节能已暂停：本版本不接受新的节能设置");
                     return;
                 }
                 else if (action == "power.enable")
                 {
-                    int secs = ExtractPayloadNumber(json, "idleSeconds");
-                    string rid = id;
-                    Task.Run(new Action(delegate
-                    {
-                        bool okE = false;
-                        try { okE = PowerPresets.Apply("adaptive", secs <= 0 ? 8 : secs, LogPower); }
-                        catch (Exception exE) { LogCrash("启用节能失败", exE); }
-                        PostToPage(HardwareBridge.PowerStateEvt());
-                        // 驱动拒绝写功耗墙时必须如实报失败，否则界面回「已启用」而频率没变
-                        if (okE) ReplyOk(rid, action);
-                        else ReplyFail(rid, action, "DRIVER_REJECT", "启用节能失败，驱动未接受设置，详见日志");
-                    }));
+                    // 同上：连守护进程都不再启动，直接拒绝
+                    ReplyFail(id, action, "FEATURE_DISABLED",
+                        "动态节能已暂停：本版本不再安装或启动省电守护");
                     return;
                 }
                 else if (action == "power.disable")
